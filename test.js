@@ -112,5 +112,106 @@ for (const seed of ['inv-1', 'inv-2']) {
   check(s4.poolPlayers === 4 && poolOk(s4), 'Partida de 4 jugadores escala el pool (coste 1: 15 copias por campeón)');
 }
 
-console.log(failed ? `\n${failed} test(s) fallaron` : '\nTodo OK');
-process.exit(failed ? 1 : 0);
+// 7. Multijugador con LocalTransport (host autoritativo + clientes, sin Firebase).
+const { NET } = require('./net.js');
+const quiet = { log() {}, error(...a) { console.error(...a); } };
+
+// "Humano" scripteado: decide con la IA de bot sobre el estado que ve y manda las acciones a la cola.
+function humanActions(state, uid) {
+  const s = SIM.clone(state);
+  s.players[uid].isBot = true; s.players[uid].bot = { personality: 'equilibrado', difficulty: 0 };
+  return SIM.runBotTurn(s, uid);
+}
+
+// Juega una partida online: 3 humanos (u1 es host) + 5 bots.
+//  crashAt: en esa ronda el host (u1) se desconecta para siempre y otro toma el control.
+//  idleFrom: desde esa ronda u1 sigue conectado pero no hace nada (partida de comparación).
+//  (La caída es DESPUÉS de que los humanos mandaron sus acciones de esa ronda: el host nuevo las procesa.)
+//  dropU3: [desde, hasta) rondas en las que u3 está desconectado.
+async function playOnline({ seed, crashAt = null, idleFrom = null, dropU3 = null, botTakeover = false }) {
+  const srv = NET.createLocalServer({ time: 1e9 });
+  const T = ['u1', 'u2', 'u3'].map(u => srv.connect(u));
+  const code = await NET.createRoom(T[0], { name: 'Ana', code: 'TEST', seed, settings: { bots: 5, difficulty: 0.3, botTakeover, planningSeconds: 30 } });
+  await NET.joinRoom(T[1], { code, name: 'Beto' });
+  await NET.joinRoom(T[2], { code, name: 'Caro' });
+  const ses = T.map(t => NET.createSession({ transport: t, code, autoTickMs: 0, log: quiet }));
+  await srv.settle();
+  await ses[0].startGame();
+  await srv.settle();
+
+  const log = { hashes: [], mismatches: 0, hosts: new Set(), takenOver: false, restored: false };
+  const anyClient = () => ses.find((s, i) => T[i].connected).client;
+  const tickAll = async () => { for (let i = 0; i < 3; i++) if (T[i].connected) { await ses[i].tick(); await srv.settle(); } };
+  let lastKey = null;
+  for (let guard = 0; guard < 600 && anyClient().meta.status !== 'ended'; guard++) {
+    const meta = anyClient().meta, st = anyClient().serverState, round = st.roundsPlayed;
+    if (meta.phase.key !== lastKey) { // nueva fase: todos los conectados tienen que ver lo mismo que el host
+      lastKey = meta.phase.key;
+      const hs = ses.filter((s, i) => T[i].connected).map(s => s.client.hash);
+      if (new Set(hs).size !== 1) log.mismatches++;
+      if (meta.phase.name === 'planning') log.hashes.push(hs[0]);
+      log.hosts.add(meta.hostId);
+      if (st.players.u3 && st.players.u3.takenOver) log.takenOver = true;
+      if (log.takenOver && st.players.u3 && !st.players.u3.takenOver) log.restored = true;
+      // eventos de red
+      if (dropU3 && round === dropU3[0] && T[2].connected) { T[2].disconnect(); await srv.settle(); }
+      if (dropU3 && round === dropU3[1] && !T[2].connected) { T[2].reconnect(); await srv.settle(); }
+      if (meta.phase.name === 'planning') {
+        for (let i = 0; i < 3; i++) {
+          const uid = T[i].uid, p = st.players[uid];
+          if (!T[i].connected || !p.alive || p.isBot) continue;
+          if (i === 0 && idleFrom != null && round >= idleFrom) continue;
+          for (const a of humanActions(st, uid)) await T[i].push(`rooms/${code}/actions`, { uid, action: a });
+          await srv.settle();
+        }
+      }
+      // el host se cae con acciones de los demás todavía en la cola (sin procesar)
+      if (crashAt != null && round === crashAt && T[0].connected && meta.phase.name === 'planning') {
+        const queued = Object.keys((await T[1].get(`rooms/${code}/actions`)) || {}).length;
+        if (queued > 0) log.queuedAtCrash = queued;
+        T[0].disconnect(); await srv.settle();
+        srv.advance(NET.CFG.MIGRATE_AFTER_MS + 1000);
+        await tickAll(); await tickAll();
+      }
+      for (let i = 0; i < 3; i++) {
+        if (!T[i].connected) continue;
+        if (i === 0 && idleFrom != null && round >= idleFrom) continue; // u1 "colgado": no toca Listo
+        ses[i].client.ready();
+      }
+      await srv.settle();
+    }
+    const before = anyClient().meta.phase.key;
+    await tickAll();
+    if (anyClient().meta.phase.key === before) { srv.advance(31000); await tickAll(); } // vence el tiempo de la fase
+  }
+  const c = anyClient();
+  return {
+    log, final: c.hash, ended: c.meta.status === 'ended', rounds: c.serverState.roundsPlayed,
+    desyncs: ses.reduce((n, s) => n + s.client.desyncs.length, 0),
+    places: c.serverState.order.map(id => c.serverState.players[id].place),
+  };
+}
+
+(async () => {
+  const a = await playOnline({ seed: 'net-1' });
+  check(a.ended && a.places.slice().sort((x, y) => x - y).join() === '1,2,3,4,5,6,7,8', `Online: 3 humanos + 5 bots terminan la partida (${a.rounds} rondas)`);
+  check(a.log.mismatches === 0, `Online: host y 3 clientes ven el mismo hash en cada fase (${a.log.hashes.length} planificaciones)`);
+  check(a.desyncs === 0, 'Online: ningún cliente detectó DESYNC al re-simular su pelea');
+
+  // referencia: u1 juega la ronda 8 y desde la 9 queda colgado (en la caída, sus acciones de la 8 quedan en cola)
+  const ref = await playOnline({ seed: 'net-2', idleFrom: 9 });
+  const crash = await playOnline({ seed: 'net-2', crashAt: 8 });
+  check(crash.log.hosts.size === 2 && crash.ended && crash.log.queuedAtCrash > 0, `Migración: el host se cae en la ronda 8 con ${crash.log.queuedAtCrash} acciones en cola y lo reemplaza otro (${[...crash.log.hosts].join(' -> ')})`);
+  check(crash.final === ref.final && JSON.stringify(crash.log.hashes) === JSON.stringify(ref.log.hashes),
+    `Migración: resultado idéntico al de la misma partida sin caída (${ref.log.hashes.length} rondas comparadas)`);
+  check(crash.log.mismatches === 0 && crash.desyncs === 0, 'Migración: todos siguen sincronizados después');
+
+  const drop = await playOnline({ seed: 'net-3', dropU3: [5, 7] });
+  check(drop.ended && drop.log.mismatches === 0 && drop.desyncs === 0, 'Reconexión: u3 se va 2 rondas, vuelve y queda sincronizado');
+
+  const tk = await playOnline({ seed: 'net-4', dropU3: [5, 9], botTakeover: true });
+  check(tk.log.takenOver && tk.log.restored, 'Toma por bot: u3 desconectado 2 rondas lo maneja un bot y al volver recupera su lugar');
+
+  console.log(failed ? `\n${failed} test(s) fallaron` : '\nTodo OK');
+  process.exit(failed ? 1 : 0);
+})();

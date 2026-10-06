@@ -959,7 +959,7 @@ const SIM = (() => {
   function createGame({ seed, slots, players, poolPlayers }) {
     slots = slots || players;
     const s = {
-      v: 3, seed: seedFrom(seed), rng: seedFrom(seed), nextUid: 1,
+      v: 4, seed: seedFrom(seed), rng: seedFrom(seed), nextUid: 1,
       poolPlayers: poolPlayers || (slots.length === 1 ? 8 : slots.length),
       round: { stage: 1, num: 1 }, roundsPlayed: 0, phase: 'planning',
       pool: {}, players: {}, order: [], pairings: null, combats: [],
@@ -1028,7 +1028,7 @@ const SIM = (() => {
   }
   function addHistory(p, round, vs, result, dmg) {
     p.history.unshift({ round, vs, result, dmg });
-    p.history.length = Math.min(p.history.length, 40);
+    p.history.length = Math.min(p.history.length, 15);
   }
   const resultOf = (winner, side) => (winner === 'draw' ? 'draw' : winner === side ? 'win' : 'loss');
   // Resuelve TODAS las peleas de la ronda (sin render), aplica daño, elimina, asigna puestos
@@ -1055,7 +1055,7 @@ const SIM = (() => {
         else { if (!won) dmg = playerDamage(stage, res.survivorsB); streak(p, won); }
         p.hp -= dmg;
         addHistory(p, label, opp.name, resultOf(res.winner, 'A'), dmg);
-        s.combats.push({ round: label, kind: pve ? 'pve' : 'gen', a: id, b: null, ghost: false, name: opp.name, snapA, snapB: opp.units, seed, winner: res.winner, hash: res.hash, dmgA: dmg, dmgB: 0 });
+        s.combats.push({ round: label, kind: pve ? 'pve' : 'gen', a: id, b: null, ghost: false, name: opp.name, snapA, snapB: opp.units, seed, winner: res.winner, hash: res.hash, ticks: res.ticks, dmgA: dmg, dmgB: 0 });
       }
     } else {
       for (const { a, b, ghost } of s.pairings) {
@@ -1070,7 +1070,7 @@ const SIM = (() => {
           pb.hp -= dmgB; streak(pb, res.winner === 'B'); pb.lastOpp = a;
           addHistory(pb, label, pa.name, resultOf(res.winner, 'B'), dmgB);
         }
-        s.combats.push({ round: label, kind: 'pvp', a, b, ghost, name: pb.name, snapA, snapB, seed, winner: res.winner, hash: res.hash, dmgA, dmgB });
+        s.combats.push({ round: label, kind: 'pvp', a, b, ghost, name: pb.name, snapA, snapB, seed, winner: res.winner, hash: res.hash, ticks: res.ticks, dmgA, dmgB });
       }
     }
     s.roundsPlayed++;
@@ -1080,6 +1080,17 @@ const SIM = (() => {
       if (s.round.num > roundsInStage(s.round.stage)) { s.round.stage++; s.round.num = 1; }
       startPlanning(s, false);
     }
+    return s;
+  }
+
+  // Un bot toma (on=true) o devuelve (on=false) el lugar de un humano desconectado.
+  // Decisión del host; el jugador conserva todo lo suyo.
+  function setBotControl(state, pid, on) {
+    const p = state.players[pid];
+    if (!p || (on ? p.isBot : !p.takenOver)) return state; // nada que cambiar (y un bot real nunca pasa a humano)
+    const s = clone(state), q = s.players[pid];
+    q.isBot = !!on; q.takenOver = !!on;
+    q.bot = on ? { personality: 'equilibrado', difficulty: 0.3 } : null;
     return s;
   }
 
@@ -1149,7 +1160,7 @@ const SIM = (() => {
 
   return {
     // partida (host)
-    createGame, makeSlots, resolveRound, runAllBots,
+    createGame, makeSlots, resolveRound, runAllBots, setBotControl,
     // acciones (humanos y bots)
     applyAction, validateAction, runBotTurn,
     // combate

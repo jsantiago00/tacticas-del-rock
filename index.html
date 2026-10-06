@@ -107,6 +107,23 @@ button:disabled{opacity:.45;cursor:default}
 #endTable tr.me td{color:var(--mine);font-weight:800}
 #endScreen .row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tabs{display:flex;gap:6px;margin:14px 0 4px}
+.tabs button{flex:1}
+.tabs button.on{border-color:var(--accent);color:var(--accent)}
+button.primary{border-color:var(--accent);background:#3a1a16}
+#lobby{position:fixed;inset:0;background:#000c;display:none;place-items:center;z-index:1450}
+#lobby .box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;width:min(520px,92vw)}
+#lobby h2{margin:0;font-family:'Bebas Neue',Impact,sans-serif;font-weight:400;font-size:34px;letter-spacing:1px;color:var(--accent)}
+#lobby h2 span{color:var(--gold);letter-spacing:6px}
+#lobby h3{margin:14px 0 6px;font-family:'Bebas Neue',Impact,sans-serif;font-weight:400;font-size:20px;letter-spacing:1px;color:var(--muted)}
+#lobby label{display:block;font-size:12px;color:var(--muted);margin:8px 0 4px}
+#lobby select{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:#0006;color:var(--text);font:inherit}
+#lobby .row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.chk{display:flex!important;gap:8px;align-items:flex-start;line-height:1.3}
+.mrow{display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--panel2);border-radius:8px;margin-bottom:4px}
+.dot{width:9px;height:9px;border-radius:50%;background:#555;flex:none}
+.dot.on{background:#4fd36a;box-shadow:0 0 6px #4fd36a}
+#roomBadge{font-weight:800;color:var(--gold);letter-spacing:2px}
 #modal select{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:#0006;color:var(--text);font:inherit}
 .info-title{font-family:'Bebas Neue',Impact,sans-serif;font-size:24px;letter-spacing:1px;line-height:1}
 .info-sub{color:var(--muted);font-size:12px;margin:2px 0 8px}
@@ -169,6 +186,7 @@ button:disabled{opacity:.45;cursor:default}
   <header id="topbar">
     <div class="logo">TÁCTICAS <span>DEL</span> ROCK</div>
     <div id="roundInfo"></div>
+    <div id="roomBadge"></div>
     <div class="spacer"></div>
     <button id="btnDet" title="Corre el mismo combate 2 veces con la misma semilla y compara">🔬 Determinismo</button>
     <button id="btnNew">Nueva partida</button>
@@ -218,76 +236,203 @@ button:disabled{opacity:.45;cursor:default}
   <div class="row"><button id="btnEndClose">Ver tablero</button><button id="btnEndNew" style="border-color:var(--accent)">Nueva partida</button></div>
 </div></div>
 <div id="modal"><div class="box">
-  <h2>Nueva partida</h2>
-  <label for="inName">Tu nombre</label>
+  <h2>Tácticas del Rock</h2>
+  <label for="inName">Tu apodo</label>
   <input id="inName" maxlength="18" value="Vos">
-  <label for="inSeed">Semilla (misma semilla + mismas jugadas = misma partida)</label>
-  <input id="inSeed">
-  <div class="row2">
-    <div><label for="inBots">Bots rivales</label>
-      <select id="inBots"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option selected>7</option></select></div>
-    <div><label for="inDiff">Dificultad</label>
-      <select id="inDiff"><option value="0.6">Fácil</option><option value="0.3" selected>Normal</option><option value="0">Difícil</option></select></div>
+  <div class="tabs"><button data-tab="solo" class="on">Solo vs bots</button><button data-tab="online">Online con amigos</button></div>
+  <div data-pane="solo">
+    <label for="inSeed">Semilla (misma semilla + mismas jugadas = misma partida)</label>
+    <input id="inSeed">
+    <div class="row2">
+      <div><label for="inBots">Bots rivales</label>
+        <select id="inBots"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option selected>7</option></select></div>
+      <div><label for="inDiff">Dificultad</label>
+        <select id="inDiff"><option value="0.6">Fácil</option><option value="0.3" selected>Normal</option><option value="0">Difícil</option></select></div>
+    </div>
+    <div class="row"><button id="btnCancel">Cancelar</button><button id="btnStart" class="primary">Arrancar</button></div>
+  </div>
+  <div data-pane="online" style="display:none">
+    <div id="onlineOff" class="help"></div>
+    <div id="onlineOn">
+      <div class="row" style="justify-content:stretch"><button id="btnCreate" class="primary" style="flex:1">Crear partida</button></div>
+      <label for="inCode">…o unirse con un código</label>
+      <div class="row" style="margin-top:0"><input id="inCode" maxlength="5" placeholder="ABCD" style="text-transform:uppercase;letter-spacing:4px;font-weight:800"><button id="btnJoin">Unirse</button></div>
+    </div>
   </div>
   <div class="help">Arrastrá unidades entre banco y tablero. Para vender: click derecho, arrastrar a la tienda, o <b>E</b> con el mouse encima.<br>
   <b>D</b> reroll · <b>F</b> comprar XP · <b>Espacio</b> listo.</div>
-  <div class="row"><button id="btnCancel">Cancelar</button><button id="btnStart" style="border-color:var(--accent)">Arrancar</button></div>
+</div></div>
+<div id="lobby"><div class="box">
+  <h2>Sala <span id="lobbyCode"></span></h2>
+  <div class="small" id="lobbyLink"></div>
+  <h3>Jugadores</h3>
+  <div id="lobbyMembers"></div>
+  <div id="lobbyHost">
+    <h3>Configuración</h3>
+    <div class="row2">
+      <div><label for="lbBots">Completar con bots hasta</label><select id="lbBots"></select></div>
+      <div><label for="lbDiff">Dificultad de los bots</label>
+        <select id="lbDiff"><option value="0.6">Fácil</option><option value="0.3">Normal</option><option value="0">Difícil</option></select></div>
+      <div><label for="lbTime">Tiempo de planificación</label>
+        <select id="lbTime"><option value="20">20 s</option><option value="30">30 s</option><option value="45">45 s</option><option value="60">60 s</option></select></div>
+      <div><label class="chk"><input type="checkbox" id="lbTakeover"> Si alguien se desconecta 2 rondas, lo maneja un bot hasta que vuelva</label></div>
+    </div>
+  </div>
+  <div id="lobbyWait" class="help"></div>
+  <div class="row"><button id="btnLeave">Salir</button><button id="btnLobbyStart" class="primary">Empezar</button></div>
 </div></div>
 
 <script src="sim.js"></script>
+<script src="net.js"></script>
+<script src="firebase-config.js"></script>
+<script src="firebase-transport.js"></script>
 <script>
 'use strict';
 /* =====================================================================
  * 3. UI — render (canvas para el tablero/combate, HTML para el resto) y
- *    entrada. Solo lee el estado y despacha acciones a SIM.
- *    En local la UI hace de "host": llama a resolveRound y runAllBots.
- *    (Etapa 3: HUMAN pasa a ser el id del jugador local y el host es otro.)
+ *    entrada. Lee el estado de la sala (vía net.js) y manda intenciones al host.
+ *    En local, esta misma pestaña también es el host (LocalTransport en memoria).
+ *    El jugador de esta pestaña es localPlayerId; el estado llega siempre por el transporte.
  * ===================================================================== */
 (function UI() {
   const C = DATA.CONFIG, ROWS = C.BOARD_ROWS, COLS = C.BOARD_COLS, TROWS = ROWS * 2;
   const HW = 66, HH = Math.round(HW * 1.1547), VS = HH * 0.75, PAD = 18;
   const ARENA_W = COLS * HW + HW / 2, ARENA_H = (TROWS - 1) * VS + HH + PAD * 2;
   const TOKEN_R = 26;
-  const SAVE_KEY = 'tacticas_rock_save_v3', PREF_KEY = 'tacticas_rock_prefs';
-  const HUMAN = 'p0';
+  const LOCAL_KEY = 'tacticas_rock_local_v4', ONLINE_KEY = 'tacticas_rock_online', PREF_KEY = 'tacticas_rock_prefs';
   const $ = s => document.querySelector(s);
   const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const CLASS_ICON = { guitarrista: '🎸', voz: '🎤', bajista: '🪕', baterista: '🥁', tecladista: '🎹' };
   const COST_COLOR = ['#555', '#8f949c', '#3fb15f', '#3a86e0', '#b05ae0', '#f0b02a'];
 
-  let state = null;
-  let mode = 'planning';   // 'planning' | 'combat' | 'ended'
-  let selected = null;     // {unitId, star}
-  let spyId = null;        // jugador cuyo tablero se está mirando
+  // Conexión: en local hay un servidor en memoria (host y cliente en esta pestaña);
+  // online, FirebaseTransport. La UI no distingue: habla con `client` y `session`.
+  let T = null, srv = null, session = null, client = null, online = false, fbT = null;
+  let localPlayerId = null;      // uid del jugador de esta pestaña
+  let state = null;              // vista del estado (la del host + mis acciones pendientes)
+  let mode = 'menu';             // 'menu' | 'lobby' | 'planning' | 'combat' | 'waiting' | 'ended'
+  let selected = null;           // {unitId, star}
+  let spyId = null;              // jugador cuyo tablero se está mirando
   let hoverLoc = null;
   let replay = null;
   let drag = null, dragOverIdx = -1;
-  let prefs = { timer: false, speed: 1 };
-  let timerEnd = 0;
+  let prefs = { timer: false, speed: 1, name: 'Vos' };
+  let shownCombatKey = null, beforeCombat = null, endShownFor = null;
 
-  const me = () => state.players[HUMAN];
+  const me = () => state.players[localPlayerId];
   const viewed = () => state.players[spyId] || me();
   const pname = id => (state.players[id] ? state.players[id].name : id);
   const cellCenter = (R, Cc) => ({ x: Cc * HW + (R & 1) * HW / 2 + HW / 2, y: PAD + R * VS + HH / 2 });
   const unitIcon = d => d.icon || CLASS_ICON[d.traits.find(t => CLASS_ICON[t])] || '🎵';
   const originColor = d => { const o = d.traits.find(t => DATA.TRAITS[t].kind === 'origen'); return o ? DATA.TRAITS[o].color : '#666'; };
   const stars = n => '★'.repeat(n);
-  const persName = p => (p.bot ? (DATA.BOTS.PERSONALITIES[p.bot.personality] || {}).name || p.bot.personality : 'Humano');
+  const persName = p => (p.takenOver ? 'Bot (reemplazo)' : p.bot ? (DATA.BOTS.PERSONALITIES[p.bot.personality] || {}).name || p.bot.personality : 'Humano');
+  const phase = () => (client && client.phase) || { name: 'lobby' };
+  const canAct = () => mode === 'planning' && phase().name === 'planning' && state && me() && me().alive;
+  const urlWithRoom = code => { const q = new URLSearchParams(location.search); if (code) q.set('sala', code); else q.delete('sala'); const s = q.toString(); return location.pathname + (s ? '?' + s : ''); };
+  const onlineAvailable = () => /^https?:$/.test(location.protocol) && !!window.FIREBASE_CONFIG;
 
   // ---------- persistencia ----------
-  function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) {} }
-  function load() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); return s && s.v === 3 ? s : null; } catch (e) { return null; } }
   try { Object.assign(prefs, JSON.parse(localStorage.getItem(PREF_KEY)) || {}); } catch (e) {}
   const savePrefs = () => { try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); } catch (e) {} };
+  const loadJSON = k => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
+  const saveJSON = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
-  function newGame(name, seed, bots, difficulty) {
-    const slots = SIM.makeSlots({ humans: [{ id: HUMAN, name: name || 'Vos' }], bots, difficulty });
-    state = SIM.runAllBots(SIM.createGame({ seed, slots })); // los bots compran al inicio de la planificación
-    mode = 'planning'; selected = null; replay = null; spyId = null;
-    $('#banner').style.display = 'none';
-    $('#endScreen').style.display = 'none';
-    save(); render(); resetTimer();
+  // ---------- sesión ----------
+  function teardown() {
+    if (session) session.destroy();
+    session = client = null; state = null; replay = null; spyId = null; selected = null;
+    shownCombatKey = beforeCombat = endShownFor = null;
+    if (srv) srv.onChange = null;
+    srv = null; T = null; online = false;
+    $('#banner').style.display = 'none'; $('#endScreen').style.display = 'none'; $('#lobby').style.display = 'none';
+    $('#roomBadge').textContent = '';
+  }
+  function openSession(code) {
+    session = NET.createSession({ transport: T, code, onChange: onRoom });
+    client = session.client;
+    $('#roomBadge').textContent = online ? `Sala ${code}` : '';
+  }
+  const nudge = () => { if (session && !online) session.tick(); }; // en local, procesar ya
+  async function startLocal(name, seed, bots, difficulty) {
+    teardown();
+    srv = NET.createLocalServer(); T = srv.connect('local'); localPlayerId = 'local';
+    const code = await NET.createRoom(T, { name, seed, code: 'LOCAL', settings: { bots, difficulty, botTakeover: false, planningSeconds: prefs.timer ? C.PLANNING_SECONDS : 0 } });
+    openSession(code);
+    await session.startGame();
+    watchLocalSave();
+  }
+  function resumeLocal(tree) {
+    teardown();
+    srv = NET.createLocalServer({ tree }); T = srv.connect('local'); localPlayerId = 'local';
+    openSession('LOCAL');
+    watchLocalSave();
+  }
+  function watchLocalSave() {
+    let t = null;
+    srv.onChange = () => { clearTimeout(t); t = setTimeout(() => srv && saveJSON(LOCAL_KEY, srv.tree), 300); };
+  }
+  async function firebase() {
+    if (!fbT) { toast('Conectando…', 4000); fbT = await createFirebaseTransport(window.FIREBASE_CONFIG); }
+    return fbT;
+  }
+  function enterOnline(code) {
+    const t = fbT;
+    teardown();
+    T = t; online = true; localPlayerId = T.uid;
+    saveJSON(ONLINE_KEY, { code });
+    history.replaceState(null, '', urlWithRoom(code));
+    openSession(code);
+  }
+  async function createOnline(name) {
+    try { await firebase(); enterOnline(await NET.createRoom(fbT, { name })); }
+    catch (e) { console.error(e); toast('No se pudo crear la sala: ' + e.message, 4000); }
+  }
+  async function joinOnline(name, code) {
+    try {
+      await firebase();
+      const r = await NET.joinRoom(fbT, { code, name });
+      if (r.error) { toast(r.error, 3000); return false; }
+      enterOnline(r.code);
+      return true;
+    } catch (e) { console.error(e); toast('No se pudo entrar: ' + e.message, 4000); return false; }
+  }
+  async function leave() {
+    if (online && client && client.meta) {
+      const code = client.code;
+      if (client.meta.status === 'lobby') {
+        if (client.meta.hostId === T.uid) await T.set('rooms/' + code, null).catch(() => {}); // el host cierra la sala
+        else await NET.leaveRoom(T, code).catch(() => {});
+      }
+    }
+    saveJSON(ONLINE_KEY, null);
+    history.replaceState(null, '', urlWithRoom(null));
+    teardown(); mode = 'menu';
+  }
+
+  // Cada cambio en la sala (propio o del host) pasa por acá.
+  function onRoom(c) {
+    const meta = c.meta;
+    if (!meta) { if (online) { toast('La sala ya no existe', 3000); leave().then(openModal); } return; }
+    if (meta.status === 'lobby') { mode = 'lobby'; renderLobby(); return; }
+    $('#lobby').style.display = 'none';
+    if (!c.state) return;
+    state = c.state;
+    if (!state.players[localPlayerId]) { toast('No estás en esta partida', 3000); leave().then(openModal); return; }
+    const ph = meta.phase;
+    if (ph.name === 'planning') {
+      beforeCombat = state;
+      if (mode !== 'combat') mode = 'planning';
+    } else if (ph.name === 'combat' && ph.key !== shownCombatKey && !replay) {
+      shownCombatKey = ph.key;
+      startCombatView();
+    } else if (ph.name === 'ended' && !replay && mode !== 'ended') {
+      if (shownCombatKey !== ph.key && state.combats.some(cb => cb.a === localPlayerId || cb.b === localPlayerId)) { shownCombatKey = ph.key; startCombatView(); }
+      else mode = 'ended';
+    }
+    if (mode === 'ended' || (me() && !me().alive && mode !== 'combat')) showEndOnce();
+    render();
   }
 
   // ---------- acciones ----------
@@ -297,14 +442,13 @@ button:disabled{opacity:.45;cursor:default}
     clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.style.display = 'none'), ms);
   }
   function act(action) {
-    if (mode !== 'planning') return;
-    const err = SIM.validateAction(state, HUMAN, action);
+    if (!canAct()) return;
+    const err = client.send(action);
     if (err) { toast(err); return; }
-    state = SIM.applyAction(state, HUMAN, action);
-    save(); render();
+    nudge();
   }
   function setSpy(id) {
-    spyId = id && id !== HUMAN ? id : null;
+    spyId = id && id !== localPlayerId ? id : null;
     render();
   }
 
@@ -405,6 +549,7 @@ button:disabled{opacity:.45;cursor:default}
     return t;
   }
   function render() {
+    if (!state || !me()) return;
     renderTop(); renderTraits(); renderPlayers(); renderRoundPanel(); renderInfo(); renderHud(); renderShop(); renderBench();
     $('#combatCtrls').style.display = mode === 'combat' ? 'flex' : 'none';
     const v = viewed(), n = SIM.boardCount(v), cap = $('#capBadge');
@@ -422,8 +567,8 @@ button:disabled{opacity:.45;cursor:default}
   function nextPairing() { // contra quién pelea el humano en la próxima ronda
     if (!state.pairings) return null;
     for (const p of state.pairings) {
-      if (p.a === HUMAN) return { opp: p.b, ghost: p.ghost };
-      if (p.b === HUMAN && !p.ghost) return { opp: p.a, ghost: false };
+      if (p.a === localPlayerId) return { opp: p.b, ghost: p.ghost };
+      if (p.b === localPlayerId && !p.ghost) return { opp: p.a, ghost: false };
     }
     return null;
   }
@@ -463,12 +608,16 @@ button:disabled{opacity:.45;cursor:default}
     for (const id of ids) {
       const p = state.players[id];
       const sk = p.streak >= 2 ? `🔥${p.streak}` : p.streak <= -2 ? `🧊${-p.streak}` : '';
-      const sub = p.alive ? `Nv ${p.level} · ${id === HUMAN ? 'vos' : persName(p)}` : `#${p.place} · ${persName(p)}`;
-      const row = el('div', 'prow' + (id === HUMAN ? ' me' : '') + (p.alive ? '' : ' dead') + (spyId === id ? ' spy' : ''),
-        `<div class="pname">${esc(p.name)} ${opp && opp.opp === id ? '<span class="vs" title="Próximo rival">⚔</span>' : ''}<div class="psub">${sub}</div></div>
+      const room = client && client.room, human = room && room.members && room.members[id];
+      const on = human && room.presence && room.presence[id] && room.presence[id].online;
+      const rdy = human && room.ready && room.ready[id] === phase().key;
+      const tag = human ? (on ? (rdy ? ' ✓' : '') : ' <span title="Desconectado">📴</span>') : '';
+      const sub = (p.alive ? `Nv ${p.level} · ${id === localPlayerId ? 'vos' : persName(p)}` : `#${p.place} · ${persName(p)}`);
+      const row = el('div', 'prow' + (id === localPlayerId ? ' me' : '') + (p.alive ? '' : ' dead') + (spyId === id ? ' spy' : ''),
+        `<div class="pname">${esc(p.name)}${tag} ${opp && opp.opp === id ? '<span class="vs" title="Próximo rival">⚔</span>' : ''}<div class="psub">${sub}</div></div>
          <div class="pstreak">${sk}</div>
          <div class="php"><i style="width:${Math.max(0, p.hp)}%"></i></div><div class="phv">${Math.max(0, p.hp)}</div>`);
-      row.title = id === HUMAN ? 'Volver a tu tablero' : 'Click para espiar su tablero';
+      row.title = id === localPlayerId ? 'Volver a tu tablero' : 'Click para espiar su tablero';
       row.addEventListener('click', () => { if (mode !== 'combat') setSpy(spyId === id ? null : id); });
       box.appendChild(row);
     }
@@ -486,7 +635,7 @@ button:disabled{opacity:.45;cursor:default}
       const res = (w, side) => (w === 'draw' ? '<span class="d">empate</span>' : w === side ? '<span class="w">gana</span>' : '<span class="l">pierde</span>');
       html += `<div class="small" style="margin-bottom:4px">Resultados ${prevLabel}</div><div class="res">`;
       for (const c of cs) {
-        const mine = c.a === HUMAN || c.b === HUMAN;
+        const mine = c.a === localPlayerId || c.b === localPlayerId;
         const right = c.kind === 'pvp' ? esc(pname(c.b)) + (c.ghost ? ' 👻' : '') : esc(c.name);
         const dmg = [c.dmgA ? `${esc(pname(c.a))} -${c.dmgA}` : '', c.dmgB ? `${esc(pname(c.b))} -${c.dmgB}` : ''].filter(Boolean).join(', ');
         html += `<div class="${mine ? 'mine' : ''}" title="${dmg}"><span>${esc(pname(c.a))} ${res(c.winner, 'A')} vs ${right}</span><span class="small">${dmg ? '-' + Math.max(c.dmgA, c.dmgB) : ''}</span></div>`;
@@ -531,7 +680,9 @@ button:disabled{opacity:.45;cursor:default}
   }
   function renderHud() {
     const p = me();
-    $('#hud').classList.toggle('disabled', mode !== 'planning');
+    $('#hud').classList.toggle('disabled', !canAct());
+    const rd = $('#btnReady'), waitingOthers = client && client.isReady() && phase().name === 'planning';
+    rd.innerHTML = waitingOthers ? '✓ Esperando…' : '¡Listo! <kbd>Espacio</kbd>';
     const need = SIM.xpNeeded(p), inc = SIM.incomePreview(p), max = p.level >= C.MAX_LEVEL;
     const odds = DATA.SHOP_ODDS[p.level].map((o, i) => `<span style="color:var(--c${i + 1})">${o}%</span>`).join('');
     $('#stats').innerHTML = `
@@ -674,7 +825,7 @@ button:disabled{opacity:.45;cursor:default}
     if (loc) { e.preventDefault(); act({ type: 'SELL', loc }); }
   });
   document.addEventListener('keydown', e => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || $('#modal').style.display === 'grid') return;
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || $('#modal').style.display === 'grid' || $('#lobby').style.display === 'grid') return;
     const k = e.key.toLowerCase();
     if (k === 'escape') setSpy(null);
     else if (k === 'd') act({ type: 'REROLL' });
@@ -684,34 +835,35 @@ button:disabled{opacity:.45;cursor:default}
   });
   $('#spyBar').addEventListener('click', () => setSpy(null));
 
-  // ---------- timer de planificación (solo UI; en la Etapa 3 lo maneja el host) ----------
-  function resetTimer() { timerEnd = performance.now() + C.PLANNING_SECONDS * 1000; }
-  function tickTimer(now) {
-    const lbl = $('#timerVal');
-    if (!prefs.timer || mode !== 'planning') { lbl.textContent = ''; return; }
-    const left = Math.max(0, Math.ceil((timerEnd - now) / 1000));
-    lbl.textContent = left + 's';
-    if (left <= 0 && !drag) onReady();
+  // ---------- timer de la fase (lo define el host con phaseEndsAt, en hora del servidor) ----------
+  function tickTimer() {
+    const lbl = $('#timerVal'), ph = phase();
+    $('#chkTimer').parentElement.style.display = online ? 'none' : '';
+    if (!client || !ph.endsAt || (ph.name !== 'planning' && ph.name !== 'combat')) { lbl.textContent = online && ph.name === 'planning' ? '' : ''; return; }
+    const left = Math.max(0, Math.ceil((ph.endsAt - T.now()) / 1000));
+    lbl.textContent = (ph.name === 'combat' ? 'pelea ' : '') + left + 's';
   }
 
   // ---------- ronda y combate ----------
   function onReady() {
-    if (mode !== 'planning') return;
+    if (!canAct()) return;
     spyId = null;
-    const next = SIM.resolveRound(state); // todas las peleas, sin render
-    const entry = next.combats.find(c => c.a === HUMAN || (c.b === HUMAN && !c.ghost));
-    if (!entry) { finishRound(next); return; }
-    startCombatView(entry, next);
+    client.ready();
+    nudge();
+    renderHud();
   }
-  function startCombatView(entry, next) {
+  function startCombatView() {
     mode = 'combat';
-    selected = null;
+    selected = null; spyId = null;
+    const entry = state.combats.find(c => c.a === localPlayerId || (c.b === localPlayerId && !c.ghost));
+    if (!entry) { mode = 'waiting'; client.ready(); nudge(); render(); return; }
     render();
-    const flip = entry.a !== HUMAN; // el humano siempre se ve abajo
+    const flip = entry.a !== localPlayerId; // el jugador local siempre se ve abajo
     const opp = entry.kind === 'pvp' ? (flip ? pname(entry.a) : pname(entry.b) + (entry.ghost ? ' (fantasma)' : '')) : entry.name;
     $('#oppLabel').textContent = 'vs ' + opp;
     const cs = SIM.createCombat(entry.snapA, entry.snapB, entry.seed); // re-simulación local, solo para verla
-    replay = { cs, entry, next, flip, mySide: flip ? 1 : 0, acc: 0, alpha: 0, last: performance.now(), speed: prefs.speed || 1, finished: false, floaters: [], fx: {} };
+    const hpBefore = beforeCombat && beforeCombat.players[localPlayerId] ? beforeCombat.players[localPlayerId].hp : me().hp;
+    replay = { cs, entry, flip, mySide: flip ? 1 : 0, hpBefore, acc: 0, alpha: 0, last: performance.now(), speed: prefs.speed || 1, finished: false, floaters: [], fx: {} };
     $('#combatCtrls').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.speed == replay.speed));
   }
   function unitXY(u, alpha) {
@@ -785,35 +937,37 @@ button:disabled{opacity:.45;cursor:default}
     const rp = replay;
     if (rp.finished) return;
     rp.finished = true;
-    if (rp.cs.hash !== rp.entry.hash) console.error('DESYNC: la re-simulación no coincide con la del host', rp.cs.hash, rp.entry.hash);
+    if (rp.cs.hash !== rp.entry.hash) console.error(`DESYNC ronda ${rp.entry.round}: host ${rp.entry.hash}, local ${rp.cs.hash}`);
     const won = rp.cs.winner === (rp.mySide === 0 ? 'A' : 'B');
-    const dmg = me().hp - rp.next.players[HUMAN].hp;
+    const dmg = rp.hpBefore - me().hp;
     const b = $('#banner');
     b.style.display = 'block';
     b.style.color = won ? '#6dff8a' : rp.cs.winner === 'draw' ? 'var(--gold)' : 'var(--foe)';
     b.innerHTML = (won ? '¡GANASTE!' : rp.cs.winner === 'draw' ? 'EMPATE' : 'PERDISTE') + (dmg > 0 ? `<small>-${dmg} de vida</small>` : '');
-    setTimeout(() => { b.style.display = 'none'; finishRound(rp.next); }, 1500 / Math.min(2, rp.speed));
+    setTimeout(() => {
+      b.style.display = 'none';
+      replay = null;
+      if (!client) return;
+      client.ready(); // ya vi mi pelea
+      const ph = phase().name;
+      mode = ph === 'planning' ? 'planning' : ph === 'ended' ? 'ended' : 'waiting';
+      nudge();
+      render();
+      if (mode === 'ended' || !me().alive) showEndOnce();
+    }, 1500 / Math.min(2, rp.speed));
   }
-  function finishRound(next) {
-    if (next.phase !== 'ended') {
-      if (next.players[HUMAN].alive) next = SIM.runAllBots(next); // los bots compran al arrancar la planificación
-      else { // te eliminaron: el resto de la partida se resuelve sin animación
-        for (let n = 0; n < 200 && next.phase !== 'ended'; n++) { next = SIM.runAllBots(next); next = SIM.resolveRound(next); }
-      }
-    }
-    state = next; replay = null;
-    mode = state.phase === 'ended' || !me().alive ? 'ended' : 'planning';
-    save(); render(); resetTimer();
-    if (mode === 'ended') showEnd();
-  }
-  function showEnd() {
-    const p = me();
-    $('#endTitle').textContent = p.place === 1 ? '¡CAMPEÓN DEL ROCK!' : `Terminaste #${p.place}`;
-    const ids = state.order.slice().sort((a, b) => (state.players[a].place || 99) - (state.players[b].place || 99));
+  function showEndOnce() {
+    const key = phase().name === 'ended' ? 'ended' : 'dead';
+    if (endShownFor === key) return;
+    endShownFor = key;
+    const p = me(), ended = key === 'ended';
+    $('#endTitle').textContent = ended ? (p.place === 1 ? '¡CAMPEÓN DEL ROCK!' : `Terminaste #${p.place}`) : `Te eliminaron · #${p.place}`;
+    const ids = state.order.slice().sort((a, b) => (state.players[a].place || 0) - (state.players[b].place || 0) || state.players[b].hp - state.players[a].hp);
     $('#endTable').innerHTML = '<tr><th>#</th><th>Jugador</th><th>Tipo</th><th>Hasta</th></tr>' + ids.map(id => {
       const q = state.players[id];
-      return `<tr class="${id === HUMAN ? 'me' : ''}"><td>${q.place ?? '-'}</td><td>${esc(q.name)}</td><td>${persName(q)}</td><td>${q.history[0] ? q.history[0].round : '-'}</td></tr>`;
+      return `<tr class="${id === localPlayerId ? 'me' : ''}"><td>${q.place ?? '-'}</td><td>${esc(q.name)}</td><td>${persName(q)}</td><td>${q.place ? (q.history[0] ? q.history[0].round : '-') : 'sigue'}</td></tr>`;
     }).join('');
+    $('#btnEndClose').textContent = ended ? 'Ver tablero' : 'Seguir mirando';
     $('#endScreen').style.display = 'grid';
   }
   $('#combatCtrls').addEventListener('click', e => {
@@ -823,13 +977,49 @@ button:disabled{opacity:.45;cursor:default}
     $('#combatCtrls').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
   });
 
+  // ---------- lobby ----------
+  function renderLobby() {
+    const room = client.room, meta = room.meta, isHost = meta.hostId === T.uid, st = meta.settings || {};
+    $('#lobby').style.display = 'grid';
+    $('#modal').style.display = 'none';
+    $('#lobbyCode').textContent = client.code;
+    const link = location.origin + urlWithRoom(client.code);
+    $('#lobbyLink').innerHTML = `Pasales el código o este link: <b>${esc(link)}</b>`;
+    const members = Object.keys(room.members || {}).map(uid => ({ uid, ...room.members[uid] })).sort((a, b) => a.joinedAt - b.joinedAt);
+    $('#lobbyMembers').innerHTML = members.map(m => {
+      const on = room.presence && room.presence[m.uid] && room.presence[m.uid].online;
+      return `<div class="mrow"><span class="dot ${on ? 'on' : ''}"></span><b>${esc(m.name)}</b>${m.uid === meta.hostId ? ' <span class="small">👑 host</span>' : ''}${m.uid === T.uid ? ' <span class="small">(vos)</span>' : ''}</div>`;
+    }).join('');
+    const humans = members.length, seats = Math.min(8, humans + (st.bots ?? 0));
+    const sel = $('#lbBots');
+    sel.innerHTML = Array.from({ length: 8 - humans + 1 }, (_, i) => humans + i)
+      .map(n => `<option value="${n - humans}" ${n === Math.max(seats, humans) ? 'selected' : ''}>${n} lugares (${n - humans} bots)</option>`).join('');
+    $('#lbDiff').value = String(st.difficulty ?? 0.3);
+    $('#lbTime').value = String(st.planningSeconds || 30);
+    $('#lbTakeover').checked = !!st.botTakeover;
+    for (const id of ['#lbBots', '#lbDiff', '#lbTime', '#lbTakeover']) $(id).disabled = !isHost;
+    $('#btnLobbyStart').style.display = isHost ? '' : 'none';
+    $('#lobbyWait').textContent = isHost ? (humans < 2 ? 'Podés empezar solo o esperar a que entren tus amigos.' : '') : 'Esperando a que el host empiece…';
+  }
+  const pushSettings = () => NET.updateSettings(T, client.code, {
+    bots: +$('#lbBots').value, difficulty: +$('#lbDiff').value, planningSeconds: +$('#lbTime').value, botTakeover: $('#lbTakeover').checked,
+  });
+  for (const id of ['#lbBots', '#lbDiff', '#lbTime', '#lbTakeover']) $(id).addEventListener('change', pushSettings);
+  $('#btnLobbyStart').addEventListener('click', async () => {
+    $('#btnLobbyStart').disabled = true;
+    const err = await session.startGame();
+    $('#btnLobbyStart').disabled = false;
+    if (err) toast(err);
+  });
+  $('#btnLeave').addEventListener('click', () => leave().then(openModal));
+
   // ---------- loop de dibujo ----------
   function frame(now) {
     ctx.clearRect(0, 0, ARENA_W, ARENA_H);
-    if (state) {
+    if (state && me()) {
       if (replay) { stepReplay(now); drawCombat(now); } else drawPlanning();
-      tickTimer(now);
     }
+    if (client) tickTimer();
     requestAnimationFrame(frame);
   }
 
@@ -839,7 +1029,10 @@ button:disabled{opacity:.45;cursor:default}
   $('#btnLock').addEventListener('click', () => act({ type: 'LOCK' }));
   $('#btnReady').addEventListener('click', onReady);
   $('#chkTimer').checked = prefs.timer;
-  $('#chkTimer').addEventListener('change', e => { prefs.timer = e.target.checked; savePrefs(); resetTimer(); });
+  $('#chkTimer').addEventListener('change', e => {
+    prefs.timer = e.target.checked; savePrefs();
+    if (!online && client) NET.updateSettings(T, client.code, { planningSeconds: prefs.timer ? C.PLANNING_SECONDS : 0 }); // vale desde la próxima ronda
+  });
   $('#btnDet').addEventListener('click', () => {
     toast('Corriendo chequeo de determinismo…', 5000);
     setTimeout(() => {
@@ -851,18 +1044,48 @@ button:disabled{opacity:.45;cursor:default}
                : `✘ Diferencias: combates ${c.fails}/${c.combats}${g.ok ? '' : `, partida desde la ronda ${g.firstDiffAfterRound}`} (ver consola)`, 4000);
     }, 30);
   });
-  function openModal() {
+  function setTab(tab) {
+    document.querySelectorAll('#modal .tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+    document.querySelectorAll('#modal [data-pane]').forEach(p => (p.style.display = p.dataset.pane === tab ? '' : 'none'));
+  }
+  document.querySelectorAll('#modal .tabs button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+  function openModal(tab) {
     $('#inSeed').value = Math.floor(Math.random() * 1e9).toString(36); // la UI sí puede usar Math.random
+    $('#inName').value = prefs.name || 'Vos';
+    const ok = onlineAvailable();
+    $('#onlineOn').style.display = ok ? '' : 'none';
+    $('#onlineOff').innerHTML = ok ? '' : (/^https?:$/.test(location.protocol)
+      ? 'El modo online necesita la configuración de Firebase (<b>firebase-config.js</b>).'
+      : 'El modo online funciona desde la página publicada (o <b>localhost</b>), no abriendo el archivo directo.');
+    const sala = new URLSearchParams(location.search).get('sala');
+    if (sala) $('#inCode').value = sala.toUpperCase();
+    setTab(tab || (sala ? 'online' : 'solo'));
+    $('#btnCancel').style.display = state ? '' : 'none';
     $('#modal').style.display = 'grid';
     $('#inName').focus();
   }
+  const nameIn = () => { const n = $('#inName').value.trim() || 'Vos'; prefs.name = n; savePrefs(); return n; };
   $('#btnNew').addEventListener('click', () => { if (mode !== 'combat') openModal(); });
   $('#btnEndNew').addEventListener('click', () => { $('#endScreen').style.display = 'none'; openModal(); });
   $('#btnEndClose').addEventListener('click', () => { $('#endScreen').style.display = 'none'; });
   $('#btnCancel').addEventListener('click', () => { if (state) $('#modal').style.display = 'none'; });
-  $('#btnStart').addEventListener('click', () => {
+  $('#btnStart').addEventListener('click', async () => {
     $('#modal').style.display = 'none';
-    newGame($('#inName').value.trim(), $('#inSeed').value.trim() || 'rock', +$('#inBots').value, +$('#inDiff').value);
+    await leave();
+    await startLocal(nameIn(), $('#inSeed').value.trim() || 'rock', +$('#inBots').value, +$('#inDiff').value);
+  });
+  $('#btnCreate').addEventListener('click', async () => {
+    const name = nameIn();
+    if (online) await leave();
+    saveJSON(LOCAL_KEY, null);
+    await createOnline(name);
+  });
+  $('#btnJoin').addEventListener('click', async () => {
+    const code = $('#inCode').value.trim().toUpperCase();
+    if (!code) { toast('Escribí el código de la sala'); return; }
+    const name = nameIn();
+    if (online) await leave();
+    await joinOnline(name, code);
   });
 
   // ---------- simulación masiva (consola): runBalance(200) ----------
@@ -888,14 +1111,25 @@ button:disabled{opacity:.45;cursor:default}
   };
 
   // ---------- arranque ----------
-  window.GAME = { SIM, DATA, get state() { return state; } };
-  state = load();
-  if (state) {
-    mode = state.phase === 'ended' || !me().alive ? 'ended' : 'planning';
-    render(); resetTimer();
-    if (mode === 'ended') showEnd();
-  } else openModal();
-  requestAnimationFrame(frame);
+  window.GAME = { SIM, NET, DATA, get state() { return state; }, get client() { return client; }, get session() { return session; } };
+  (async () => {
+    const saved = loadJSON(ONLINE_KEY);
+    const sala = new URLSearchParams(location.search).get('sala');
+    if (onlineAvailable() && (saved || sala)) { // reconexión a la última sala online
+      const code = (sala || saved.code).toUpperCase();
+      try {
+        await firebase();
+        const meta = await fbT.get(`rooms/${code}/meta`), member = meta && await fbT.get(`rooms/${code}/members/${fbT.uid}`);
+        if (member) { enterOnline(code); requestAnimationFrame(frame); return; }
+      } catch (e) { console.error(e); }
+      saveJSON(ONLINE_KEY, null);
+      if (sala) { openModal('online'); requestAnimationFrame(frame); return; }
+    }
+    const tree = loadJSON(LOCAL_KEY);
+    if (tree && tree.rooms && tree.rooms.LOCAL && tree.rooms.LOCAL.state) resumeLocal(tree);
+    else openModal();
+    requestAnimationFrame(frame);
+  })();
 })();
 </script>
 </body>
