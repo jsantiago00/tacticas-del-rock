@@ -15,8 +15,9 @@ const DATA = {
     STREAK_BONUS: [[5, 3], [4, 2], [2, 1]],   // [racha mínima, oro extra] (victorias o derrotas)
     PVE_WIN_GOLD: 2,
     ROUNDS_PER_STAGE: { 1: 3, default: 6 },
-    // daño al perder = STAGE_DAMAGE[etapa] + suma de estrellas de las unidades rivales vivas
-    STAGE_DAMAGE: { 1: 0, 2: 2, 3: 4, 4: 6, 5: 8, 6: 10, 7: 15 },
+    // daño al perder = STAGE_DAMAGE[etapa] + suma de UNIT_DAMAGE_BY_STAR por cada unidad rival viva
+    STAGE_DAMAGE: { 1: 0, 2: 1, 3: 2, 4: 4, 5: 6, 6: 8, 7: 12 },
+    UNIT_DAMAGE_BY_STAR: [1, 1, 2],   // [★1, ★2, ★3]  (con esto las partidas de 8 duran ~30 rondas)
     PLANNING_SECONDS: 30,              // timer opcional de la fase de planificación
     // combate
     TICK_RATE: 30, COMBAT_SECONDS: 30,
@@ -69,7 +70,7 @@ const DATA = {
     // --- clases (instrumento / rol) ---
     guitarrista:{ name: 'Guitarrista',kind: 'clase', icon: '🎸', color: '#ff7a3c', scope: 'trait', breakpoints: [2, 4, 6],
                   desc: 'Los Guitarristas ganan Velocidad de ataque.',
-                  levels: [{ asPct: 20 }, { asPct: 45 }, { asPct: 80 }] },
+                  levels: [{ asPct: 15 }, { asPct: 35 }, { asPct: 60 }] },
     voz:        { name: 'Voz',        kind: 'clase', icon: '🎤', color: '#ffd23c', scope: 'trait', breakpoints: [2, 4, 6],
                   desc: 'Las Voces regeneran maná por segundo.',
                   levels: [{ manaRegen: 2 }, { manaRegen: 4 }, { manaRegen: 8 }] },
@@ -188,9 +189,11 @@ const DATA = {
     // aggroHp: con esta vida o menos se pone agresivo (gasta todo). focus: cuántos rasgos persigue.
     // loyalty: cuánto pesan sus rasgos al comprar. cheapMax: prefiere unidades de hasta este coste.
     // originOnly: apuesta a un único origen fijo durante toda la partida.
+    // commitBonus/commitStage: desde esa etapa, bonus al comprar unidades de su rasgo principal (el que más arma).
     PERSONALITIES: {
       equilibrado: { name: 'Equilibrado', levels: { 1: 1, 2: 4, 3: 5, 4: 7, 5: 8, 6: 9, 7: 10 }, econ: 30, levelReserve: 10,
-                     rollAbove: 50, rollFromStage: 2, maxRolls: 10, aggroHp: 40, focus: 2, loyalty: 0.5, buyThreshold: 6 },
+                     rollAbove: 50, rollFromStage: 2, maxRolls: 10, aggroHp: 40, focus: 2, loyalty: 0.8, buyThreshold: 6,
+                     commitBonus: 5, commitStage: 2 },
       ahorrador:   { name: 'Ahorrador', levels: { 1: 1, 2: 5, 3: 6, 4: 8, 5: 9, 6: 10 }, econ: 50, levelReserve: 50,
                      rollAbove: 60, rollFromStage: 3, maxRolls: 6, aggroHp: 30, focus: 2, loyalty: 0.5, buyThreshold: 7 },
       reroll:      { name: 'Reroll', levels: { 1: 1, 2: 4, 3: 5, 4: 6, 5: 7, 6: 8, 7: 9 }, econ: 20, levelReserve: 20,
@@ -788,13 +791,13 @@ const SIM = (() => {
     for (const t of Object.keys(active)) if (active[t].level >= 0) score[t] += 2 * P.loyalty;
     return Object.keys(score).sort((a, b) => score[b] - score[a] || (a < b ? -1 : 1)).slice(0, P.focus);
   }
-  function unitScore(p, unitId, star, targets, P, fav) {
+  function unitScore(p, unitId, star, targets, P, focus) {
     const d = DATA.UNITS[unitId];
     let sc = 0;
     const pair = countCopies(p, unitId, star);
     if (star < 3) sc += pair >= 2 ? 10 : pair === 1 ? 5 : 0;
     sc += d.traits.filter(t => targets.includes(t)).length * 3 * (0.5 + P.loyalty);
-    if (fav && d.traits.includes(fav)) sc += 6;
+    if (focus && d.traits.includes(focus.trait)) sc += focus.bonus; // rasgo al que se comprometió
     sc += d.cost * (p.level >= d.cost + 3 ? 1 : 0.4);
     if (P.cheapMax && d.cost <= P.cheapMax) sc += 3;
     return sc;
@@ -815,7 +818,10 @@ const SIM = (() => {
     const fav = P.originOnly ? favoriteOrigin(s, id) : null;
     const reserve = () => (aggressive || stage <= 1 ? 0 : Math.round(P.econ * Math.min(1, (stage - 1) / 2)));
     let targets = botTargets(p(), P, fav);
-    const score = u => unitScore(p(), u.unitId, u.star, targets, P, fav) + (u.star - 1) * 6;
+    // Compromiso: Fiel apuesta a su origen fijo; otros (commitBonus) a su rasgo principal desde commitStage.
+    const focusOf = () => (fav ? { trait: fav, bonus: 6 }
+      : P.commitBonus && stage >= (P.commitStage || 2) && targets[0] ? { trait: targets[0], bonus: P.commitBonus } : null);
+    const score = u => unitScore(p(), u.unitId, u.star, targets, P, focusOf()) + (u.star - 1) * 6;
 
     // Vende lo que menos sirve del banco (sin romper pares) si su puntaje es menor a `than`.
     const sellJunk = than => {
@@ -842,7 +848,7 @@ const SIM = (() => {
         if (!unitId) continue;
         const cost = DATA.UNITS[unitId].cost;
         if (p().gold < cost) continue;
-        const sc = unitScore(p(), unitId, 1, targets, P, fav);
+        const sc = unitScore(p(), unitId, 1, targets, P, focusOf());
         const units = owned(p()).length;
         const needBodies = units < p().level;
         const random = oops(0.25);
@@ -863,7 +869,11 @@ const SIM = (() => {
     // 4) tablero: las `level` unidades más valiosas; cuerpo a cuerpo adelante, rango atrás,
     //    la más valiosa de rango en la esquina de atrás.
     const pl = p();
-    const all = owned(pl).map(o => ({ ...o, pow: POWER(o.u) + def(o.u.unitId).traits.filter(t => targets.includes(t)).length * 1.5 }));
+    const focus = focusOf();
+    const all = owned(pl).map(o => {
+      const tr = def(o.u.unitId).traits;
+      return { ...o, pow: POWER(o.u) + tr.filter(t => targets.includes(t)).length * 1.5 + (focus && tr.includes(focus.trait) ? 2 : 0) };
+    });
     all.sort((a, b) => b.pow - a.pow || a.u.uid - b.u.uid);
     const chosen = all.slice(0, pl.level);
     const chosenIds = new Set(chosen.map(o => o.u.uid));
@@ -930,7 +940,7 @@ const SIM = (() => {
   }
   function playerDamage(stage, surv) {
     if (!surv.length) return 0;
-    return byStage(C.STAGE_DAMAGE, stage) + surv.reduce((n, u) => n + u.star, 0);
+    return byStage(C.STAGE_DAMAGE, stage) + surv.reduce((n, u) => n + C.UNIT_DAMAGE_BY_STAR[u.star - 1], 0);
   }
 
   // Lugares de una partida: humanos + bots con nombres/personalidades de DATA.BOTS.
@@ -1041,7 +1051,7 @@ const SIM = (() => {
         const snapA = boardSnapshot(p), res = simulateCombat(snapA, opp.units, seed);
         const won = res.winner === 'A';
         let dmg = 0;
-        if (pve) { if (won) p.gold += C.PVE_WIN_GOLD; else dmg = res.survivorsB.reduce((n, u) => n + u.star, 0); }
+        if (pve) { if (won) p.gold += C.PVE_WIN_GOLD; else dmg = res.survivorsB.reduce((n, u) => n + C.UNIT_DAMAGE_BY_STAR[u.star - 1], 0); }
         else { if (!won) dmg = playerDamage(stage, res.survivorsB); streak(p, won); }
         p.hp -= dmg;
         addHistory(p, label, opp.name, resultOf(res.winner, 'A'), dmg);
