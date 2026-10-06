@@ -217,6 +217,16 @@ button{font-family:inherit}
 #ficha .equip{font-size:14px;color:var(--muted);margin-bottom:8px}
 #ficha .close{position:absolute;top:12px;right:10px;width:36px;height:36px;border-radius:8px;border:0;background:var(--btn);color:var(--ink);font-size:20px;cursor:pointer}
 #ficha .sell{width:100%}
+#ficha .top{display:flex;gap:12px;align-items:center;margin-bottom:6px}
+#ficha .foto{width:96px;height:96px;border-radius:10px;flex:none;object-fit:cover;background:#0b1224;box-shadow:0 0 0 2px var(--fc,#4b6290)}
+#ficha .top h2{margin-right:30px}
+.pass.ph{background-repeat:no-repeat;background-position:right top;background-size:auto 100%}
+.pass.ph div{background:linear-gradient(90deg,#f4f4f2 52%,rgba(244,244,242,.55) 78%,rgba(244,244,242,0))}
+.pass.ph.match div{background:linear-gradient(90deg,#f7e3a0 52%,rgba(247,227,160,.5) 78%,rgba(247,227,160,0))}
+#credList .cr{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px solid #ffffff12;font-size:14px;line-height:1.35}
+#credList img{width:48px;height:48px;border-radius:6px;flex:none}
+#credList b{color:var(--gold)}
+#credList a{color:#7fb3ff}
 
 .dmg{position:absolute;left:0;top:0;pointer-events:none;font-family:"Big Shoulders Display",Impact,sans-serif;font-weight:800;font-size:22px;color:#fff;text-shadow:0 2px 0 #000,0 0 6px #000;white-space:nowrap;will-change:transform,opacity}
 .dmg.crit{color:var(--gold);font-size:28px}
@@ -312,6 +322,7 @@ button{font-family:inherit}
     <div id="roomBadge"></div>
     <button class="btn" id="btnNew">Nueva partida</button>
     <button class="btn" id="btnDet">🔬 Chequeo de determinismo</button>
+    <button class="btn" id="btnCred">📸 Créditos</button>
     <button class="btn" id="qual2">Calidad: auto</button>
     <button class="btn" id="btnCam">🎥 Centrar la cámara</button>
     <label>🔊 Volumen <input type="range" id="volume" min="0" max="100" step="5"></label>
@@ -362,6 +373,12 @@ button{font-family:inherit}
   <h2 id="endTitle"></h2>
   <table id="endTable"></table>
   <div class="row"><button class="btn" id="btnEndClose">Ver escenario</button><button class="btn gold" id="btnEndNew">Nueva partida</button></div>
+</div></div>
+<div id="credits" class="overlay"><div class="box">
+  <h2>Créditos</h2>
+  <div class="help" style="margin-top:0" id="credNota"></div>
+  <div id="credList"></div>
+  <div class="row"><button class="btn gold" id="credClose">Cerrar</button></div>
 </div></div>
 <div id="recipes" class="overlay"><div class="box">
   <h2>Recetas</h2>
@@ -423,6 +440,7 @@ button{font-family:inherit}
 <script src="sfx.js?v=8.1"></script>
 <script src="firebase-config.js?v=8.1"></script>
 <script src="firebase-transport.js?v=8.1"></script>
+<script src="assets/retratos/creditos.js?v=1" onerror="window.RETRATOS = null"></script>
 <script>
 'use strict';
 /* =====================================================================
@@ -456,6 +474,8 @@ button{font-family:inherit}
   const traitTag = t => `${DATA.TRAITS[t].icon} ${DATA.TRAITS[t].name}`;
   const itemIcon = id => { const d = SIM.itemDef(id); if (d.icon) return d.icon; if (d.emblem) return DATA.TRAITS[d.emblem].icon; return d.boardSlots ? '🎟️' : SIM.itemDef(d.from[0]).icon + SIM.itemDef(d.from[1]).icon; };
   const itemName = id => SIM.itemDef(id).name;
+  // retratos (tools/retratos): si todavía no se generaron, el juego sigue igual sin ellos
+  const foto = (id, chico) => (window.RETRATOS && RETRATOS.retratos && RETRATOS.retratos[id] ? `assets/retratos/${id}${chico ? '-128' : ''}.webp?v=${encodeURIComponent(RETRATOS.generado || '')}` : null);
   const itemDesc = id => { const d = SIM.itemDef(id); const mods = SIM.ITEM_MODS[id] || {}; const names = { adPct: '% daño', asPct: '% vel. ataque', ap: ' poder', startMana: ' maná inicial', armor: ' armadura', mr: ' RM', hp: ' vida', critChance: '% crítico' };
     const st = Object.keys(names).filter(k => mods[k]).map(k => `+${mods[k]}${names[k]}`).join(', '); return [st, d.desc].filter(Boolean).join('. '); };
   const stars = n => '★'.repeat(n);
@@ -881,7 +901,8 @@ button{font-family:inherit}
       const snap = SIM.boardSnapshot(p), base = SIM.computeTraits(snap);
       const withIt = snap.some(e => e.unitId === id) ? base : SIM.computeTraits(snap.concat([{ unitId: id, star: 1, r: 9, c: 9 }]));
       const ups = Object.keys(withIt).filter(t => withIt[t].level > (base[t] ? base[t].level : -1) && DATA.TRAITS[t].kind !== 'unica');
-      return `<button class="pass${have >= 2 ? ' match' : ''}${p.gold < d.cost ? ' poor' : ''}" data-buy="${i}" aria-label="Contratar a ${esc(d.name)} por $${d.cost}">
+      const ph = foto(id, true);
+      return `<button class="pass${have >= 2 ? ' match' : ''}${p.gold < d.cost ? ' poor' : ''}${ph ? ' ph' : ''}"${ph ? ` style="background-image:url('${ph}')"` : ''} data-buy="${i}" aria-label="Contratar a ${esc(d.name)} por $${d.cost}">
         <i style="background:${COST_COLOR[d.cost]}"></i><div><b>${esc(d.short)}${d.unique ? ' ★' : ''}</b><span>${esc(traits.slice(0, 3).join(' · '))}</span>${ups.length ? `<small class="up">▲ ${esc(ups.map(t => DATA.TRAITS[t].name).join(', '))}</small>` : ''}<em>$${d.cost}</em></div></button>`;
     }).join('');
   }
@@ -937,8 +958,9 @@ button{font-family:inherit}
     const d = SIM.def(ficha.unitId), s = ficha.star, m = C.STAR_MULT[s - 1];
     const mine = ficha.owner === localPlayerId && ficha.uid != null && canTouch(ficha.uid) && unitByUid(me(), ficha.uid);
     $('#fBand').style.background = COST_COLOR[d.cost || 0];
-    $('#fIn').innerHTML = `<h2>${esc(d.name)}</h2>
-      <div class="meta">${d.cost ? `Coste ${d.cost}` : 'Público hostil'} · <span style="color:var(--gold)">${stars(s)}</span>${d.bands ? ` · ${esc(d.bands.join(', '))}` : ''}</div>
+    const ph = foto(ficha.unitId);
+    $('#fIn').innerHTML = `<div class="top">${ph ? `<img class="foto" src="${ph}" alt="" style="--fc:${COST_COLOR[d.cost || 0]}">` : ''}<div><h2>${esc(d.name)}</h2>
+      <div class="meta">${d.cost ? `Coste ${d.cost}` : 'Público hostil'} · <span style="color:var(--gold)">${stars(s)}</span>${d.bands ? ` · ${esc(d.bands.join(', '))}` : ''}</div></div></div>
       <div class="tags">${d.traits.map(t => `<span class="tag">${traitTag(t)}</span>`).join('')}</div>
       <div class="stats">
         <div><span>Vida</span> ${Math.round(d.hp * m)}</div><div><span>Daño</span> ${Math.round(d.ad * m)}</div>
@@ -1082,6 +1104,21 @@ button{font-family:inherit}
     $('#recipes').style.display = 'grid';
   });
   $('#recipesClose').addEventListener('click', () => ($('#recipes').style.display = 'none'));
+  $('#btnCred').addEventListener('click', () => {
+    $('#menu').classList.remove('on');
+    const R = window.RETRATOS && RETRATOS.retratos;
+    $('#credNota').textContent = R ? RETRATOS.nota : 'Todavía no hay retratos cargados.';
+    const ids = R ? Object.keys(DATA.UNITS).filter(id => R[id]) : [];
+    const fotos = ids.filter(id => R[id].tipo === 'foto'), muñecos = ids.filter(id => R[id].tipo !== 'foto');
+    const link = (u, t) => (u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a>` : esc(t));
+    $('#credList').innerHTML = fotos.map(id => { const c = R[id];
+      return `<div class="cr"><img src="${foto(id, true)}" alt=""><div><b>${esc(c.nombre)}</b><br>Foto: ${esc(c.autor)}${c.credito && c.credito !== c.autor ? ` · fuente: ${/^https?:/.test(c.credito) ? link(c.credito, c.credito.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]) : esc(c.credito)}` : ''}
+        · ${link(c.licenciaUrl, c.licencia)} · ${link(c.original, 'original en Wikimedia Commons')}<br><span style="color:var(--muted)">${esc(c.cambios)}${c.compartirIgual ? '. Este retrato se distribuye bajo ' + link(c.licenciaUrl, c.licencia) : ''}.</span></div></div>`; }).join('')
+      + (muñecos.length ? `<div class="help">Sin foto libre (retrato hecho con el muñeco del juego): ${muñecos.map(id => esc(R[id].nombre)).join(', ')}.</div>` : '')
+      + '<div class="help">Motor 3D: three.js (MIT). Tipografías: Google Fonts (OFL).</div>';
+    $('#credits').style.display = 'grid';
+  });
+  $('#credClose').addEventListener('click', () => ($('#credits').style.display = 'none'));
   $('#fClose').addEventListener('click', () => { selectedUid = null; closeFicha(); render(); });
   document.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || document.querySelector('.overlay[style*="grid"]')) return;
