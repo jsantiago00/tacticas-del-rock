@@ -82,6 +82,9 @@ const STAGE3D = (() => {
       a: new T.MeshStandardMaterial({ color: 0x7a5534, roughness: 0.8 }), b: new T.MeshStandardMaterial({ color: 0x6a4a2d, roughness: 0.8 }),
       foe: new T.MeshStandardMaterial({ color: 0x3b2a1a, roughness: 0.8 }), spy: new T.MeshStandardMaterial({ color: 0x5a4a2a, roughness: 0.8 }),
       hover: new T.MeshStandardMaterial({ color: 0xc98a12, roughness: 0.6, emissive: 0x3a2400 }),
+      // al levantar un músico: todos los lugares a donde puede ir
+      avail: new T.MeshStandardMaterial({ color: 0x4d8fb0, roughness: 0.6, emissive: 0x0d3550 }),
+      availB: new T.MeshStandardMaterial({ color: 0x5aa0c8, roughness: 0.6, emissive: 0x103a58 }),
     };
     const hexes = [];
     for (let R = 0; R < ROWS * 2; R++) for (let C = 0; C < COLS; C++) {
@@ -309,6 +312,13 @@ const STAGE3D = (() => {
     // al ser sprites a la misma distancia el fondo oscuro a veces tapaba la vida.
     for (const m of Object.values(barMat)) { m.depthTest = false; m.depthWrite = false; m.transparent = true; }
     const focusMat = new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 });
+    const glowMat = (() => {
+      const c = document.createElement('canvas'); c.width = c.height = 128;
+      const g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 4, 64, 64, 64);
+      gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.45, 'rgba(255,255,255,.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+      return new T.SpriteMaterial({ map: new T.CanvasTexture(c), color: 0x58a6ff, transparent: true, opacity: 0.55, blending: T.AdditiveBlending, depthWrite: false });
+    })();
 
     // ---------- muñecos ----------
     const dolls = new Map(); // clave: 'u<uid>' (planificación) o 'c<cid>' (combate)
@@ -329,10 +339,11 @@ const STAGE3D = (() => {
       for (const s of [hpBg, hpFg, shFg, mpBg, mpFg]) { s.visible = false; grp.add(s); }
       hpBg.renderOrder = mpBg.renderOrder = 50; hpFg.renderOrder = mpFg.renderOrder = 51; shFg.renderOrder = 52;
       const focus = new T.Mesh(G.selRing, focusMat); focus.rotation.x = Math.PI / 2; focus.position.y = 0.16; focus.scale.setScalar(1.12); focus.visible = false; grp.add(focus);
+      const glow = new T.Sprite(glowMat); glow.scale.set(2.1, 2.7, 1); glow.position.y = 1.15; glow.visible = false; grp.add(glow);
       grp.add(icon);
       const hit = new T.Mesh(G.hitBox, hitMat); hit.position.y = 1.05; hit.userData.key = key; grp.add(hit);
       scene.add(grp);
-      const doll = { key, unitId, star: 0, L, f, grp, base, ring, sel, focus, stars, hpBg, hpFg, shFg, mpBg, mpFg, icon, hit, gear, items: '',
+      const doll = { key, unitId, star: 0, L, f, grp, base, ring, sel, focus, glow, stars, hpBg, hpFg, shFg, mpBg, mpFg, icon, hit, gear, items: '',
         phase: (key.charCodeAt(1) * 7 + key.length * 13) % 60 / 10, atk: -1, cast: -1, hitT: 0, dead: 0, alive: true, celeb: 0,
         home: new T.Vector3(), moving: 0, lunge: 0, facing: null, cid: -1 };
       setStar(doll, star, false);
@@ -436,6 +447,22 @@ const STAGE3D = (() => {
 
     // ---------- planificación ----------
     let mode = 'planning', planKeys = new Set(), dragKey = null, hovered = null, combat = null, alpha = 0;
+    let selKey = null, hoverKey = null, spyView = false; // músico elegido (se levanta) y el que está bajo el mouse (brilla)
+    // Casilleros: el que está bajo el puntero en dorado; si hay un músico levantado o arrastrado, todos los
+    // lugares disponibles en azul (en la pelea, solo el backstage).
+    function paintZones() {
+      const lifting = !spyView && !!(selKey || dragKey);
+      if (mode === 'planning') for (const h of hexes) if (h.userData.R >= ROWS) h.material = hovered === h ? HM.hover : spyView ? HM.spy : lifting ? HM.avail : h.userData.base;
+      benchSlots.forEach((sl, i) => (sl.material = hoveredSlot === i ? HM.hover : lifting ? HM.availB : slotMat));
+    }
+    let hoveredSlot = -1;
+    function hoverUnit(uid) {
+      const k = uid == null ? null : 'u' + uid;
+      if (k === hoverKey) return;
+      const old = hoverKey && dolls.get(hoverKey); if (old) old.glow.visible = false;
+      hoverKey = k;
+      const d = k && dolls.get(k); if (d) d.glow.visible = true;
+    }
     // Durante la pelea solo se actualiza el backstage (se puede comprar y acomodar); los del escenario
     // quedan ocultos hasta que termine (los que pelean son los muñecos de combate).
     function setPlanning({ board, bench, selected, spy }) {
@@ -456,6 +483,7 @@ const STAGE3D = (() => {
         d.scale = STAR_SCALE[e.star - 1] * (inBench ? 0.85 : 1);
         d.grp.scale.setScalar(d.scale);
         d.sel.visible = selected === e.uid;
+        d.glow.visible = hoverKey === key;
         setGear(d, e.items);
         d.alive = true; d.dead = 0; d.grp.visible = true;
       };
@@ -463,8 +491,9 @@ const STAGE3D = (() => {
       bench.forEach(e => place(e, true));
       for (const k of planKeys) if (!keep.has(k)) removeDoll(k);
       planKeys = keep;
-      if (inCombat) return;
-      for (const h of hexes) if (h.userData.R >= ROWS) h.material = hovered === h ? HM.hover : spy ? HM.spy : h.userData.base;
+      selKey = selected != null && keep.has('u' + selected) ? 'u' + selected : null; spyView = !!spy;
+      if (hoverKey && !keep.has(hoverKey)) hoverKey = null;
+      paintZones();
     }
 
     // ---------- combate ----------
@@ -472,6 +501,7 @@ const STAGE3D = (() => {
       mode = 'combat';
       for (const k of planKeys) { const d = dolls.get(k); if (d && !d.inBench) d.grp.visible = false; } // el backstage sigue a mano
       for (const h of hexes) h.material = h.userData.R >= ROWS ? h.userData.base : HM.foe;
+      hoverUnit(null);
       combat = { cs, flip, mySide: flip ? 1 : 0, keys: [] };
       for (const u of cs.units) {
         const d = makeDoll('c' + u.cid, u.unitId, u.star);
@@ -573,18 +603,16 @@ const STAGE3D = (() => {
     }
     function dragTo(uid, x, y) {
       const d = dolls.get('u' + uid); if (!d) return;
-      dragKey = d.key;
+      if (dragKey !== d.key) { dragKey = d.key; d.glow.visible = false; paintZones(); }
       setRay(x, y);
       if (ray.ray.intersectPlane(ground, V)) { d.grp.position.set(V.x, 0.9, V.z); d.moving = 0; }
     }
-    function dragEnd() { const d = dragKey && dolls.get(dragKey); if (d) d.moving = 1; dragKey = null; }
+    function dragEnd() { const d = dragKey && dolls.get(dragKey); if (d) d.moving = 1; dragKey = null; paintZones(); }
     function highlight(t) {
-      hovered = null;
-      if (mode === 'planning') for (const h of hexes) if (h.userData.R >= ROWS) h.material = h.userData.base;
-      for (const s of benchSlots) s.material = slotMat;
-      if (!t) return;
-      if (t.kind === 'board') { const h = hexes.find(h => h.userData.idx === t.idx && h.userData.R >= ROWS); if (h) { h.material = HM.hover; hovered = h; } }
-      if (t.kind === 'bench') benchSlots[t.idx].material = HM.hover;
+      hovered = null; hoveredSlot = -1;
+      if (t && t.kind === 'board' && mode === 'planning') hovered = hexes.find(h => h.userData.idx === t.idx && h.userData.R >= ROWS) || null;
+      if (t && t.kind === 'bench') hoveredSlot = t.idx;
+      paintZones();
     }
 
     // ---------- retrato del muñeco (plan B de tools/retratos: músicos sin foto libre) ----------
@@ -714,6 +742,7 @@ const STAGE3D = (() => {
         } else if (u && d.moving) y += Math.abs(Math.sin(t * 12 + d.phase)) * 0.18;
         if (d.lunge > 0) { d.lunge = Math.max(0, d.lunge - dt * 4); d.f.body.position.z = Math.sin(d.lunge * Math.PI) * 0.35; } else d.f.body.position.z = 0;
         if (dragKey !== d.key && !(d.moving && !u)) d.grp.position.y = 0;
+        if (!u && d.key === selKey && dragKey !== d.key) y += 0.55 + Math.sin(t * 3) * 0.07; // elegido: levantado, flotando
         d.f.body.position.y = y;
         if (d.hitT > 0) { d.hitT -= dt; d.f.body.scale.y = 1 - 0.12 * Math.max(0, d.hitT / 0.15); d.f.body.rotation.x = -0.15 * Math.max(0, d.hitT / 0.15); } else { d.f.body.scale.y = 1; if (d.alive) d.f.body.rotation.x = 0; }
         if (!d.alive && d.dead > 0) { d.dead = Math.min(1, d.dead + dt * 2.5); d.f.body.rotation.x = -Math.PI / 2 * d.dead; d.f.body.position.y = -0.2 * d.dead; if (d.dead >= 1) d.grp.visible = false; }
@@ -779,7 +808,7 @@ const STAGE3D = (() => {
 
     return {
       setPlanning, startCombat, combatEvents, setAlpha, celebrate, stopCombat, traitPulse,
-      pick, dropTarget, dragTo, dragEnd, highlight, setQuality, focusUnits, panBy, zoomBy, resetView, portrait,
+      pick, dropTarget, dragTo, dragEnd, highlight, setQuality, focusUnits, panBy, zoomBy, resetView, portrait, hoverUnit,
       get viewChanged() { return view.zoom !== 1 || view.x !== 0 || view.z !== 0; },
       get fps() { return lastFps; }, get quality() { return qLevel; },
       get gpu() { try { const gl = renderer.getContext(), ext = gl.getExtension('WEBGL_debug_renderer_info'); return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER); } catch (e) { return ''; } },

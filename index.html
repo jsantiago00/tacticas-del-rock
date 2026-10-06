@@ -119,14 +119,24 @@ button{font-family:inherit}
 #itemsPane{display:none}
 #setlist.items #itemsPane{display:block} #setlist.items #traits{display:none}
 .icount{font-size:13px;color:#4b5672;margin-bottom:4px}
-.irow{display:flex;align-items:center;gap:8px;padding:5px 2px;border-bottom:1px solid #dfe1e6;cursor:grab;touch-action:none;border-radius:6px}
-.irow:hover{background:#f3f5fa}
-.irow.sel{background:#fff3c4;outline:2px solid var(--gold)}
-.irow .it{width:34px;height:34px;border-radius:8px;background:#24365a;border:2px solid #4b6290;display:flex;align-items:center;justify-content:center;font-size:18px;flex:none}
-.irow.full .it{border-color:var(--gold)}
-.irow .in{min-width:0}
-.irow .in b{display:block;font-family:"Permanent Marker",cursive;font-weight:400;font-size:14px;line-height:1.1;color:var(--marker)}
-.irow .in span{display:block;font-size:12px;color:#4b5672;line-height:1.2}
+#inv{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.irow{aspect-ratio:1;border-radius:8px;background:#24365a;border:2px solid #4b6290;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:grab;touch-action:none;transition:transform .08s}
+.irow:hover{transform:scale(1.07);border-color:#7fb3ff}
+.irow.full{border-color:var(--gold)}
+.irow.sel{outline:3px solid var(--gold);outline-offset:1px}
+.irow.drop{outline:3px dashed #7fb3ff;outline-offset:1px}
+/* tooltip de objeto (estilo TFT: íconos de stats, poco texto) */
+.itip{position:absolute;display:none;z-index:8;pointer-events:none;width:300px;background:#0f1a2c;border:1px solid #c9a24a;border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.5);color:var(--ink);font-size:14px;line-height:1.35}
+.itip .hd{display:flex;gap:10px;align-items:center;padding:10px 12px}
+.itip .big{width:52px;height:52px;border-radius:6px;background:#24365a;border:2px solid #c9a24a;display:flex;align-items:center;justify-content:center;font-size:28px;flex:none}
+.itip h5{margin:0 0 3px;font-size:19px;font-family:"Big Shoulders Display",Impact,sans-serif;letter-spacing:.3px}
+.itip .st{display:flex;flex-wrap:wrap;gap:4px 10px;font-weight:700;color:#e9d9a6}
+.itip .bd{padding:8px 12px;border-top:1px solid #ffffff1a;color:#cfd6e4}
+.itip .ft{padding:7px 12px;border-top:1px solid #ffffff1a;color:var(--muted);font-size:13px;display:flex;align-items:center;gap:8px}
+.itip .ft .rc{font-size:20px}
+.itip .bar{flex:1;height:8px;border-radius:4px;background:#263a5e;overflow:hidden}
+.itip .bar i{display:block;height:100%;width:60%;background:#3cc6c6;animation:comb 1s ease-in-out infinite alternate}
+@keyframes comb{from{width:25%}to{width:90%}}
 #recipesBtn{min-height:32px;font-size:13px;padding:0 10px;margin:8px 0 4px;width:100%}
 /* leyenda de la sinergia (al lado del setlist) */
 #legend{position:absolute;left:244px;top:100px;width:270px;background:var(--paper);color:#1b2233;padding:12px 14px;box-shadow:0 6px 0 rgba(0,0,0,.3);border-left:6px solid var(--lc,#b8862b);display:none;z-index:5;pointer-events:none;font-size:14px;line-height:1.3}
@@ -147,7 +157,11 @@ button{font-family:inherit}
 #legend .rc .have{font-size:11px;font-weight:700;color:#2f8a46}
 #legend .rc i{font-style:normal;color:#4b5672;font-size:12px;display:block}
 .trait.pinned{background:#fff3c4}
-#legend .u.have{background:#e7f5e9;font-weight:700} #legend .u.bench{background:#eef1f7} #legend .u.miss{background:#f3f3f3;color:#6b7590}
+#legend .u small{font-size:11px;opacity:.75}
+#legend .u.have{background:#fff;color:#1b2233;font-weight:700;box-shadow:0 0 0 2px var(--cc)}
+#legend .u.bench{background:#fff;color:#1b2233;font-weight:700;box-shadow:0 0 0 1px var(--cc);outline:2px dashed var(--cc);outline-offset:1px}
+#legend .u.miss{background:#eceef2;color:#8a93a8;border-left-color:#b9bfcc}
+#legend .u.miss img{filter:grayscale(1) brightness(1.1) contrast(.8);opacity:.55}
 .trait.hov{background:#f3f5fa}
 #carousel{position:absolute;left:50%;top:calc(140px + env(safe-area-inset-top,0px));transform:translateX(-50%);width:min(760px,calc(100% - 500px));min-width:320px;background:#16233a;border:1px solid var(--gold);border-radius:14px;padding:12px 14px;display:none;z-index:4}
 #carousel h3{margin:0 0 4px;font-family:"Permanent Marker",cursive;font-weight:400;font-size:24px;color:var(--gold)}
@@ -305,7 +319,7 @@ button{font-family:inherit}
   #flacoBar{bottom:110px;font-size:13px}
   #banner{font-size:46px} #banner small{font-size:20px}
   .stabs button{font-size:15px} .stabs .sep{font-size:14px} .stabs .cnt{min-width:16px;height:16px;font-size:11px;line-height:16px}
-  .irow .in span,.icount{display:none} .irow .in b{font-size:12px} .irow .it{width:28px;height:28px;font-size:15px}
+  .icount{display:none} #inv{grid-template-columns:repeat(3,1fr);gap:4px} .irow{font-size:17px} .itip{width:240px;font-size:12px}
   #legend{left:146px;width:min(260px,calc(100% - 220px));font-size:12px;padding:8px 10px}
   #carousel{width:calc(100% - 90px);left:8px;transform:none;top:calc(76px + env(safe-area-inset-top,0px))} #offers{grid-template-columns:repeat(3,1fr)} .offer b{font-size:15px}
   #spyBar{top:calc(62px + env(safe-area-inset-top,0px));font-size:13px}
@@ -355,6 +369,8 @@ button{font-family:inherit}
     <div id="traits"></div>
     <div id="itemsPane"><div class="icount" id="icount"></div><div id="inv"></div><button class="btn" id="recipesBtn">Recetas</button></div>
   </aside>
+  <div class="itip" id="itip"></div>
+  <div class="itip" id="dragTip"></div>
   <div id="legend" aria-live="polite"><button class="x" id="legendX" aria-label="Cerrar">×</button><div id="legendIn"></div></div>
   <aside id="players" aria-label="Público"></aside>
   <div id="flacoBar"></div>
@@ -450,13 +466,13 @@ button{font-family:inherit}
 </div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="sim.js?v=8.1"></script>
-<script src="net.js?v=8.1"></script>
-<script src="looks.js?v=8.1"></script>
-<script src="stage3d.js?v=8.1"></script>
-<script src="sfx.js?v=8.1"></script>
-<script src="firebase-config.js?v=8.1"></script>
-<script src="firebase-transport.js?v=8.1"></script>
+<script src="sim.js?v=8.2"></script>
+<script src="net.js?v=8.2"></script>
+<script src="looks.js?v=8.2"></script>
+<script src="stage3d.js?v=8.2"></script>
+<script src="sfx.js?v=8.2"></script>
+<script src="firebase-config.js?v=8.2"></script>
+<script src="firebase-transport.js?v=8.2"></script>
 <script src="assets/retratos/creditos.js?v=1" onerror="window.RETRATOS = null"></script>
 <script>
 'use strict';
@@ -491,6 +507,23 @@ button{font-family:inherit}
   const traitTag = t => `${DATA.TRAITS[t].icon} ${DATA.TRAITS[t].name}`;
   const itemIcon = id => { const d = SIM.itemDef(id); if (d.icon) return d.icon; if (d.emblem) return DATA.TRAITS[d.emblem].icon; return d.boardSlots ? '🎟️' : SIM.itemDef(d.from[0]).icon + SIM.itemDef(d.from[1]).icon; };
   const itemName = id => SIM.itemDef(id).name;
+  // Stats de un objeto con ícono (como TFT: "⚔️ +15%") y en texto largo para los componentes.
+  const STAT_ICON = { adPct: ['⚔️', '%', '% de daño'], asPct: ['⚡', '%', '% de velocidad de ataque'], ap: ['✨', '', ' de poder'], startMana: ['💧', '', ' de maná inicial'],
+    armor: ['🛡️', '', ' de armadura'], mr: ['🔮', '', ' de resistencia mágica'], hp: ['❤️', '', ' de vida'], critChance: ['🎯', '%', '% de probabilidad de crítico'] };
+  const itemStats = id => { const m = SIM.ITEM_MODS[id] || {}; return Object.keys(STAT_ICON).filter(k => m[k]).map(k => ({ k, v: m[k] })); };
+  function itemTipHtml(id, foot) {
+    const d = SIM.itemDef(id), st = itemStats(id);
+    const body = d.desc || st.map(x => `${STAT_ICON[x.k][0]} +${x.v}${STAT_ICON[x.k][2]}`).join('<br>') || 'Sin stats: sirve para combinar.';
+    return `<div class="hd"><span class="big">${itemIcon(id)}</span><div><h5>${esc(d.name)}</h5><div class="st">${st.map(x => `<span>${STAT_ICON[x.k][0]} +${x.v}${STAT_ICON[x.k][1]}</span>`).join('')}</div></div></div>
+      <div class="bd">${body}</div>${foot ? `<div class="ft">${foot}</div>` : ''}`;
+  }
+  function showTip(el, html, x, y) {
+    el.innerHTML = html; el.style.display = 'block';
+    const wr = $('#wrap').getBoundingClientRect();
+    el.style.left = Math.min(x - wr.left, wr.width - el.offsetWidth - 8) + 'px';
+    el.style.top = Math.max(8, Math.min(y - wr.top, wr.height - el.offsetHeight - 8)) + 'px';
+  }
+  const hideTip = el => { el.style.display = 'none'; };
   // retratos (tools/retratos): si todavía no se generaron, el juego sigue igual sin ellos
   const foto = (id, chico) => (window.RETRATOS && RETRATOS.retratos && RETRATOS.retratos[id] ? `assets/retratos/${id}${chico ? '-128' : ''}.webp?v=${encodeURIComponent(RETRATOS.generado || '')}` : null);
   const itemDesc = id => { const d = SIM.itemDef(id); const mods = SIM.ITEM_MODS[id] || {}; const names = { adPct: '% daño', asPct: '% vel. ataque', ap: ' poder', startMana: ' maná inicial', armor: ' armadura', mr: ' RM', hp: ' vida', critChance: '% crítico' };
@@ -671,10 +704,10 @@ button{font-family:inherit}
   function renderItems() {
     const p = me(), inv = $('#inv'), n = p.items.length;
     $('#itemCount').textContent = n; $('#itemCount').classList.toggle('zero', !n);
-    $('#icount').textContent = `${n} de ${DATA.ITEMS.MAX_INVENTORY} · arrastralos a un músico (o tocá uno y después al músico)`;
+    $('#icount').textContent = `${n} de ${DATA.ITEMS.MAX_INVENTORY} · arrastralos a un músico`;
     if (selItem != null && selItem >= n) selItem = null;
     const order = p.items.map((id, i) => ({ id, i })).sort((a, b) => (SIM.isComponent(b.id) - SIM.isComponent(a.id)) || itemName(a.id).localeCompare(itemName(b.id)) || a.i - b.i);
-    inv.innerHTML = order.map(({ id, i }) => `<div class="irow${SIM.isComponent(id) ? '' : ' full'}${selItem === i ? ' sel' : ''}" data-item="${i}" role="button"><span class="it">${itemIcon(id)}</span><span class="in"><b>${esc(itemName(id))}</b><span>${esc(itemDesc(id))}</span></span></div>`).join('')
+    inv.innerHTML = order.map(({ id, i }) => `<div class="irow${SIM.isComponent(id) ? '' : ' full'}${selItem === i ? ' sel' : ''}" data-item="${i}" role="button" aria-label="${esc(itemName(id))}">${itemIcon(id)}</div>`).join('')
       || '<div class="tt" style="padding:6px 0">Sin objetos todavía: los dejan los creeps y la firma de autógrafos.</div>';
   }
   function renderCarousel() {
@@ -861,15 +894,16 @@ button{font-family:inherit}
     const onBoard = v.board.filter(u => u && unitTraits(u).includes(t)), onBench = v.bench.filter(u => u && unitTraits(u).includes(t));
     const boardIds = new Set(onBoard.map(u => u.unitId)), benchIds = [...new Set(onBench.map(u => u.unitId))].filter(id => !boardIds.has(id));
     const all = Object.keys(DATA.UNITS).filter(id => SIM.def(id).traits.includes(t)).sort((a, b) => DATA.UNITS[a].cost - DATA.UNITS[b].cost || DATA.UNITS[a].short.localeCompare(DATA.UNITS[b].short));
-    const missing = all.filter(id => !boardIds.has(id) && !benchIds.includes(id));
-    const chip = (id, cls) => `<span class="u ${cls}" style="--cc:${COST_COLOR[DATA.UNITS[id].cost]}">${foto(id, true) ? `<img src="${foto(id, true)}" alt="" loading="lazy">` : ''}${esc(DATA.UNITS[id].short)}${cls === 'miss' ? ' · $' + DATA.UNITS[id].cost : ''}</span>`;
+    const chip = (id, cls) => `<span class="u ${cls}" style="--cc:${COST_COLOR[DATA.UNITS[id].cost]}" title="${cls === 'have' ? 'En el escenario' : cls === 'bench' ? 'En el backstage' : 'Te falta'}">${foto(id, true) ? `<img src="${foto(id, true)}" alt="" loading="lazy">` : ''}${esc(DATA.UNITS[id].short)} <small>$${DATA.UNITS[id].cost}</small></span>`;
+    // una sola lista por coste: en color los que tenés (escenario / backstage), en gris los que faltan
+    // (también los que la tienen por un emblema)
+    const lista = [...new Set([...all, ...boardIds, ...benchIds])].sort((a, b) => DATA.UNITS[a].cost - DATA.UNITS[b].cost || DATA.UNITS[a].short.localeCompare(DATA.UNITS[b].short));
     const levels = T.kind === 'unica' ? '' : traitLevelsText(T).split('\n').map((l, i) => `<div class="lv${i === lvl ? ' on' : ''}">${esc(l)}</div>`).join('');
     box.style.setProperty('--lc', T.color === '#ffffff' ? '#b8862b' : T.color);
     $('#legendIn').innerHTML = `<h4>${T.icon} ${esc(T.name)}</h4><div class="k">${{ origen: 'Origen', clase: 'Clase', unica: 'Única' }[T.kind] || ''}${T.kind !== 'unica' ? ` · tenés ${count} en el escenario` : ''}</div>
       ${T.desc ? `<p class="d">${esc(T.desc)}</p>` : ''}${levels}
-      ${boardIds.size ? `<div class="ul"><b>En el escenario</b>${[...boardIds].map(id => chip(id, 'have')).join('')}</div>` : ''}
-      ${benchIds.length ? `<div class="ul"><b>En el backstage</b>${benchIds.map(id => chip(id, 'bench')).join('')}</div>` : ''}
-      ${missing.length ? `<div class="ul"><b>Te faltan</b>${missing.map(id => chip(id, 'miss')).join('')}</div>` : ''}
+      <div class="ul">${lista.map(id => chip(id, boardIds.has(id) ? 'have' : benchIds.includes(id) ? 'bench' : 'miss')).join('')}</div>
+      ${benchIds.length ? '<div class="pinTip">Borde punteado: en el backstage</div>' : ''}
       ${pinTrait === t ? '' : '<div class="pinTip">Clic para dejarla fija</div>'}`;
     placeLegend(row);
     stage.focusUnits(spyId ? [] : onBoard.map(u => u.uid), new THREE.Color(T.color).getHex());
@@ -895,7 +929,16 @@ button{font-family:inherit}
     $('#legendIn').innerHTML = `<h4>${itemIcon(id)} ${esc(itemName(id))}</h4><div class="k">${SIM.isComponent(id) ? 'Componente' : 'Objeto terminado'}</div><p class="d">${esc(itemDesc(id))}</p>${body}`;
     placeLegend(row);
   }
+  $('#inv').addEventListener('pointerover', e => {
+    const r = e.target.closest('[data-item]'); if (!r || e.pointerType !== 'mouse' || itemDrag) return;
+    const id = me().items[+r.dataset.item]; if (!id) return;
+    const d = SIM.itemDef(id), rb = r.getBoundingClientRect(), sl = $('#setlist').getBoundingClientRect();
+    const foot = d.from ? `<span class="rc">${itemIcon(d.from[0])} + ${itemIcon(d.from[1])}</span><span>Clic derecho: recetas</span>` : 'Clic derecho para ver recetas';
+    showTip($('#itip'), itemTipHtml(id, foot), sl.right + 10, rb.top - 6);
+  });
+  $('#inv').addEventListener('pointerout', e => { if (!e.relatedTarget || !e.relatedTarget.closest || !e.relatedTarget.closest('#inv [data-item]')) hideTip($('#itip')); });
   $('#inv').addEventListener('contextmenu', e => {
+    hideTip($('#itip'));
     e.preventDefault();
     const r = e.target.closest('[data-item]'); if (!r) return;
     itemCard = itemCard && itemCard.idx === +r.dataset.item ? null : { idx: +r.dataset.item };
@@ -1068,6 +1111,8 @@ button{font-family:inherit}
     }
     if (!drag) { // para la tecla E: qué músico propio está bajo el puntero
       if (canShop()) { const h = stage.pick(e.clientX, e.clientY, { unitsOnly: true }); hoverUid = h && h.kind === 'unit' && canTouch(h.uid) ? h.uid : null; }
+      else hoverUid = null;
+      stage.hoverUnit(e.pointerType === 'mouse' ? hoverUid : null); cv.style.cursor = hoverUid != null ? 'grab' : '';
       return;
     }
     if (!drag.on && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 8) return;
@@ -1097,11 +1142,17 @@ button{font-family:inherit}
     }
     tap(e.clientX, e.clientY);
   });
+  // Cierra todo lo abierto: ficha, leyenda fija, receta, objeto elegido, menú.
+  function closeAll() {
+    selectedUid = null; previewUnit = null; selItem = null; pinTrait = null; hoverTrait = null; itemCard = null;
+    closeFicha(); hideTip($('#itip')); $('#menu').classList.remove('on');
+    render();
+  }
   // Tocar: elegir un músico (abre su ficha); con uno elegido, tocar otro lugar lo mueve (o intercambia).
   function tap(x, y) {
     if (!state) return;
     const h = stage.pick(x, y);
-    if (!h) { selectedUid = null; previewUnit = null; closeFicha(); render(); return; }
+    if (!h || (!selectedUid && (h.kind === 'board' || h.kind === 'bench'))) { closeAll(); return; } // clic en el mapa: cerrar lo abierto
     if (h.kind === 'cunit') {
       const u = replay && replay.cs.units[h.cid];
       if (u) openFicha({ unitId: u.unitId, star: u.star, cid: h.cid, items: u.items || [] });
@@ -1139,10 +1190,36 @@ button{font-family:inherit}
   $('#inv').addEventListener('pointermove', e => {
     if (!itemDrag) return;
     if (!itemDrag.on && Math.hypot(e.clientX - itemDrag.sx, e.clientY - itemDrag.sy) > 8) itemDrag.on = true;
-    if (itemDrag.on) { const h = stage.pick(e.clientX, e.clientY, { unitsOnly: true }); stage.highlight(null); hoverUid = h && h.kind === 'unit' ? h.uid : null; }
+    if (itemDrag.on) {
+      hideTip($('#itip'));
+      const h = stage.pick(e.clientX, e.clientY, { unitsOnly: true }); stage.highlight(null); hoverUid = h && h.kind === 'unit' ? h.uid : null;
+      stage.hoverUnit(hoverUid);
+      dragPreview(itemDrag.idx, e.clientX, e.clientY);
+    }
   });
+  // Qué pasa si lo suelto acá: sobre un músico (misma regla que el SIM: un componente se fusiona con el
+  // primer componente que tenga) o sobre otro objeto de la lista (qué se armaría con los dos).
+  function dragPreview(idx, x, y) {
+    const p = me(), it = p.items[idx], tip = $('#dragTip');
+    for (const r of document.querySelectorAll('#inv .drop')) r.classList.remove('drop');
+    let other = null, who = null, full = false;
+    const u = hoverUid != null && unitByUid(p, hoverUid);
+    if (u) {
+      const items = u.items || [], comp = SIM.isComponent(it) ? items.find(SIM.isComponent) : null;
+      if (comp) other = comp; else if (items.length >= DATA.ITEMS.MAX_PER_UNIT) full = true;
+      who = SIM.def(u.unitId).short;
+    } else {
+      const row = document.elementsFromPoint(x, y).map(el => el.closest && el.closest('#inv [data-item]')).find(r => r && +r.dataset.item !== idx);
+      if (row && SIM.isComponent(it) && SIM.isComponent(p.items[+row.dataset.item])) { other = p.items[+row.dataset.item]; row.classList.add('drop'); }
+    }
+    const res = other && SIM.recipeOf(it, other);
+    if (res) showTip(tip, itemTipHtml(res, `<span class="rc">${itemIcon(other)} + ${itemIcon(it)}</span><span>${u ? 'Combinando' : 'Se arma en un músico'}</span><span class="bar"><i></i></span><span class="rc">${itemIcon(res)}</span>`), x + 18, y + 14);
+    else if (u) showTip(tip, `<div class="ft">${full ? `<b>${esc(who)}</b> ya lleva 3 objetos` : `${itemIcon(it)} Equipar a <b>${esc(who)}</b>`}</div>`, x + 18, y + 14);
+    else hideTip(tip);
+  }
   $('#inv').addEventListener('pointerup', e => {
     const d = itemDrag; itemDrag = null;
+    hideTip($('#dragTip')); for (const r of document.querySelectorAll('#inv .drop')) r.classList.remove('drop'); stage.hoverUnit(null);
     if (!d) return;
     if (d.on) { const h = stage.pick(e.clientX, e.clientY, { unitsOnly: true }); if (h && h.kind === 'unit') equipTo(h.uid, d.idx); return; }
     selItem = selItem === d.idx ? null : d.idx; // tocar: elegir el ítem y después tocar al músico
