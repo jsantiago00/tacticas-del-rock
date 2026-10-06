@@ -421,8 +421,10 @@ const STAGE3D = (() => {
 
     // ---------- planificación ----------
     let mode = 'planning', planKeys = new Set(), dragKey = null, hovered = null, combat = null, alpha = 0;
+    // Durante la pelea solo se actualiza el backstage (se puede comprar y acomodar); los del escenario
+    // quedan ocultos hasta que termine (los que pelean son los muñecos de combate).
     function setPlanning({ board, bench, selected, spy }) {
-      if (mode !== 'planning') return;
+      const inCombat = mode !== 'planning';
       const keep = new Set();
       const place = (e, inBench) => {
         const key = 'u' + e.uid;
@@ -442,17 +444,18 @@ const STAGE3D = (() => {
         setGear(d, e.items);
         d.alive = true; d.dead = 0; d.grp.visible = true;
       };
-      board.forEach(e => place(e, false));
+      board.forEach(e => { if (!inCombat) place(e, false); else { const k = 'u' + e.uid, d = dolls.get(k); if (d) { keep.add(k); d.grp.visible = false; setStar(d, e.star, true); setGear(d, e.items); } } });
       bench.forEach(e => place(e, true));
       for (const k of planKeys) if (!keep.has(k)) removeDoll(k);
       planKeys = keep;
+      if (inCombat) return;
       for (const h of hexes) if (h.userData.R >= ROWS) h.material = hovered === h ? HM.hover : spy ? HM.spy : h.userData.base;
     }
 
     // ---------- combate ----------
     function startCombat(cs, flip) {
       mode = 'combat';
-      for (const k of planKeys) { const d = dolls.get(k); if (d) d.grp.visible = false; }
+      for (const k of planKeys) { const d = dolls.get(k); if (d && !d.inBench) d.grp.visible = false; } // el backstage sigue a mano
       for (const h of hexes) h.material = h.userData.R >= ROWS ? h.userData.base : HM.foe;
       combat = { cs, flip, mySide: flip ? 1 : 0, keys: [] };
       for (const u of cs.units) {
@@ -534,20 +537,22 @@ const STAGE3D = (() => {
       const hu = ray.intersectObjects(hitboxes)[0];
       if (hu) { const k = hu.object.userData.key; return k[0] === 'u' ? { kind: 'unit', uid: +k.slice(1) } : { kind: 'cunit', cid: +k.slice(1) }; }
       if (unitsOnly) return null;
-      const hh = ray.intersectObjects(hexes.filter(h => h.userData.R >= ROWS).concat(benchSlots))[0];
+      const hh = ray.intersectObjects(myDropZones())[0];
       if (!hh) return null;
       const ud = hh.object.userData;
       return ud.bench !== undefined ? { kind: 'bench', idx: ud.bench } : { kind: 'board', idx: ud.idx };
     }
+    // En la pelea solo el backstage: el escenario está ocupado.
+    const myDropZones = () => (mode === 'planning' ? hexes.filter(h => h.userData.R >= ROWS).concat(benchSlots) : benchSlots);
     // Lo que hay abajo del puntero para soltar (casillero, aunque haya un muñeco encima).
     function dropTarget(x, y) {
       setRay(x, y);
-      const hh = ray.intersectObjects(hexes.filter(h => h.userData.R >= ROWS).concat(benchSlots))[0];
+      const hh = ray.intersectObjects(myDropZones())[0];
       if (hh) { const ud = hh.object.userData; return ud.bench !== undefined ? { kind: 'bench', idx: ud.bench } : { kind: 'board', idx: ud.idx }; }
       // si no hay casillero exacto, el más cercano al punto del piso
       if (!ray.ray.intersectPlane(ground, V)) return null;
       let best = null, bd = 1.2;
-      for (const h of hexes) if (h.userData.R >= ROWS) { const dd = Math.hypot(h.position.x - V.x, h.position.z - V.z); if (dd < bd) { bd = dd; best = { kind: 'board', idx: h.userData.idx }; } }
+      if (mode === 'planning') for (const h of hexes) if (h.userData.R >= ROWS) { const dd = Math.hypot(h.position.x - V.x, h.position.z - V.z); if (dd < bd) { bd = dd; best = { kind: 'board', idx: h.userData.idx }; } }
       for (const s of benchSlots) { const dd = Math.hypot(s.position.x - V.x, s.position.z - V.z); if (dd < bd) { bd = dd; best = { kind: 'bench', idx: s.userData.bench }; } }
       return best;
     }
@@ -560,7 +565,7 @@ const STAGE3D = (() => {
     function dragEnd() { const d = dragKey && dolls.get(dragKey); if (d) d.moving = 1; dragKey = null; }
     function highlight(t) {
       hovered = null;
-      for (const h of hexes) if (h.userData.R >= ROWS) h.material = h.userData.base;
+      if (mode === 'planning') for (const h of hexes) if (h.userData.R >= ROWS) h.material = h.userData.base;
       for (const s of benchSlots) s.material = slotMat;
       if (!t) return;
       if (t.kind === 'board') { const h = hexes.find(h => h.userData.idx === t.idx && h.userData.R >= ROWS); if (h) { h.material = HM.hover; hovered = h; } }

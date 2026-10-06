@@ -155,8 +155,8 @@ const NET = (() => {
       const extra = {};
       for (const k of keys) {
         const { uid, action } = room.actions[k] || {};
-        // Solo se aplican en planificación; fuera de fase se descartan.
-        if ((meta.phase.name === 'planning' || meta.phase.name === 'carousel') && uid && action) s = S.applyAction(s, uid, action);
+        // Planificación, firma y pelea (en la pelea, la tienda y el backstage; el SIM valida). Fuera de fase se descartan.
+        if (['planning', 'carousel', 'combat'].includes(meta.phase.name) && uid && action) s = S.applyAction(s, uid, action);
         extra['actions/' + k] = null;
         consumed.add(k);
       }
@@ -176,7 +176,7 @@ const NET = (() => {
     }
 
     async function startPlanning(room) {
-      let s = state;
+      let s = S.beginPlanning(state); // ronda nueva: ingreso, tienda nueva, emparejamientos
       const away = { ...(meta.away || {}) }, takeover = (meta.settings || {}).botTakeover;
       for (const uid of sortedKeys(room.members)) {
         const p = s.players[uid];
@@ -296,7 +296,7 @@ const NET = (() => {
       send(action) {
         if (!view || !room || !room.meta) return 'Sin conexión con la sala';
         const phn = room.meta.phase.name;
-        if (phn === 'carousel' ? action.type !== 'PICK' : phn !== 'planning') return phn === 'carousel' ? 'Ahora es la firma de autógrafos' : 'Esperá a la fase de planificación';
+        if (phn === 'carousel' ? action.type !== 'PICK' : (phn !== 'planning' && phn !== 'combat')) return phn === 'carousel' ? 'Ahora es la firma de autógrafos' : 'Esperá a la fase de planificación';
         const err = S.validateAction(view, me, action);
         if (err) return err;
         if (action.type === 'REROLL' && room.actions && sortedKeys(room.actions).some(k => room.actions[k].uid === me && room.actions[k].action.type === 'REROLL'))

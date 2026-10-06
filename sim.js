@@ -8,7 +8,7 @@
 const DATA = {
   // Versión de datos: si cambia la forma del estado o el plantel, se sube. Un cliente con
   // otra versión no puede entrar a una sala (tiene que recargar la página).
-  VERSION: 7,
+  VERSION: 8,
 
   CONFIG: {
     BOARD_ROWS: 4, BOARD_COLS: 7,      // mitad de tablero por jugador (en combate: 8x7)
@@ -736,8 +736,13 @@ const SIM = (() => {
     if (!p) return 'Jugador inexistente';
     if (!p.alive) return 'Estás eliminado';
     if (a && a.type === 'PICK') return validatePick(s, pid, a);
-    if (s.phase !== 'planning') return 'No es fase de planificación';
     if (!a || typeof a.type !== 'string') return 'Acción inválida';
+    // Durante la pelea se puede comprar, cambiar la grilla, subir convocatoria y tocar el backstage,
+    // pero no el escenario (esos músicos están peleando).
+    if (s.phase === 'combat') {
+      const onBoard = l => l && l.zone === 'board';
+      if (a.type !== 'FLACO' && (onBoard(a.loc) || onBoard(a.from) || onBoard(a.to))) return 'Durante la pelea solo podés tocar el backstage';
+    } else if (s.phase !== 'planning') return 'No es fase de planificación';
     switch (a.type) {
       case 'BUY': {
         if (!validIdx(a.slot, C.SHOP_SIZE)) return 'Slot inválido';
@@ -1765,11 +1770,17 @@ const SIM = (() => {
     for (const id of alive) for (const u of s.players[id].board) if (u && u.flaco) u.flaco.fights++;
     s.roundsPlayed++;
     eliminate(s, hpBefore);
-    if (s.phase !== 'ended') {
-      s.round.num++;
-      if (s.round.num > roundsInStage(s.round.stage)) { s.round.stage++; s.round.num = 1; }
-      startPlanning(s, false);
-    }
+    if (s.phase !== 'ended') s.phase = 'combat'; // se ven las peleas; la tienda sigue abierta
+    return s;
+  }
+  // Arranca la ronda siguiente (cuando terminan de verse las peleas): avanza la ronda, ingreso, XP,
+  // tienda nueva (si no está bloqueada), emparejamientos y, si toca, la firma de autógrafos.
+  function beginPlanning(state) {
+    if (state.phase !== 'combat') return state;
+    const s = clone(state);
+    s.round.num++;
+    if (s.round.num > roundsInStage(s.round.stage)) { s.round.stage++; s.round.num = 1; }
+    startPlanning(s, false);
     return s;
   }
 
@@ -1791,7 +1802,7 @@ const SIM = (() => {
     let s = runAllBots(createGame({ seed, slots }));
     const hashes = trackHashes ? [stateHash(s)] : null;
     for (let n = 0; s.phase !== 'ended' && n < maxRounds; n++) {
-      s = autoCarousel(resolveRound(s));
+      s = autoCarousel(beginPlanning(resolveRound(s)));
       if (s.phase !== 'ended') s = runAllBots(s);
       if (hashes) hashes.push(stateHash(s));
     }
@@ -1862,7 +1873,7 @@ const SIM = (() => {
 
   return {
     // partida (host)
-    createGame, makeSlots, resolveRound, runAllBots, setBotControl,
+    createGame, makeSlots, resolveRound, beginPlanning, runAllBots, setBotControl,
     // acciones (humanos y bots)
     applyAction, validateAction, runBotTurn,
     // combate

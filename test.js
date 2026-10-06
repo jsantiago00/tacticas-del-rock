@@ -6,7 +6,7 @@ let failed = 0;
 const check = (ok, msg) => { console.log((ok ? '✔ ' : '✘ ') + msg); if (!ok) failed++; };
 const copies = star => (star === 1 ? 1 : star === 2 ? 3 : 9);
 // Resolver una ronda y, si toca, la firma de autógrafos (eligiendo como bots).
-const resolveR = s => SIM.autoCarousel(SIM.resolveRound(s));
+const resolveR = s => SIM.autoCarousel(SIM.beginPlanning(SIM.resolveRound(s)));
 
 // El pool + todas las copias en juego (tableros, bancos, tiendas) tiene que dar siempre el total.
 function poolOk(s) {
@@ -314,7 +314,7 @@ for (const seed of ['inv-1', 'inv-2']) {
   // ---- Firma de autógrafos: de a pares, de menos a más público ----
   {
     let s = SIM.createGame({ seed: 'carrusel', slots: SIM.makeSlots({ bots: 5 }) });
-    while (s.phase !== 'carousel') { s = SIM.runAllBots(s); s = SIM.resolveRound(s); }
+    while (s.phase !== 'carousel') { s = SIM.runAllBots(s); s = SIM.beginPlanning(SIM.resolveRound(s)); }
     s = SIM.clone(s);
     // vidas distintas para ver el orden
     s.order.forEach((id, i) => (s.players[id].hp = 100 - i * 7));
@@ -335,7 +335,7 @@ for (const seed of ['inv-1', 'inv-2']) {
     let s3 = SIM.createGame({ seed: 'carrusel2', slots: SIM.makeSlots({ bots: 5 }) });
     while (!(s3.round.stage === 1 && s3.round.num === 3)) { s3 = SIM.runAllBots(s3); s3 = resolveR(s3); }
     s3 = SIM.clone(s3); s3.order.forEach((id, i) => (s3.players[id].hp = 100 - i * 7));
-    s3 = SIM.resolveRound(s3);
+    s3 = SIM.beginPlanning(SIM.resolveRound(s3));
     const hpOrder = s3.carousel.pairs.flat().map(id => s3.players[id].hp);
     check(hpOrder.every((h, i) => i === 0 || hpOrder[i - 1] <= h), `Firma de autógrafos: los pares salen de menos a más público (${hpOrder.join(', ')})`);
   }
@@ -348,6 +348,27 @@ for (const seed of ['inv-1', 'inv-2']) {
     check(ot && cs.tick > 30 * 30 && cs.winner !== 'draw', `Tiempo extra: arranca a los 30 s y define (ganó ${cs.winner} a los ${(cs.tick / 30).toFixed(1)} s)`);
   }
   // Online: la versión de datos queda guardada en el estado
+  // ---- Tienda durante la pelea: se compra y se acomoda el backstage; la grilla nueva llega con la ronda siguiente ----
+  {
+    let s = SIM.createGame({ seed: 'tienda-pelea', slots: SIM.makeSlots({ humans: [{ id: 'p0', name: 'Yo' }], bots: 7 }) });
+    s = SIM.runAllBots(s);
+    s = SIM.clone(s); const P = s.players.p0; P.gold = 50;
+    s = SIM.applyAction(s, 'p0', { type: 'BUY', slot: 0 });
+    const shopBefore = JSON.stringify(s.players.p0.shop), roundBefore = SIM.roundLabel(s.round);
+    s = SIM.resolveRound(s);
+    const p = s.players.p0;
+    check(s.phase === 'combat' && SIM.roundLabel(s.round) === roundBefore && JSON.stringify(p.shop) === shopBefore, 'Tienda en la pelea: al resolver, la ronda y la grilla siguen iguales hasta la próxima');
+    const gold0 = p.gold, slot = p.shop.findIndex(Boolean);
+    const s2 = SIM.applyAction(s, 'p0', { type: 'BUY', slot });
+    check(s2.players.p0.gold < gold0 && s2.players.p0.bench.filter(Boolean).length > p.bench.filter(Boolean).length, 'Tienda en la pelea: se puede contratar');
+    const s3 = SIM.applyAction(s2, 'p0', { type: 'REROLL' });
+    check(JSON.stringify(s3.players.p0.shop) !== JSON.stringify(s2.players.p0.shop), 'Tienda en la pelea: se puede cambiar la grilla');
+    const bi = s3.players.p0.bench.findIndex(Boolean), boardIdx = s3.players.p0.board.findIndex(Boolean), freeB = s3.players.p0.board.findIndex(u => !u);
+    check(!!SIM.validateAction(s3, 'p0', { type: 'MOVE', from: { zone: 'bench', idx: bi }, to: { zone: 'board', idx: freeB } }) && !!SIM.validateAction(s3, 'p0', { type: 'SELL', loc: { zone: 'board', idx: boardIdx } }), 'Tienda en la pelea: el escenario no se toca (ni subir ni vender)');
+    check(!SIM.validateAction(s3, 'p0', { type: 'SELL', loc: { zone: 'bench', idx: bi } }) && !SIM.validateAction(s3, 'p0', { type: 'BUY_XP' }), 'Tienda en la pelea: se vende del backstage y se sube convocatoria');
+    const g = s3.players.p0.gold, inc = SIM.incomePreview(s3.players.p0).total, s4 = SIM.beginPlanning(s3);
+    check(s4.phase !== 'combat' && SIM.roundLabel(s4.round) !== roundBefore && s4.players.p0.gold === g + inc && JSON.stringify(s4.players.p0.shop) !== JSON.stringify(s3.players.p0.shop), 'Tienda en la pelea: con la ronda nueva llegan la guita y la grilla nueva');
+  }
   check(SIM.createGame({ seed: 'v', players: [{ id: 'p0', name: 'T' }] }).v === DATA.VERSION, `Versión de datos en el estado: ${DATA.VERSION}`);
 }
 

@@ -291,7 +291,7 @@ button{font-family:inherit}
     <button class="btn" id="qual2">Calidad: auto</button>
     <label>🔊 Volumen <input type="range" id="volume" min="0" max="100" step="5"></label>
     <label id="timerOpt"><input type="checkbox" id="chkTimer"> Timer de 30 s (partida local)</label>
-    <div class="help" style="margin:0">Teclas: <b>D</b> cambiar la grilla · <b>F</b> convocatoria · <b>E</b> vender · <b>Espacio</b> listo</div>
+    <div class="help" style="margin:0">Teclas: <b>D</b> cambiar la grilla · <b>F</b> convocatoria · <b>E</b> vender (con el mouse arriba del músico) · <b>Espacio</b> listo</div>
   </div>
 
   <div id="toast" role="status" aria-live="polite"></div>
@@ -363,7 +363,7 @@ button{font-family:inherit}
       <div class="row" style="margin-top:0"><input id="inCode" maxlength="5" placeholder="ABCD" style="text-transform:uppercase;letter-spacing:4px;font-weight:800"><button class="btn" id="btnJoin">Unirse</button></div>
     </div>
   </div>
-  <div class="help">Tocá un músico para ver su ficha; con uno elegido, tocá otro lugar para moverlo (en compu también podés arrastrar). Para vender: arrastralo a la grilla o usá el botón de la ficha.</div>
+  <div class="help">Tocá un músico para ver su ficha; con uno elegido, tocá otro lugar para moverlo (en compu también podés arrastrar). Para vender: arrastralo a la grilla, usá el botón de la ficha o apretá E con el mouse arriba. Durante la pelea podés seguir comprando y acomodando el backstage; la grilla nueva y la guita llegan con la ronda siguiente.</div>
 </div></div>
 <div id="lobby" class="overlay"><div class="box">
   <h2>Sala <span id="lobbyCode"></span></h2>
@@ -386,13 +386,13 @@ button{font-family:inherit}
 </div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="sim.js?v=7"></script>
-<script src="net.js?v=7"></script>
-<script src="looks.js?v=7"></script>
-<script src="stage3d.js?v=7"></script>
-<script src="sfx.js?v=7"></script>
-<script src="firebase-config.js?v=7"></script>
-<script src="firebase-transport.js?v=7"></script>
+<script src="sim.js?v=8"></script>
+<script src="net.js?v=8"></script>
+<script src="looks.js?v=8"></script>
+<script src="stage3d.js?v=8"></script>
+<script src="sfx.js?v=8"></script>
+<script src="firebase-config.js?v=8"></script>
+<script src="firebase-transport.js?v=8"></script>
 <script>
 'use strict';
 /* =====================================================================
@@ -404,7 +404,7 @@ button{font-family:inherit}
  * ===================================================================== */
 (function UI() {
   const C = DATA.CONFIG, COLS = C.BOARD_COLS;
-  const LOCAL_KEY = 'tacticas_rock_local_v7', ONLINE_KEY = 'tacticas_rock_online', PREF_KEY = 'tacticas_rock_prefs';
+  const LOCAL_KEY = 'tacticas_rock_local_v8', ONLINE_KEY = 'tacticas_rock_online', PREF_KEY = 'tacticas_rock_prefs';
   const COST_COLOR = ['#7b8296', '#9aa0a8', '#3fae67', '#4a8ef0', '#b26ae6', '#f0b429'];
   const $ = s => document.querySelector(s);
   const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -432,6 +432,10 @@ button{font-family:inherit}
   const persName = p => (p.takenOver ? 'Bot (reemplazo)' : p.bot ? (DATA.BOTS.PERSONALITIES[p.bot.personality] || {}).name || p.bot.personality : 'Humano');
   const phase = () => (client && client.phase) || { name: 'lobby' };
   const canAct = () => mode === 'planning' && phase().name === 'planning' && state && me() && me().alive && !spyId;
+  // Tienda y backstage: también durante la pelea (la tienda nueva y el ingreso llegan con la ronda siguiente).
+  const canShop = () => canAct() || ((mode === 'combat' || mode === 'waiting') && phase().name === 'combat' && state && me() && me().alive && !spyId);
+  const onBench = uid => !!(me() && me().bench.some(x => x && x.uid === uid));
+  const canTouch = uid => canAct() || (canShop() && onBench(uid)); // en la pelea, solo los del backstage
   const urlWithRoom = code => { const q = new URLSearchParams(location.search); if (code) q.set('sala', code); else q.delete('sala'); const s = q.toString(); return location.pathname + (s ? '?' + s : ''); };
   const onlineAvailable = () => /^https?:$/.test(location.protocol) && !!window.FIREBASE_CONFIG;
   const initials = n => String(n).split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -567,7 +571,7 @@ button{font-family:inherit}
   // ---------- acciones ----------
   const ACT_SFX = { BUY: 'buy', SELL: 'sell', REROLL: 'reroll', BUY_XP: 'xp', MOVE: 'place', LOCK: 'click', EQUIP: 'equip' };
   function act(action) {
-    if (!canAct()) return false;
+    if (!canShop()) return false;
     const err = client.send(action);
     if (err) { toast(err, 2600, true); SFX.play('error'); return false; }
     SFX.play(ACT_SFX[action.type]);
@@ -598,7 +602,7 @@ button{font-family:inherit}
   }
   function renderItems() {
     const p = me(), inv = $('#inv');
-    $('#items').style.display = (p.items.length || canAct()) && !spyId ? 'flex' : 'none';
+    $('#items').style.display = (p.items.length || canShop()) && !spyId ? 'flex' : 'none';
     if (selItem != null && selItem >= p.items.length) selItem = null;
     inv.innerHTML = p.items.map((id, i) => `<button class="it${SIM.isComponent(id) ? '' : ' full'}${selItem === i ? ' sel' : ''}" data-item="${i}" title="${esc(itemName(id) + ': ' + itemDesc(id))}">${itemIcon(id)}</button>`).join('') || '<span class="lbl">vacío</span>';
   }
@@ -629,7 +633,7 @@ button{font-family:inherit}
     const spyBar = $('#spyBar');
     spyBar.style.display = spyId && mode !== 'combat' ? 'block' : 'none';
     if (spyId) spyBar.textContent = `👁 Viendo a ${pname(spyId)} · tocá acá para volver`;
-    if (mode !== 'combat') {
+    { // en la pelea el escenario 3D solo actualiza el backstage
       const v = viewed();
       const list = arr => arr.map((u, idx) => u && { uid: u.uid, unitId: u.unitId, star: u.star, idx, items: u.items || [] }).filter(Boolean);
       stage.setPlanning({ board: list(v.board), bench: list(v.bench), selected: spyId ? null : selectedUid, spy: !!spyId });
@@ -659,7 +663,7 @@ button{font-family:inherit}
     for (const u of [...p.board, ...p.bench]) if (u) { cur.stars[u.uid] = u.star; cur.items[u.uid] = (u.items || []).join(','); }
     const prev = prevMine;
     prevMine = cur;
-    if (!prev || prev.id !== cur.id || mode === 'combat') return;
+    if (!prev || prev.id !== cur.id) return;
     if (cur.gold !== prev.gold) goldFloat(cur.gold - prev.gold);
     if (cur.level > prev.level) {
       SFX.play('levelup');
@@ -680,7 +684,8 @@ button{font-family:inherit}
       const fused = b.find(i => !SIM.isComponent(i) && !a.includes(i));
       if (fused && prev.items[uid] !== undefined) { SFX.play('fusion'); toast(`${itemIcon(fused)} ¡${itemName(fused)}! ${itemDesc(fused)}`, 3500); }
     }
-    // sinergias que suben o bajan
+    // sinergias que suben o bajan (en la pelea el escenario no cambia: lo que sube solo al empezar no se festeja)
+    if (mode === 'combat' || mode === 'waiting') return;
     const ups = [], downs = [];
     for (const t of new Set([...Object.keys(cur.traits), ...Object.keys(prev.traits)])) {
       const a = prev.traits[t] ?? -1, b = cur.traits[t] ?? -1;
@@ -786,7 +791,7 @@ button{font-family:inherit}
   }
   function renderBottom() {
     const p = me(), need = SIM.xpNeeded(p), inc = SIM.incomePreview(p), max = p.level >= C.MAX_LEVEL, n = SIM.boardCount(p);
-    $('#bottom').classList.toggle('off', !canAct());
+    $('#bottom').classList.toggle('off', !canShop());
     $('#lvl').textContent = 'Convocatoria ' + p.level;
     $('#xpTxt').textContent = max ? 'Máxima' : `${p.xp}/${need}`;
     $('#xpBar').style.width = (max ? 100 : Math.min(100, p.xp / need * 100)) + '%';
@@ -812,7 +817,7 @@ button{font-family:inherit}
   function renderFlaco() {
     const bar = $('#flacoBar');
     const pend = [];
-    if (canAct()) {
+    if (canShop()) {
       const p = me();
       p.board.forEach((u, i) => u && SIM.flacoPending(u) && pend.push({ u, loc: { zone: 'board', idx: i } }));
       p.bench.forEach((u, i) => u && SIM.flacoPending(u) && pend.push({ u, loc: { zone: 'bench', idx: i } }));
@@ -859,7 +864,7 @@ button{font-family:inherit}
     const box = $('#ficha');
     if (!ficha) { box.style.display = 'none'; return; }
     const d = SIM.def(ficha.unitId), s = ficha.star, m = C.STAR_MULT[s - 1];
-    const mine = ficha.owner === localPlayerId && ficha.uid != null && canAct() && unitByUid(me(), ficha.uid);
+    const mine = ficha.owner === localPlayerId && ficha.uid != null && canTouch(ficha.uid) && unitByUid(me(), ficha.uid);
     $('#fBand').style.background = COST_COLOR[d.cost || 0];
     $('#fIn').innerHTML = `<h2>${esc(d.name)}</h2>
       <div class="meta">${d.cost ? `Coste ${d.cost}` : 'Público hostil'} · <span style="color:var(--gold)">${stars(s)}</span>${d.bands ? ` · ${esc(d.bands.join(', '))}` : ''}</div>
@@ -878,20 +883,20 @@ button{font-family:inherit}
     const sb = $('#fSell'); if (sb) sb.addEventListener('click', () => sellUid(ficha.uid));
   }
 
-  // ---------- entrada sobre el escenario: tocar / arrastrar / click derecho ----------
+  // ---------- entrada sobre el escenario: tocar / arrastrar ----------
   const cv = $('#c');
   const overPasses = (x, y) => { const r = $('#passes').getBoundingClientRect(); return x >= r.left - 8 && x <= r.right + 8 && y >= r.top - 8 && y <= r.bottom + 8; };
   function unitInfo(uid) { const p = viewed(), u = unitByUid(p, uid); return u ? { uid, owner: p.id, unitId: u.unitId, star: u.star, items: u.items || [] } : null; }
   cv.addEventListener('pointerdown', e => {
     if (e.button !== 0 || !state) return;
-    if (canAct()) {
+    if (canShop()) {
       const h = stage.pick(e.clientX, e.clientY, { unitsOnly: true });
-      if (h && h.kind === 'unit') { drag = { uid: h.uid, sx: e.clientX, sy: e.clientY, on: false }; cv.setPointerCapture(e.pointerId); }
+      if (h && h.kind === 'unit' && canTouch(h.uid)) { drag = { uid: h.uid, sx: e.clientX, sy: e.clientY, on: false }; cv.setPointerCapture(e.pointerId); }
     }
   });
   cv.addEventListener('pointermove', e => {
     if (!drag) { // para la tecla E: qué músico propio está bajo el puntero
-      if (canAct()) { const h = stage.pick(e.clientX, e.clientY, { unitsOnly: true }); hoverUid = h && h.kind === 'unit' ? h.uid : null; }
+      if (canShop()) { const h = stage.pick(e.clientX, e.clientY, { unitsOnly: true }); hoverUid = h && h.kind === 'unit' && canTouch(h.uid) ? h.uid : null; }
       return;
     }
     if (!drag.on && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 8) return;
@@ -922,24 +927,19 @@ button{font-family:inherit}
       if (u) openFicha({ unitId: u.unitId, star: u.star, cid: h.cid, items: u.items || [] });
       return;
     }
-    if (h.kind === 'unit' && selItem != null && canAct()) { equipTo(h.uid, selItem); return; }
+    if (h.kind === 'unit' && selItem != null && canShop()) { equipTo(h.uid, selItem); return; }
     if (h.kind === 'unit') {
-      if (selectedUid && selectedUid !== h.uid && canAct()) { const to = locOfUid(me(), h.uid); if (to) moveUnit(selectedUid, to); render(); return; }
+      if (selectedUid && selectedUid !== h.uid && canTouch(h.uid)) { const to = locOfUid(me(), h.uid); if (to) moveUnit(selectedUid, to); render(); return; }
       if (selectedUid === h.uid) { selectedUid = null; closeFicha(); render(); return; }
-      selectedUid = canAct() ? h.uid : null;
+      selectedUid = canTouch(h.uid) ? h.uid : null;
       openFicha(unitInfo(h.uid));
-      { const u = unitByUid(me(), h.uid), onBench = me().bench.some(x => x && x.uid === h.uid); previewUnit = u && onBench && canAct() ? { unitId: u.unitId, origins: u.flaco ? u.flaco.chosen : undefined, items: u.items } : null; }
+      { const u = unitByUid(me(), h.uid); previewUnit = u && onBench(h.uid) && canShop() ? { unitId: u.unitId, origins: u.flaco ? u.flaco.chosen : undefined, items: u.items } : null; }
       render();
       return;
     }
-    if (selectedUid && canAct()) { moveUnit(selectedUid, { zone: h.kind, idx: h.idx }); previewUnit = null; render(); }
+    if (selectedUid && canShop()) { moveUnit(selectedUid, { zone: h.kind, idx: h.idx }); previewUnit = null; render(); }
   }
-  cv.addEventListener('contextmenu', e => { // click derecho = vender
-    e.preventDefault();
-    if (!canAct()) return;
-    const h = stage.pick(e.clientX, e.clientY, { unitsOnly: true });
-    if (h && h.kind === 'unit') sellUid(h.uid);
-  });
+  cv.addEventListener('contextmenu', e => e.preventDefault()); // el click derecho no hace nada (vender: tecla E, la ficha o arrastrar a la tienda)
   $('#passes').addEventListener('click', e => {
     const b = e.target.closest('[data-buy]');
     if (b) act({ type: 'BUY', slot: +b.dataset.buy });
@@ -952,7 +952,7 @@ button{font-family:inherit}
   $('#players').addEventListener('click', e => { const r = e.target.closest('[data-pid]'); if (r && mode !== 'combat') setSpy(spyId === r.dataset.pid ? null : r.dataset.pid); });
   $('#spyBar').addEventListener('click', () => setSpy(null));
   $('#inv').addEventListener('pointerdown', e => {
-    const b = e.target.closest('[data-item]'); if (!b || !canAct()) return;
+    const b = e.target.closest('[data-item]'); if (!b || !canShop()) return;
     itemDrag = { idx: +b.dataset.item, sx: e.clientX, sy: e.clientY, on: false };
     b.setPointerCapture(e.pointerId);
   });
