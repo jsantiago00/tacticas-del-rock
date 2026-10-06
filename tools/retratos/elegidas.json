@@ -142,7 +142,19 @@
    "lado": 1
   },
   "gimenez": {
-   "estado": "planb"
+   "estado": "foto",
+   "fuente": "manual",
+   "archivo": "manuales/gimenez.png",
+   "url": "manuales/gimenez.png",
+   "pagina": "",
+   "autor": "Foto cedida por El Zar",
+   "credito": "Instagram de El Zar",
+   "licencia": "Uso autorizado por los artistas",
+   "tipo": "manual",
+   "licenciaUrl": "",
+   "cx": 0.42,
+   "cy": 0.46,
+   "lado": 0.56
   },
   "collins": {
    "estado": "foto",

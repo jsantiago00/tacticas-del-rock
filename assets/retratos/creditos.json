@@ -1,5 +1,5 @@
 {
- "generado": "2026-10-06T22:26:46.620Z",
+ "generado": "2026-10-06T22:29:02.769Z",
  "nota": "Fotos de Wikimedia Commons, recortadas y con filtro duotono. Los retratos hechos a partir de fotos CC BY-SA se distribuyen bajo la misma licencia CC BY-SA.",
  "retratos": {
   "calamaro": {
@@ -134,7 +134,16 @@
   },
   "gimenez": {
    "nombre": "Pablo Gimenez",
-   "tipo": "planb"
+   "tipo": "foto",
+   "archivo": "manuales/gimenez.png",
+   "original": "",
+   "autor": "Foto cedida por El Zar",
+   "credito": "Instagram de El Zar",
+   "licencia": "Uso autorizado por los artistas",
+   "licenciaUrl": "",
+   "compartirIgual": false,
+   "propia": true,
+   "cambios": "Recortada y con filtro duotono"
   },
   "collins": {
    "nombre": "Phil Collins",
