@@ -329,6 +329,10 @@ for (const seed of ['inv-1', 'inv-2']) {
     const lowHp = s.players[x].hp <= s.players[y].hp ? x : y;
     const n = SIM.carouselResolveTurn(s);
     check(n.carousel.offers[0].takenBy === car.pairs[0][0] && n.carousel.turn === 1, 'Firma de autógrafos: si el par quiere el mismo, se lo lleva el primero del turno (el de menos público)');
+    // caminando: si el otro del par ya agarró ese, no se puede; tampoco agarrar dos
+    const s4 = SIM.clone(s); s4.carousel.picks = {};
+    const a1 = SIM.applyAction(s4, x, { type: 'PICK', idx: 2 });
+    check(!!SIM.validateAction(a1, y, { type: 'PICK', idx: 2 }) && !!SIM.validateAction(a1, x, { type: 'PICK', idx: 3 }) && !SIM.validateAction(a1, y, { type: 'PICK', idx: 3 }), 'Firma de autógrafos: el primero que llega se lo lleva (y uno por persona)');
     const done = SIM.autoCarousel(n);
     check(done.phase === 'planning' && !done.carousel, 'Firma de autógrafos: al terminar los turnos vuelve la planificación');
     // el orden de los pares sigue la vida al empezar la firma
@@ -422,7 +426,9 @@ async function playOnline({ seed, crashAt = null, idleFrom = null, dropU3 = null
           const uid = T[i].uid;
           if (!T[i].connected || !st.carousel.pairs[st.carousel.turn].includes(uid)) continue;
           if (i === 0 && idleFrom != null && round >= idleFrom) continue;
-          const idx = st.carousel.offers.findIndex(o => !o.takenBy);
+          // cada uno del par va a uno distinto (el primero que llega se lo lleva; el segundo sería rechazado)
+          const free = st.carousel.offers.map((o, k) => k).filter(k => !st.carousel.offers[k].takenBy && !Object.values(st.carousel.picks).includes(k));
+          const idx = free[Math.min(free.length - 1, st.carousel.pairs[st.carousel.turn].indexOf(uid))];
           await T[i].push(`rooms/${code}/actions`, { uid, action: { type: 'PICK', idx } });
           await srv.settle();
         }

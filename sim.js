@@ -799,6 +799,9 @@ const SIM = (() => {
     if (s.phase !== 'carousel' || !car) return 'No hay firma de autógrafos';
     if (!car.pairs[car.turn].includes(pid)) return 'Todavía no es tu turno';
     if (!validIdx(a.idx, car.offers.length) || car.offers[a.idx].takenBy) return 'Ese ya se lo llevaron';
+    // se camina hasta el músico: el primero del turno que llega se lo lleva (orden de la cola del host)
+    if (car.picks[pid] != null) return 'Ya agarraste uno';
+    if (Object.values(car.picks).includes(a.idx)) return 'Te lo ganaron de mano';
     return null;
   }
   // Aplica una acción YA VALIDADA mutando `s`. Solo para uso interno.
@@ -1649,8 +1652,9 @@ const SIM = (() => {
   function botCarouselPick(s, pid) {
     const p = s.players[pid];
     let best = -1, bs = -Infinity;
+    const reserved = Object.values(s.carousel.picks);
     s.carousel.offers.forEach((o, i) => {
-      if (o.takenBy) return;
+      if (o.takenBy || reserved.includes(i)) return;
       const sc = (o.unitId ? countCopies(p, o.unitId) * 6 + DATA.UNITS[o.unitId].cost : 0) + (o.item === 'credencial' ? 1 : 2);
       if (sc > bs) { bs = sc; best = i; }
     });

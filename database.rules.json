@@ -10,41 +10,40 @@
       "$code": {
         ".read": "auth != null",
         ".write": "auth != null && !newData.exists() && (data.child('meta/hostId').val() === auth.uid || data.child('meta/lastActivity').val() < now - 86400000)",
-
         "meta": {
           ".write": "auth != null && (!data.exists() || data.child('hostId').val() === auth.uid)",
           "hostId": {
             ".write": "auth != null && data.parent().parent().child('members/' + auth.uid).exists() && newData.val() === auth.uid"
           }
         },
-
         "members": {
           "$uid": {
             ".write": "auth != null && (auth.uid === $uid || data.parent().parent().child('meta/hostId').val() === auth.uid)"
           }
         },
-
         "presence": {
           "$uid": {
             ".write": "auth != null && auth.uid === $uid"
           }
         },
-
         "ready": {
           "$uid": {
             ".write": "auth != null && (auth.uid === $uid || data.parent().parent().child('meta/hostId').val() === auth.uid)"
           }
         },
-
         "actions": {
           ".write": "auth != null && data.parent().child('meta/hostId').val() === auth.uid",
           "$key": {
             ".write": "auth != null && !data.exists() && newData.child('uid').val() === auth.uid"
           }
         },
-
         "state": {
           ".write": "auth != null && data.parent().child('meta/hostId').val() === auth.uid"
+        },
+        "avatars": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid"
+          }
         }
       }
     }

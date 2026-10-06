@@ -190,8 +190,20 @@ button{font-family:inherit}
 #legend .u.miss{background:#eceef2;color:#8a93a8;border-left-color:#b9bfcc}
 #legend .u.miss img{filter:grayscale(1) brightness(1.1) contrast(.8);opacity:.55}
 .trait.hov{background:#f3f5fa}
-#carousel{position:absolute;left:50%;top:calc(140px + env(safe-area-inset-top,0px));transform:translateX(-50%);width:min(760px,calc(100% - 500px));min-width:320px;background:#16233a;border:1px solid var(--gold);border-radius:14px;padding:12px 14px;display:none;z-index:4}
-#carousel h3{margin:0 0 4px;font-family:"Permanent Marker",cursive;font-weight:400;font-size:24px;color:var(--gold)}
+#carousel{position:absolute;left:50%;top:calc(76px + env(safe-area-inset-top,0px));transform:translateX(-50%);width:min(720px,calc(100% - 500px));min-width:320px;background:rgba(22,35,58,.85);border:1px solid var(--gold);border-radius:10px;padding:5px 12px;display:none;z-index:4;font-size:14px;text-align:center}
+#carousel h3{margin:0;font-family:"Permanent Marker",cursive;font-weight:400;font-size:19px;color:var(--gold);display:inline}
+#carousel .turn{display:inline;margin-left:8px}
+#carousel #offers{display:none} /* los músicos están en la ronda del escenario */
+#carousel .offer{flex-direction:row;align-items:center;gap:0;font-size:12px}
+#carousel .offer i{width:5px;height:auto;align-self:stretch}
+#carousel .offer div{padding:2px 6px} #carousel .offer b{font-size:14px;display:inline} #carousel .offer span{font-size:12px}
+#avBox .prev{display:flex;gap:14px;align-items:center}
+#avBox .prev img{width:150px;height:150px;border-radius:12px;background:#0b1224;flex:none}
+#avBox .opt{margin:8px 0 2px;font-size:13px;color:var(--muted)}
+#avBox .sw{display:flex;flex-wrap:wrap;gap:6px}
+#avBox .sw button{min-width:34px;height:34px;border-radius:8px;border:2px solid #2b3c5c;background:#24365a;color:var(--ink);font:inherit;font-size:13px;cursor:pointer;padding:0 8px}
+#avBox .sw button.c{width:34px;padding:0}
+#avBox .sw button.on{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold)}
 #carousel .turn{font-size:15px;color:var(--muted);margin-bottom:8px}
 #carousel .turn b{color:var(--ink)}
 #offers{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
@@ -203,7 +215,7 @@ button{font-family:inherit}
 .offer.taken{opacity:.35;cursor:default}
 .offer.mine{outline:3px solid var(--gold)}
 .offer:disabled{cursor:default}
-#pickOrder{font-size:13px;color:var(--muted);margin-top:8px}
+#pickOrder{font-size:12px;color:var(--muted);margin-top:2px}
 #pickOrder b{color:var(--gold)}
 #recipes .grid{display:grid;grid-template-columns:1fr;gap:4px;font-size:14px}
 #recipes .rc{display:flex;gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px solid #ffffff12}
@@ -368,6 +380,7 @@ button{font-family:inherit}
     <div id="roomBadge"></div>
     <button class="btn" id="btnNew">Nueva partida</button>
     <button class="btn" id="btnDet">🔬 Chequeo de determinismo</button>
+    <button class="btn" id="btnAvatar">🎨 Tu personaje</button>
     <button class="btn" id="btnCred">📸 Créditos</button>
     <button class="btn" id="qual2">Calidad: auto</button>
     <button class="btn" id="btnCam">🎥 Centrar la cámara</button>
@@ -389,7 +402,7 @@ button{font-family:inherit}
   <div id="legend" aria-live="polite"><button class="x" id="legendX" aria-label="Cerrar">×</button><div id="legendIn"></div></div>
   <aside id="players" aria-label="Público"></aside>
   <div id="flacoBar"></div>
-  <div id="carousel" aria-label="Firma de autógrafos"><h3>Firma de autógrafos</h3><div class="turn" id="carTurn"></div><div id="offers"></div><div id="pickOrder"></div></div>
+  <div id="carousel" aria-label="Firma de autógrafos"><h3>Firma de autógrafos</h3><span class="turn" id="carTurn"></span><div id="offers"></div><div id="pickOrder"></div></div>
   <div id="banner"></div>
   <div id="pop" role="status" aria-live="polite"></div>
   <div id="goldFx"></div>
@@ -429,6 +442,12 @@ button{font-family:inherit}
   <h2 id="endTitle"></h2>
   <table id="endTable"></table>
   <div class="row"><button class="btn" id="btnEndClose">Ver escenario</button><button class="btn gold" id="btnEndNew">Nueva partida</button></div>
+</div></div>
+<div id="avatarEd" class="overlay"><div class="box" id="avBox">
+  <h2>Tu personaje</h2>
+  <div class="prev"><img id="avPrev" alt=""><div class="help" style="margin:0">Te acompaña en el escenario (clic derecho en el piso para moverlo) y en la firma de autógrafos tenés que caminar con él hasta el músico que querés.</div></div>
+  <div id="avOpts"></div>
+  <div class="row"><button class="btn" id="avRandom">🎲 Al azar</button><button class="btn gold" id="avClose">Listo</button></div>
 </div></div>
 <div id="credits" class="overlay"><div class="box">
   <h2>Créditos</h2>
@@ -489,13 +508,13 @@ button{font-family:inherit}
 </div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="sim.js?v=8.2"></script>
-<script src="net.js?v=8.2"></script>
-<script src="looks.js?v=8.2"></script>
-<script src="stage3d.js?v=8.2"></script>
-<script src="sfx.js?v=8.2"></script>
-<script src="firebase-config.js?v=8.2"></script>
-<script src="firebase-transport.js?v=8.2"></script>
+<script src="sim.js?v=8.3"></script>
+<script src="net.js?v=8.3"></script>
+<script src="looks.js?v=8.3"></script>
+<script src="stage3d.js?v=8.3"></script>
+<script src="sfx.js?v=8.3"></script>
+<script src="firebase-config.js?v=8.3"></script>
+<script src="firebase-transport.js?v=8.3"></script>
 <script src="assets/retratos/creditos.js?v=1" onerror="window.RETRATOS = null"></script>
 <script>
 'use strict';
@@ -591,6 +610,7 @@ button{font-family:inherit}
 
   // ---------- sesión ----------
   function teardown() {
+    carAv = null; stage.stopCarousel(); stage.setAvatars([]);
     if (replay && stage) stage.stopCombat();
     if (session) session.destroy();
     session = client = null; state = null; replay = null; spyId = null; ficha = null; selectedUid = null; prevMine = null; previewUnit = null;
@@ -738,7 +758,7 @@ button{font-family:inherit}
     if (phase().name !== 'carousel' || !car || mode === 'combat') { box.style.display = 'none'; return; }
     box.style.display = 'block';
     const pair = car.pairs[car.turn] || [], myTurn = pair.includes(localPlayerId) && me().alive, picked = car.picks[localPlayerId] != null;
-    $('#carTurn').innerHTML = myTurn ? (picked ? 'Elegiste. Esperando al otro del turno…' : '<b>¡Te toca!</b> Elegí un músico (viene con su componente).') : `Turno de <b>${pair.map(id => esc(pname(id))).join(' y ')}</b>`;
+    $('#carTurn').innerHTML = myTurn ? (picked ? 'Elegiste. Esperando al otro del turno…' : '<b>¡Te toca!</b> Caminá hasta un músico: clic en el piso (o clic derecho).') : `Turno de <b>${pair.map(id => esc(pname(id))).join(' y ')}</b>`;
     $('#offers').innerHTML = car.offers.map((o, i) => {
       const d = o.unitId && DATA.UNITS[o.unitId], taken = !!o.takenBy, mine = car.picks[localPlayerId] === i;
       return `<button class="offer${taken ? ' taken' : ''}${mine ? ' mine' : ''}" data-offer="${i}" ${!myTurn || taken || picked ? 'disabled' : ''}>
@@ -751,6 +771,138 @@ button{font-family:inherit}
     selectedUid = null; closeFicha();
     render();
   }
+
+  // ---------- personajitos ----------
+  const AV = {
+    skin: ['#f0c9a5', '#e2b48c', '#c8946a', '#9a6a45'],
+    hair: [['short', 'Corto'], ['long', 'Largo'], ['medium', 'Melena'], ['afro', 'Afro'], ['messy', 'Despeinado'], ['rasta', 'Rastas'], ['pompadour', 'Jopo'], ['mop', 'Flequillo'], ['sidecut', 'Rapado'], ['bald', 'Pelado']],
+    hairCol: ['#151515', '#4a3020', '#7a5434', '#d8b56a', '#c9c9cc', '#8a3a1c', '#d13b8a', '#3a7bd5'],
+    shirt: ['#c0392b', '#151515', '#f1f1f1', '#2f6f3e', '#2a6fdb', '#6b3a8f', '#f0b429', '#e67e22'],
+    pants: ['#222226', '#2d3a55', '#6b6f78', '#c9b48a', '#7a1f1f'],
+    hat: [[null, 'Nada'], ['cap', 'Gorra'], ['fedora', 'Sombrero'], ['tophat', 'Galera'], ['beanie', 'Gorro'], ['headband', 'Vincha'], ['headphones', 'Auriculares'], ['crown', 'Corona']],
+    glasses: [[false, 'Sin anteojos'], [true, 'Oscuros'], ['round', 'Redondos']],
+    face: [['none', 'Lampiño'], ['beard', 'Barba'], ['mustache', 'Bigote']],
+  };
+  function randomLook(seed) {
+    let h = 2166136261; for (const ch of String(seed)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+    const pick = arr => { h = Math.imul(h ^ (h >>> 13), 0x5bd1e995) >>> 0; return arr[h % arr.length]; };
+    const v = x => (Array.isArray(x) ? x[0] : x);
+    const look = { skin: pick(AV.skin), hair: v(pick(AV.hair)), hairCol: pick(AV.hairCol), shirt: pick(AV.shirt), pants: pick(AV.pants), hat: v(pick(AV.hat)), hatCol: '#1d1d1d', glasses: v(pick(AV.glasses)) };
+    const face = v(pick(AV.face)); if (face === 'beard') look.beard = true; if (face === 'mustache') look.mustache = true;
+    return look;
+  }
+  const myLook = () => prefs.avatar || (prefs.avatar = randomLook(prefs.name + Math.random()));
+  const AV_HOME = { x: -7.3, z: 7.6 };
+  let myAv = { ...AV_HOME }, carAv = null; // carAv: firma en curso { key, walkers: Map(pid -> idx), done: Set, goto }
+  const clampAv = (x, z) => ({ x: Math.max(-8, Math.min(8, x)), z: Math.max(-6.6, Math.min(10, z)) });
+  function lookOf(pid) {
+    if (pid === localPlayerId) return myLook();
+    const a = client && client.room && client.room.avatars && client.room.avatars[pid];
+    return (a && a.look) || randomLook(pid);
+  }
+  function sendMyAvatar() {
+    if (!client || !T || !client.code) return;
+    T.set(`rooms/${client.code}/avatars/${localPlayerId}`, { look: myLook(), x: +myAv.x.toFixed(2), z: +myAv.z.toFixed(2), car: carAv ? carAv.key : null }).catch(() => {});
+  }
+  function moveMine(x, z) {
+    const p = clampAv(x, z);
+    const car = carAv && state && state.carousel;
+    if (car) { // en la firma: hasta que no es tu turno, no se puede entrar a la ronda
+      const pair = car.pairs[car.turn] || [], open = pair.includes(localPlayerId) && car.picks[localPlayerId] == null && me().alive;
+      const r = Math.hypot(p.x, p.z);
+      if (!open && r < 4.4) { const k = 4.4 / Math.max(0.01, r); p.x *= k; p.z *= k; if (!carAv.warned) { toast('Esperá tu turno para entrar a la ronda'); carAv.warned = true; } }
+      carAv.goto = null;
+    }
+    myAv = p; stage.moveAvatar(localPlayerId, p.x, p.z); sendMyAvatar();
+  }
+  // Quiénes se ven: en la firma, todos los vivos alrededor de la ronda; si no, solo el tuyo.
+  function syncAvatars() {
+    if (!state || !me()) { stage.setAvatars([]); return; }
+    const inCar = phase().name === 'carousel' && state.carousel && mode !== 'combat';
+    if (inCar && (!carAv || carAv.key !== state.roundsPlayed)) startCarouselView();
+    if (!inCar && carAv) { carAv = null; stage.stopCarousel(); myAv = { ...AV_HOME }; stage.setAvatars([{ id: localPlayerId, look: myLook(), name: me().name, mine: true, ...myAv, snap: true }]); }
+    const room = client && client.room, list = [];
+    for (const pid of state.order) {
+      const p = state.players[pid];
+      if (pid !== localPlayerId && (!inCar || !p.alive)) continue;
+      const a = { id: pid, look: lookOf(pid), name: p.name, mine: pid === localPlayerId };
+      if (pid === localPlayerId) Object.assign(a, myAv);
+      else if (inCar && room && room.avatars && room.avatars[pid] && room.avatars[pid].car === carAv.key && !carAv.walkers.has(pid)) Object.assign(a, { x: room.avatars[pid].x, z: room.avatars[pid].z });
+      list.push(a);
+    }
+    stage.setAvatars(list);
+  }
+  function startCarouselView() {
+    const car = state.carousel;
+    carAv = { key: state.roundsPlayed, walkers: new Map(), done: new Set(car.offers.map((o, i) => (o.takenBy ? i : -1)).filter(i => i >= 0)), goto: null };
+    stage.startCarousel(car.offers.map(o => ({ unitId: o.unitId, itemIcon: itemIcon(o.item), taken: !!o.takenBy })));
+    // todos arrancan en un círculo alrededor de la ronda
+    const alive = state.order.filter(id => state.players[id].alive), list = [];
+    alive.forEach((pid, k) => {
+      const a = Math.PI / 2 + (k / alive.length) * Math.PI * 2, x = Math.cos(a) * 5.6, z = Math.sin(a) * 5.6;
+      if (pid === localPlayerId) myAv = { x, z };
+      list.push({ id: pid, look: lookOf(pid), name: state.players[pid].name, mine: pid === localPlayerId, x, z, snap: true });
+    });
+    stage.setAvatars(list);
+    sendMyAvatar();
+  }
+  // Cada cuadro de la firma: los que eligieron caminan hasta su músico; el tuyo agarra al que toque.
+  function carouselFrame() {
+    if (!carAv || !state || !state.carousel || !stage.carouselOn) return;
+    const car = state.carousel;
+    // quién va hacia qué músico (elegido por el host o ya resuelto)
+    car.offers.forEach((o, i) => { if (o.takenBy && !carAv.done.has(i) && !carAv.walkers.has(o.takenBy)) carAv.walkers.set(o.takenBy, i); });
+    for (const [pid, i] of Object.entries(car.picks)) if (pid !== localPlayerId && !carAv.done.has(i) && !carAv.walkers.has(pid)) carAv.walkers.set(pid, i);
+    for (const [pid, i] of carAv.walkers) {
+      const rp = stage.ringPos(i), ap = stage.avatarPos(pid);
+      if (!rp || !ap) continue;
+      stage.moveAvatar(pid, rp.x, rp.z);
+      if (Math.hypot(ap.x - rp.x, ap.z - rp.z) < 0.5) {
+        stage.carouselTake(i); carAv.done.add(i); carAv.walkers.delete(pid);
+        if (pid === localPlayerId) { myAv = { x: ap.x, z: ap.z }; sendMyAvatar(); }
+        stage.moveAvatar(pid, ap.x * 1.9, ap.z * 1.9); // sale de la ronda con su músico
+        if (pid === localPlayerId) myAv = { x: ap.x * 1.9, z: ap.z * 1.9 };
+      }
+    }
+    // el tuyo: si es tu turno y tocás un músico libre, es tuyo
+    const pair = car.pairs[car.turn] || [];
+    if (pair.includes(localPlayerId) && car.picks[localPlayerId] == null && me().alive && !carAv.walkers.has(localPlayerId)) {
+      if (carAv.goto != null) { const g = stage.ringPos(carAv.goto); if (g) { myAv = { x: g.x, z: g.z }; stage.moveAvatar(localPlayerId, g.x, g.z); } }
+      const ap = stage.avatarPos(localPlayerId);
+      if (ap) for (let i = 0; i < car.offers.length; i++) {
+        if (car.offers[i].takenBy || carAv.done.has(i) || Object.values(car.picks).includes(i)) continue;
+        const rp = stage.ringPos(i);
+        if (rp && Math.hypot(ap.x - rp.x, ap.z - rp.z) < 0.8) {
+          const err = client.send({ type: 'PICK', idx: i });
+          if (err) { if (carAv.lastErr !== err) toast(err, 2000, true); carAv.lastErr = err; }
+          else { SFX.play('pick'); carAv.walkers.set(localPlayerId, i); carAv.goto = null; nudge(); }
+          break;
+        }
+      }
+    }
+  }
+  // editor del personaje
+  function renderAvatarEd() {
+    const look = myLook(), face = look.beard ? 'beard' : look.mustache ? 'mustache' : 'none';
+    const row = (key, label, opts, cur, color) => `<div class="opt">${label}</div><div class="sw">${opts.map(o => { const v = Array.isArray(o) ? o[0] : o, t = Array.isArray(o) ? o[1] : '';
+      return `<button class="${color ? 'c' : ''}${v === cur ? ' on' : ''}" data-k="${key}" data-v='${JSON.stringify(v)}' ${color ? `style="background:${v}" aria-label="${v}"` : ''}>${color ? '' : esc(t)}</button>`; }).join('')}</div>`;
+    $('#avOpts').innerHTML = row('skin', 'Piel', AV.skin, look.skin, true) + row('hair', 'Pelo', AV.hair, look.hair) + row('hairCol', 'Color de pelo', AV.hairCol, look.hairCol, true)
+      + row('shirt', 'Remera', AV.shirt, look.shirt, true) + row('pants', 'Pantalón', AV.pants, look.pants, true) + row('hat', 'En la cabeza', AV.hat, look.hat || null)
+      + row('glasses', 'Anteojos', AV.glasses, look.glasses || false) + row('face', 'Cara', AV.face, face);
+    try { $('#avPrev').src = stage.portrait(look, 300, '#2c3f63'); } catch (e) {}
+  }
+  function lookChanged() { savePrefs(); renderAvatarEd(); sendMyAvatar(); syncAvatars(); }
+  $('#btnAvatar').addEventListener('click', () => { $('#menu').classList.remove('on'); renderAvatarEd(); $('#avatarEd').style.display = 'grid'; });
+  $('#avClose').addEventListener('click', () => ($('#avatarEd').style.display = 'none'));
+  $('#avRandom').addEventListener('click', () => { prefs.avatar = randomLook(Math.random()); lookChanged(); });
+  $('#avOpts').addEventListener('click', e => {
+    const b = e.target.closest('[data-k]'); if (!b) return;
+    const look = { ...myLook() }, k = b.dataset.k, v = JSON.parse(b.dataset.v);
+    if (k === 'face') { delete look.beard; delete look.mustache; if (v !== 'none') look[v] = true; }
+    else if (v == null || v === false) delete look[k]; else look[k] = v;
+    if (k === 'hat') look.hatCol = '#1d1d1d';
+    prefs.avatar = look; lookChanged();
+  });
 
   // ---------- render ----------
   function render() {
@@ -765,6 +917,7 @@ button{font-family:inherit}
       const list = arr => arr.map((u, idx) => u && { uid: u.uid, unitId: u.unitId, star: u.star, idx, items: u.items || [] }).filter(Boolean);
       stage.setPlanning({ board: list(v.board), bench: list(v.bench), selected: spyId ? null : selectedUid, spy: !!spyId });
     }
+    syncAvatars();
   }
   // ---------- feedback: comparar con lo anterior y festejar lo que cambió ----------
   function tierText(T, lvl) {
@@ -1122,7 +1275,7 @@ button{font-family:inherit}
       drag = null; pan = null; pinch = pinchInfo(); gesture = true; return;
     }
     if (touches.size > 2) return;
-    if (e.button === 1 || e.button === 2) { pan = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, on: true }; cv.setPointerCapture(e.pointerId); return; }
+    if (e.button === 1 || e.button === 2) { pan = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, on: false, btn: e.button }; cv.setPointerCapture(e.pointerId); return; }
     if (e.button !== 0 || !state) return;
     if (canShop()) {
       const h = stage.pick(e.clientX, e.clientY, { unitsOnly: true });
@@ -1162,7 +1315,11 @@ button{font-family:inherit}
     endTouch(e);
     if (gesture) { if (!touches.size) gesture = false; pan = null; drag = null; return; } // fin de un pellizco: no es un toque
     const pn = pan; pan = null;
-    if (pn) { if (!pn.on && e.button === 0) tap(e.clientX, e.clientY); return; }
+    if (pn) {
+      if (!pn.on && e.button === 0) tap(e.clientX, e.clientY);
+      else if (!pn.on && pn.btn === 2 && state && mode !== 'combat') { const g = stage.groundAt(e.clientX, e.clientY); if (g) moveMine(g.x, g.z); } // clic derecho: caminar
+      return;
+    }
     const d = drag; drag = null;
     if (d && d.on) {
       stage.dragEnd(); stage.highlight(null); $('#passes').classList.remove('sell');
@@ -1182,6 +1339,7 @@ button{font-family:inherit}
   // Tocar: elegir un músico (abre su ficha); con uno elegido, tocar otro lugar lo mueve (o intercambia).
   function tap(x, y) {
     if (!state) return;
+    if (stage.carouselOn) { const g = stage.groundAt(x, y); if (g) moveMine(g.x, g.z); return; } // en la firma, tocar el piso es caminar
     const h = stage.pick(x, y);
     if (!h || (!selectedUid && (h.kind === 'board' || h.kind === 'bench'))) { closeAll(); return; } // clic en el mapa: cerrar lo abierto
     if (h.kind === 'cunit') {
@@ -1259,6 +1417,7 @@ button{font-family:inherit}
   });
   $('#offers').addEventListener('click', e => {
     const b = e.target.closest('[data-offer]'); if (!b || b.disabled || !client) return;
+    if (carAv && stage.carouselOn) { carAv.goto = +b.dataset.offer; return; } // camina hasta ese y lo agarra al llegar
     const err = client.send({ type: 'PICK', idx: +b.dataset.offer });
     if (err) { toast(err, 2600, true); SFX.play('error'); } else { SFX.play('pick'); nudge(); }
   });
@@ -1320,6 +1479,7 @@ button{font-family:inherit}
   // Cada cuadro del escenario: avanzar la re-simulación a ticks fijos (si el dibujo va lento, se saltean cuadros, no ticks).
   function onFrame(now) {
     tickTimer();
+    carouselFrame();
     const rp = replay;
     if (!rp || rp.finished) return;
     const dt = Math.min(0.1, (now - rp.last) / 1000); rp.last = now;

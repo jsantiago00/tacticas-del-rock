@@ -492,6 +492,7 @@ const STAGE3D = (() => {
       for (const k of planKeys) if (!keep.has(k)) removeDoll(k);
       planKeys = keep;
       selKey = selected != null && keep.has('u' + selected) ? 'u' + selected : null; spyView = !!spy;
+      if (ring) for (const k of keep) { const d = dolls.get(k); if (d) d.grp.visible = false; }
       if (hoverKey && !keep.has(hoverKey)) hoverKey = null;
       paintZones();
     }
@@ -615,6 +616,104 @@ const STAGE3D = (() => {
       paintZones();
     }
 
+    // ---------- personajitos (cada jugador tiene uno, customizable) ----------
+    const avatars = new Map(); // id -> { grp, f, L, lk, target, phase, label }
+    const AV_SCALE = 0.62, AV_SPEED = 4.2;
+    const avRingMine = new T.MeshBasicMaterial({ color: 0xf2a541 }), avRingOther = new T.MeshBasicMaterial({ color: 0x7fb3ff });
+    const avatarL = look => ({ hair: 'short', hairCol: '#4a3020', skin: '#e2b48c', shirt: '#c0392b', pants: '#222226', instCol: '#2b2b30', ...(look || {}), inst: 'none' });
+    function nameMat(text, mine) {
+      return new T.SpriteMaterial({ depthWrite: false, depthTest: false, map: textTex('nm' + (mine ? 1 : 0) + text, (g, w, h) => {
+        g.font = 'bold 30px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillStyle = 'rgba(9,14,28,.75)'; const tw = Math.min(w - 4, g.measureText(text).width + 24); g.fillRect((w - tw) / 2, 4, tw, h - 8);
+        g.fillStyle = mine ? '#f2a541' : '#e8ecf4'; g.fillText(text, w / 2, h / 2 + 1);
+      }, 256, 48) });
+    }
+    // list: [{ id, look, name, x, z, mine, hidden }]: x/z es a dónde camina
+    function setAvatars(list) {
+      const keep = new Set();
+      for (const a of list) {
+        keep.add(a.id);
+        let av = avatars.get(a.id);
+        const lk = JSON.stringify(a.look || {}) + '|' + a.name + '|' + !!a.mine;
+        if (av && av.lk !== lk) { scene.remove(av.grp); avatars.delete(a.id); av = null; }
+        if (!av) {
+          const L = avatarL(a.look), f = buildFigure(L);
+          const grp = new T.Group(); f.root.scale.setScalar(AV_SCALE); grp.add(f.root);
+          const ring = new T.Mesh(G.selRing, a.mine ? avRingMine : avRingOther); ring.rotation.x = Math.PI / 2; ring.position.y = 0.06; ring.scale.setScalar(0.55); grp.add(ring);
+          const label = new T.Sprite(nameMat(a.name || '', a.mine)); label.scale.set(1.9, 0.36, 1); label.position.y = 1.75; label.renderOrder = 60; grp.add(label);
+          grp.position.set(a.x || 0, 0, a.z || 0);
+          scene.add(grp);
+          av = { grp, f, L, lk, target: new T.Vector3(a.x || 0, 0, a.z || 0), phase: Math.random() * 6 };
+          avatars.set(a.id, av);
+        }
+        if (a.x != null && a.z != null) av.target.set(a.x, 0, a.z);
+        if (a.snap) av.grp.position.copy(av.target);
+        av.grp.visible = !a.hidden;
+      }
+      for (const [id, av] of avatars) if (!keep.has(id)) { scene.remove(av.grp); avatars.delete(id); }
+    }
+    function avatarPos(id) { const av = avatars.get(id); return av ? { x: av.grp.position.x, z: av.grp.position.z, walking: av.grp.position.distanceTo(av.target) > 0.05 } : null; }
+    function moveAvatar(id, x, z) { const av = avatars.get(id); if (av) av.target.set(x, 0, z); }
+    function stepAvatars(dt, t) {
+      for (const av of avatars.values()) {
+        if (!av.grp.visible) continue;
+        V.subVectors(av.target, av.grp.position); V.y = 0;
+        const dist = V.length(), walking = dist > 0.04;
+        if (walking) {
+          av.grp.position.addScaledVector(V, Math.min(1, AV_SPEED * dt / dist));
+          const want = Math.atan2(V.x, V.z); let dA = want - av.f.root.rotation.y; dA = Math.atan2(Math.sin(dA), Math.cos(dA));
+          av.f.root.rotation.y += dA * Math.min(1, dt * 10);
+        } else {
+          const want = Math.atan2(camera.position.x - av.grp.position.x, camera.position.z - av.grp.position.z);
+          let dA = want - av.f.root.rotation.y; dA = Math.atan2(Math.sin(dA), Math.cos(dA)); av.f.root.rotation.y += dA * Math.min(1, dt * 3);
+        }
+        pose(av.f, av.L, t + av.phase, -1, -1);
+        av.f.body.position.y = walking ? Math.abs(Math.sin(t * 13 + av.phase)) * 0.22 : 0;
+        if (walking) { const sw = Math.sin(t * 13 + av.phase) * 0.6; av.f.legs[0].rotation.x = sw; av.f.legs[1].rotation.x = -sw; av.f.armR.rotation.x = -sw * 0.7; av.f.armL.rotation.x = sw * 0.7; }
+      }
+    }
+
+    // ---------- firma de autógrafos: ronda de músicos girando en el centro ----------
+    let ring = null; // { list: [{ grp, f, L, icon, taken, angle0 }], t0 }
+    const RING_R = 2.7, RING_SPEED = 0.28;
+    function startCarousel(offers) {
+      stopCarousel();
+      ring = { list: [], t0: elapsed };
+      offers.forEach((o, i) => {
+        const L = o.unitId ? LOOKS.of(o.unitId, SIM.def(o.unitId)) : avatarL({ hair: 'buzz', shirt: '#555' });
+        const f = buildFigure(L), grp = new T.Group(); grp.add(f.root); f.root.scale.setScalar(0.85);
+        const base = new T.Mesh(G.base, baseMat(o.unitId ? DATA.UNITS[o.unitId].cost : 0)); base.position.y = 0.06; grp.add(base);
+        const icon = new T.Sprite(o.itemIcon ? emojiMat(o.itemIcon) : iconMat.stun); icon.scale.set(0.7, 0.7, 1); icon.position.y = 2.25; grp.add(icon);
+        grp.visible = !o.taken;
+        scene.add(grp);
+        ring.list.push({ grp, f, L, taken: !!o.taken, angle0: (i / offers.length) * Math.PI * 2 });
+      });
+      for (const k of planKeys) { const d = dolls.get(k); if (d) d.grp.visible = false; }
+    }
+    function ringPos(i) {
+      if (!ring || !ring.list[i]) return null;
+      const a = ring.list[i].angle0 + (elapsed - ring.t0) * RING_SPEED;
+      return { x: Math.cos(a) * RING_R, z: Math.sin(a) * RING_R };
+    }
+    function carouselTake(i) { const it = ring && ring.list[i]; if (it && !it.taken) { it.taken = true; it.grp.visible = false; burst(it.grp.position, 0xf0b429, 1.6, 0.6); } }
+    function stopCarousel() {
+      if (!ring) return;
+      for (const it of ring.list) scene.remove(it.grp);
+      ring = null;
+      for (const k of planKeys) { const d = dolls.get(k); if (d) d.grp.visible = true; }
+    }
+    function stepCarousel(t) {
+      if (!ring) return;
+      ring.list.forEach((it, i) => {
+        if (it.taken) return;
+        const p = ringPos(i); it.grp.position.set(p.x, 0, p.z);
+        it.f.root.rotation.y = Math.atan2(p.x, p.z); // mirando hacia afuera, a los que vienen
+        pose(it.f, it.L, t + i, -1, -1);
+      });
+    }
+    // punto del piso bajo el puntero
+    function groundAt(x, y) { setRay(x, y); return ray.ray.intersectPlane(ground, V) ? { x: V.x, z: V.z } : null; }
+
     // ---------- retrato del muñeco (plan B de tools/retratos: músicos sin foto libre) ----------
     let pr = null;
     function portrait(unitId, size = 512, bg = '#5a6070') {
@@ -628,10 +727,11 @@ const STAGE3D = (() => {
         pr = { cv, r, sc, cam: new T.PerspectiveCamera(26, 1, 0.1, 50) };
       }
       pr.r.setSize(size, size, false); pr.sc.background = new T.Color(bg);
-      const f = buildFigure(LOOKS.of(unitId, SIM.def(unitId)));
+      const f = buildFigure(typeof unitId === 'object' ? avatarL(unitId) : LOOKS.of(unitId, SIM.def(unitId)));
       pr.sc.add(f.root); f.root.updateMatrixWorld(true);
       const h = f.head.getWorldPosition(new T.Vector3());
-      pr.cam.position.set(h.x + 0.35, h.y + 0.2, h.z + 2.9); pr.cam.lookAt(h.x, h.y - 0.02, h.z);
+      const far = typeof unitId === "object" ? 3.6 : 2.9; // el personajito: un poco más lejos (sombreros altos)
+      pr.cam.position.set(h.x + 0.35, h.y + 0.25, h.z + far); pr.cam.lookAt(h.x, h.y + (typeof unitId === "object" ? 0.1 : -0.02), h.z);
       pr.r.render(pr.sc, pr.cam);
       const url = pr.cv.toDataURL('image/png');
       pr.sc.remove(f.root);
@@ -717,6 +817,7 @@ const STAGE3D = (() => {
       spots.forEach(aimCone);
       if (dust.visible) { const p = dust.geometry.attributes.position; for (let i = 0; i < dustN; i++) { let y = p.getY(i) + dt * 0.15; if (y > 10) y = 0; p.setY(i, y); } p.needsUpdate = true; }
 
+      stepAvatars(dt, t); stepCarousel(t);
       for (const d of dolls.values()) {
         if (!d.grp.visible) continue;
         if (d.focus.visible) d.focus.scale.setScalar(1.15 + 0.12 * Math.sin(t * 6)); // resaltado por sinergia: late
@@ -809,6 +910,8 @@ const STAGE3D = (() => {
     return {
       setPlanning, startCombat, combatEvents, setAlpha, celebrate, stopCombat, traitPulse,
       pick, dropTarget, dragTo, dragEnd, highlight, setQuality, focusUnits, panBy, zoomBy, resetView, portrait, hoverUnit,
+      setAvatars, avatarPos, moveAvatar, startCarousel, stopCarousel, ringPos, carouselTake, groundAt,
+      get carouselOn() { return !!ring; },
       get viewChanged() { return view.zoom !== 1 || view.x !== 0 || view.z !== 0; },
       get fps() { return lastFps; }, get quality() { return qLevel; },
       get gpu() { try { const gl = renderer.getContext(), ext = gl.getExtension('WEBGL_debug_renderer_info'); return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER); } catch (e) { return ''; } },

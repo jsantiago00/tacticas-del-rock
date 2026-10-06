@@ -37,7 +37,8 @@ const NET = (() => {
     ? 'Esta sala usa una versión más nueva del juego: recargá la página (Ctrl+F5).'
     : 'Esta sala es de una versión vieja del juego: creá una nueva.';
   const CFG = {
-    COMBAT_EXTRA_MS: 2500,        // margen después de la pelea más larga (cartel de resultado)
+    COMBAT_EXTRA_MS: 2500,
+    CAROUSEL_BOT_MS: 2200,        // en la firma, lo que "tarda en caminar" un bot hasta su músico        // margen después de la pelea más larga (cartel de resultado)
     MIGRATE_AFTER_MS: 10000,      // host desconectado más de esto -> se migra
     TAKEOVER_AFTER_ROUNDS: 2,     // rondas desconectado antes de que lo tome un bot (si está activado)
     ROOM_TTL_MS: 24 * 3600 * 1000,
@@ -194,10 +195,11 @@ const NET = (() => {
       return { name: 'carousel', endsAt: secs ? T.now() + secs * 1000 : 0, key: `${s.roundsPlayed}|carousel|${s.carousel.turn}` };
     }
     async function enterPlanningOrCarousel(s, extra = {}) {
-      if (s.phase === 'carousel') { s = S.carouselBotPicks(s); await commit(s, { 'meta/phase': carouselPhase(s), ...extra }); }
+      if (s.phase === 'carousel') await commit(s, { 'meta/phase': carouselPhase(s), ...extra }); // los bots eligen después (caminan)
       else { s = S.runAllBots(s); await commit(s, { 'meta/phase': { name: 'planning', endsAt: planningEnd(), key: phaseKey(s, 'planning') }, ...extra }); } // los bots compran al inicio de la planificación
     }
 
+    let carTurn = { key: null, at: 0 };
     // Un paso: consumir la cola y avanzar de fase si corresponde. Idempotente.
     async function step() {
       if (!active || !state || !meta || meta.status !== 'playing') return;
@@ -218,10 +220,13 @@ const NET = (() => {
         await processQueue(room);
         const car = state.carousel;
         if (!car) { await enterPlanningOrCarousel(state); return; }
-        // esperan los humanos conectados del par; los desconectados reciben uno al azar
-        const r2 = getRoom() || room;
-        const humans = car.pairs[car.turn].filter(pid => state.players[pid] && !state.players[pid].isBot && r2.presence && r2.presence[pid] && r2.presence[pid].online);
-        if (humans.every(pid => car.picks[pid] != null) || (ph.endsAt && T.now() >= ph.endsAt)) await enterPlanningOrCarousel(S.carouselResolveTurn(state));
+        // Los bots del par agarran después de "caminar" un rato; esperan los humanos conectados del par;
+        // los desconectados reciben uno al azar al terminar el turno.
+        if (carTurn.key !== ph.key) carTurn = { key: ph.key, at: T.now() };
+        const r2 = getRoom() || room, pair = car.pairs[car.turn];
+        if (T.now() - carTurn.at >= CFG.CAROUSEL_BOT_MS && pair.some(pid => state.players[pid].isBot && car.picks[pid] == null)) { await commit(S.carouselBotPicks(state)); return; }
+        const waiting = pair.filter(pid => state.players[pid] && (state.players[pid].isBot || (r2.presence && r2.presence[pid] && r2.presence[pid].online)));
+        if (waiting.every(pid => state.carousel.picks[pid] != null) || (ph.endsAt && T.now() >= ph.endsAt)) await enterPlanningOrCarousel(S.carouselResolveTurn(state));
       } else if (ph.name === 'combat') {
         await processQueue(room); // descarta lo que llegue fuera de fase
         if (T.now() >= ph.endsAt || allReady(room)) await startPlanning(room);
