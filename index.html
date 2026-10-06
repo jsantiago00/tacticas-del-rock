@@ -135,7 +135,18 @@ button{font-family:inherit}
 #legend .d{margin:0 0 6px}
 #legend .lv{margin:2px 0;color:#6b7590} #legend .lv.on{color:#1b2233;font-weight:700} #legend .lv.on::before{content:"▶ ";color:var(--lc,#b8862b)}
 #legend .ul{margin-top:6px} #legend .ul b{font-size:12px;color:#4b5672;display:block;text-transform:uppercase;letter-spacing:.5px}
-#legend .u{display:inline-block;margin:2px 3px 0 0;padding:1px 6px;border-radius:5px;font-size:13px;border-left:4px solid var(--cc)}
+#legend .u{display:inline-flex;align-items:center;gap:4px;margin:3px 3px 0 0;padding:2px 6px 2px 2px;border-radius:5px;font-size:13px;border-left:4px solid var(--cc)}
+#legend .u img{width:22px;height:22px;border-radius:4px;object-fit:cover;flex:none}
+#legend.pin{pointer-events:auto;box-shadow:0 6px 0 rgba(0,0,0,.3),0 0 0 2px var(--lc,#b8862b)}
+#legend .x{position:absolute;top:6px;right:6px;width:26px;height:26px;border:0;border-radius:6px;background:#eef1f7;color:#1b2233;font-size:16px;cursor:pointer;display:none}
+#legend.pin .x{display:block}
+#legend .pinTip{font-size:11px;color:#8a93a8;margin-top:6px}
+#legend .rc{display:flex;gap:8px;align-items:center;padding:5px 0;border-top:1px solid #e4e7ee}
+#legend .rc .ic{font-size:18px;min-width:58px;white-space:nowrap}
+#legend.pin{max-height:calc(100% - 110px);overflow:auto}
+#legend .rc .have{font-size:11px;font-weight:700;color:#2f8a46}
+#legend .rc i{font-style:normal;color:#4b5672;font-size:12px;display:block}
+.trait.pinned{background:#fff3c4}
 #legend .u.have{background:#e7f5e9;font-weight:700} #legend .u.bench{background:#eef1f7} #legend .u.miss{background:#f3f3f3;color:#6b7590}
 .trait.hov{background:#f3f5fa}
 #carousel{position:absolute;left:50%;top:calc(140px + env(safe-area-inset-top,0px));transform:translateX(-50%);width:min(760px,calc(100% - 500px));min-width:320px;background:#16233a;border:1px solid var(--gold);border-radius:14px;padding:12px 14px;display:none;z-index:4}
@@ -344,7 +355,7 @@ button{font-family:inherit}
     <div id="traits"></div>
     <div id="itemsPane"><div class="icount" id="icount"></div><div id="inv"></div><button class="btn" id="recipesBtn">Recetas</button></div>
   </aside>
-  <div id="legend" aria-live="polite"></div>
+  <div id="legend" aria-live="polite"><button class="x" id="legendX" aria-label="Cerrar">×</button><div id="legendIn"></div></div>
   <aside id="players" aria-label="Público"></aside>
   <div id="flacoBar"></div>
   <div id="carousel" aria-label="Firma de autógrafos"><h3>Firma de autógrafos</h3><div class="turn" id="carTurn"></div><div id="offers"></div><div id="pickOrder"></div></div>
@@ -826,15 +837,24 @@ button{font-family:inherit}
       if (T.solo) { const b = (r.phantom && p2 ? p2 : r).bonus; sub = b ? `+${b}% c/u · menos es más` : 'demasiados'; dot += ' solo'; }
       if (r.phantom && !T.solo && T.kind !== 'unica') sub = T.breakpoints.join(' / ');
       const cls = (on ? '' : ' off') + (now - (justUp[k] || 0) < 1600 ? ' pop' : '') + (now - (justDown[k] || 0) < 600 ? ' down' : '') + (plus ? ' prev' : '');
-      return `<div class="trait${cls}${hoverTrait === k ? ' hov' : ''}" data-t="${k}"><span class="${dot}">${T.kind === 'unica' ? '★' : r.count}</span><div><div class="tn">${T.icon} ${esc(T.name)}${plus ? '<span class="plus">+1</span>' : ''}${act ? '<span class="act">¡ACTIVA!</span>' : ''}</div><div class="tt">${sub}</div></div></div>`;
+      return `<div class="trait${cls}${hoverTrait === k ? ' hov' : ''}${pinTrait === k ? ' pinned' : ''}" data-t="${k}"><span class="${dot}">${T.kind === 'unica' ? '★' : r.count}</span><div><div class="tn">${T.icon} ${esc(T.name)}${plus ? '<span class="plus">+1</span>' : ''}${act ? '<span class="act">¡ACTIVA!</span>' : ''}</div><div class="tt">${sub}</div></div></div>`;
     }).join('') || '<div class="tt">Subí músicos al escenario.</div>';
     renderLegend();
   }
   // ---------- leyenda de la sinergia: el detalle y quiénes la tienen / quiénes faltan ----------
-  let hoverTrait = null;
+  let hoverTrait = null, pinTrait = null, itemCard = null; // itemCard: { idx } del objeto (clic derecho en la lista)
   function unitTraits(u) { return SIM.traitsOfEntry({ unitId: u.unitId, origins: u.flaco ? u.flaco.chosen : undefined, items: u.items }); }
+  function placeLegend(row) {
+    const box = $('#legend'), r = row.getBoundingClientRect(), wr = $('#wrap').getBoundingClientRect(), sl = $('#setlist').getBoundingClientRect();
+    box.style.display = 'block';
+    box.style.left = (sl.right - wr.left + 10) + 'px';
+    box.style.top = Math.max(8, Math.min(r.top - wr.top - 10, wr.height - box.offsetHeight - 8)) + 'px';
+  }
   function renderLegend() {
-    const box = $('#legend'), t = hoverTrait, row = t && $('#traits').querySelector(`[data-t="${t}"]`);
+    const box = $('#legend');
+    if (itemCard && $('#setlist').classList.contains('items') && state) { stage.focusUnits([]); renderItemCard(); return; }
+    const t = hoverTrait || pinTrait, row = t && $('#traits').querySelector(`[data-t="${t}"]`);
+    box.classList.toggle('pin', !!pinTrait && t === pinTrait);
     if (!t || !row || $('#setlist').classList.contains('items') || !state) { box.style.display = 'none'; stage.focusUnits([]); return; }
     const T = DATA.TRAITS[t], v = viewed(), tr = SIM.computeTraits(SIM.boardSnapshot(v))[t];
     const lvl = tr ? (T.solo ? T.solo.indexOf(tr.bonus) : tr.level) : -1, count = tr ? tr.count : 0;
@@ -842,28 +862,59 @@ button{font-family:inherit}
     const boardIds = new Set(onBoard.map(u => u.unitId)), benchIds = [...new Set(onBench.map(u => u.unitId))].filter(id => !boardIds.has(id));
     const all = Object.keys(DATA.UNITS).filter(id => SIM.def(id).traits.includes(t)).sort((a, b) => DATA.UNITS[a].cost - DATA.UNITS[b].cost || DATA.UNITS[a].short.localeCompare(DATA.UNITS[b].short));
     const missing = all.filter(id => !boardIds.has(id) && !benchIds.includes(id));
-    const chip = (id, cls) => `<span class="u ${cls}" style="--cc:${COST_COLOR[DATA.UNITS[id].cost]}">${esc(DATA.UNITS[id].short)}${cls === 'miss' ? ' · $' + DATA.UNITS[id].cost : ''}</span>`;
+    const chip = (id, cls) => `<span class="u ${cls}" style="--cc:${COST_COLOR[DATA.UNITS[id].cost]}">${foto(id, true) ? `<img src="${foto(id, true)}" alt="" loading="lazy">` : ''}${esc(DATA.UNITS[id].short)}${cls === 'miss' ? ' · $' + DATA.UNITS[id].cost : ''}</span>`;
     const levels = T.kind === 'unica' ? '' : traitLevelsText(T).split('\n').map((l, i) => `<div class="lv${i === lvl ? ' on' : ''}">${esc(l)}</div>`).join('');
     box.style.setProperty('--lc', T.color === '#ffffff' ? '#b8862b' : T.color);
-    box.innerHTML = `<h4>${T.icon} ${esc(T.name)}</h4><div class="k">${{ origen: 'Origen', clase: 'Clase', unica: 'Única' }[T.kind] || ''}${T.kind !== 'unica' ? ` · tenés ${count} en el escenario` : ''}</div>
+    $('#legendIn').innerHTML = `<h4>${T.icon} ${esc(T.name)}</h4><div class="k">${{ origen: 'Origen', clase: 'Clase', unica: 'Única' }[T.kind] || ''}${T.kind !== 'unica' ? ` · tenés ${count} en el escenario` : ''}</div>
       ${T.desc ? `<p class="d">${esc(T.desc)}</p>` : ''}${levels}
       ${boardIds.size ? `<div class="ul"><b>En el escenario</b>${[...boardIds].map(id => chip(id, 'have')).join('')}</div>` : ''}
       ${benchIds.length ? `<div class="ul"><b>En el backstage</b>${benchIds.map(id => chip(id, 'bench')).join('')}</div>` : ''}
-      ${missing.length ? `<div class="ul"><b>Te faltan</b>${missing.map(id => chip(id, 'miss')).join('')}</div>` : ''}`;
-    const r = row.getBoundingClientRect(), wr = $('#wrap').getBoundingClientRect(), sl = $('#setlist').getBoundingClientRect();
-    box.style.display = 'block';
-    box.style.left = (sl.right - wr.left + 10) + 'px';
-    box.style.top = Math.max(8, Math.min(r.top - wr.top - 10, wr.height - box.offsetHeight - 8)) + 'px';
+      ${missing.length ? `<div class="ul"><b>Te faltan</b>${missing.map(id => chip(id, 'miss')).join('')}</div>` : ''}
+      ${pinTrait === t ? '' : '<div class="pinTip">Clic para dejarla fija</div>'}`;
+    placeLegend(row);
     stage.focusUnits(spyId ? [] : onBoard.map(u => u.uid), new THREE.Color(T.color).getHex());
   }
+  // Recetas de un objeto (clic derecho en la lista de Objetos): con qué se combina y qué sale.
+  function renderItemCard() {
+    const box = $('#legend'), p = me(), id = p.items[itemCard.idx];
+    const row = id && $('#inv').querySelector(`[data-item="${itemCard.idx}"]`);
+    if (!row) { itemCard = null; box.style.display = 'none'; return; }
+    const I = DATA.ITEMS, d = SIM.itemDef(id);
+    const ic = x => `<span title="${esc(itemName(x))}">${itemIcon(x)}</span>`;
+    const count = x => p.items.filter(y => y === x).length, hv = o => (count(o) - (o === id ? 1 : 0) > 0 ? 1 : 0);
+    let body;
+    if (SIM.isComponent(id)) {
+      const rows = Object.keys(I.COMPONENTS).map(other => ({ other, res: SIM.recipeOf(id, other) })).filter(r => r.res)
+        .sort((a, b) => hv(b.other) - hv(a.other));
+      body = '<div class="ul"><b>Combina con</b></div>' + rows.map(({ other, res }) => { const have = count(other) - (other === id ? 1 : 0) > 0;
+        return `<div class="rc"><span class="ic">${ic(id)}+${ic(other)}</span><span><b>${esc(itemName(res))}</b> ${itemIcon(res)}${have ? ' <span class="have">✓ tenés el otro</span>' : ''}<i>${esc(itemDesc(res))}</i></span></div>`; }).join('');
+    } else if (d.from) {
+      body = `<div class="ul"><b>Receta</b></div><div class="rc"><span class="ic">${ic(d.from[0])}+${ic(d.from[1])}</span><span>${esc(itemName(d.from[0]))} + ${esc(itemName(d.from[1]))}</span></div>`;
+    } else body = '';
+    box.style.setProperty('--lc', '#b8862b'); box.classList.add('pin');
+    $('#legendIn').innerHTML = `<h4>${itemIcon(id)} ${esc(itemName(id))}</h4><div class="k">${SIM.isComponent(id) ? 'Componente' : 'Objeto terminado'}</div><p class="d">${esc(itemDesc(id))}</p>${body}`;
+    placeLegend(row);
+  }
+  $('#inv').addEventListener('contextmenu', e => {
+    e.preventDefault();
+    const r = e.target.closest('[data-item]'); if (!r) return;
+    itemCard = itemCard && itemCard.idx === +r.dataset.item ? null : { idx: +r.dataset.item };
+    renderLegend();
+  });
+  $('#legendX').addEventListener('click', () => { pinTrait = null; itemCard = null; renderSetlist(); });
   $('#traits').addEventListener('pointerover', e => { const r = e.target.closest('[data-t]'); if (r && e.pointerType === 'mouse' && hoverTrait !== r.dataset.t) { hoverTrait = r.dataset.t; renderSetlist(); } });
-  $('#traits').addEventListener('pointerup', e => { const r = e.target.closest('[data-t]'); if (!r || e.pointerType === 'mouse') return; hoverTrait = hoverTrait === r.dataset.t ? null : r.dataset.t; renderSetlist(); }); // en el celu: tocar abre/cierra
+  $('#traits').addEventListener('click', e => { // clic (o toque): deja la leyenda fija; otro clic en la misma la suelta
+    const r = e.target.closest('[data-t]'); if (!r) return;
+    pinTrait = pinTrait === r.dataset.t ? null : r.dataset.t;
+    if (!pinTrait) hoverTrait = null;
+    renderSetlist();
+  });
   $('#setlist').addEventListener('pointerleave', e => { if (e.pointerType === 'mouse' && hoverTrait) { hoverTrait = null; renderSetlist(); } });
   // pestañas Setlist | Objetos
   function showTab(t) {
     $('#setlist').classList.toggle('items', t === 'items');
     for (const b of document.querySelectorAll('.stabs [data-tab]')) b.classList.toggle('on', b.dataset.tab === t);
-    hoverTrait = null; renderLegend();
+    hoverTrait = null; pinTrait = null; itemCard = null; renderLegend();
   }
   document.querySelector('.stabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) showTab(b.dataset.tab); });
   function renderPlayers() {
@@ -1081,7 +1132,7 @@ button{font-family:inherit}
   $('#players').addEventListener('click', e => { const r = e.target.closest('[data-pid]'); if (r && mode !== 'combat') setSpy(spyId === r.dataset.pid ? null : r.dataset.pid); });
   $('#spyBar').addEventListener('click', () => setSpy(null));
   $('#inv').addEventListener('pointerdown', e => {
-    const b = e.target.closest('[data-item]'); if (!b || !canShop()) return;
+    const b = e.target.closest('[data-item]'); if (!b || e.button !== 0 || !canShop()) return; // el derecho abre las recetas
     itemDrag = { idx: +b.dataset.item, sx: e.clientX, sy: e.clientY, on: false };
     b.setPointerCapture(e.pointerId);
   });
@@ -1129,7 +1180,7 @@ button{font-family:inherit}
   document.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || document.querySelector('.overlay[style*="grid"]')) return;
     const k = e.key.toLowerCase();
-    if (k === 'escape') { selectedUid = null; selItem = null; closeFicha(); setSpy(null); $('#menu').classList.remove('on'); $('#recipes').style.display = 'none'; }
+    if (k === 'escape') { pinTrait = null; itemCard = null; hoverTrait = null; renderLegend(); selectedUid = null; selItem = null; closeFicha(); setSpy(null); $('#menu').classList.remove('on'); $('#recipes').style.display = 'none'; }
     else if (k === 'd') act({ type: 'REROLL' });
     else if (k === 'f') act({ type: 'BUY_XP' });
     else if (k === 'e' && hoverUid) { sellUid(hoverUid); hoverUid = null; }
