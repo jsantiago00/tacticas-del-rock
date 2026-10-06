@@ -1,7 +1,7 @@
 // Fotos propias (no salen de Wikimedia Commons): se suman como candidatas en elegir.html
-// y procesar.js las lee de esta carpeta en vez de bajarlas. Ojo: no tienen licencia libre;
-// sirven para el juego privado, pero para publicarlo haría falta permiso del autor.
+// y procesar.js las lee de esta carpeta en vez de bajarlas. Cada una con el permiso que se consiguió.
 var MANUALES = {
-  gimenez: { archivo: 'manuales/gimenez.png', ancho: 520, alto: 445, autor: 'Foto aportada', credito: '', licencia: 'Sin licencia libre (foto aportada)', tipo: 'manual', licenciaUrl: '' },
+  // permiso pedido y dado por Instagram (octubre 2026)
+  gimenez: { archivo: 'manuales/gimenez.png', ancho: 520, alto: 445, autor: 'Foto cedida por El Zar', credito: 'Instagram de El Zar', licencia: 'Uso autorizado por los artistas', tipo: 'manual', licenciaUrl: '' },
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = MANUALES;

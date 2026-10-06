@@ -133,7 +133,7 @@ function renderEditor() {
   const big = $('#big');
   if (big.dataset.src !== e.vista) { imgOk = false; big.dataset.src = e.vista; big.src = e.vista; $('#pvMsg').textContent = 'Cargando…'; }
   $('#lado').value = Math.round(e.lado * 100); $('#ladoTxt').textContent = Math.round(e.lado * 100) + '% del lado corto';
-  $('#lic').innerHTML = `${esc(e.autor)} · ${esc(e.licencia)}${e.tipo === 'by-sa' ? ' · <b>el recorte queda CC BY-SA</b>' : e.tipo === 'manual' ? ' · <b>sin licencia libre: solo para el juego privado</b>' : ''}`;
+  $('#lic').innerHTML = `${esc(e.autor)} · ${esc(e.licencia)}${e.tipo === 'by-sa' ? ' · <b>el recorte queda CC BY-SA</b>' : e.tipo === 'manual' ? ' · <b>foto propia, con permiso</b>' : ''}`;
   drawOverlay(); preview();
 }
 function drawOverlay() {
