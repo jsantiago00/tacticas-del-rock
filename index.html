@@ -82,32 +82,59 @@ button{font-family:inherit}
 .hp{height:5px;border-radius:3px;background:#0c1424;overflow:hidden;margin-top:3px}
 .hp i{display:block;height:100%;background:#e8ecf4}
 
-/* abajo */
-#bottom{position:absolute;left:0;right:0;bottom:0;display:grid;grid-template-columns:210px minmax(0,1fr) 170px;gap:14px;align-items:end;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));background:linear-gradient(transparent,rgba(13,21,38,.94) 30%);z-index:2;pointer-events:none}
-#bottom > *{pointer-events:auto}
-#bottom.off #lvlBox .btn,#bottom.off #passes,#bottom.off #lock{opacity:.5;pointer-events:none}
-#lvlBox{display:flex;flex-direction:column;gap:7px}
-#lvlRow{display:flex;justify-content:space-between;align-items:baseline}
-#lvl{font-size:22px}
-#xpTxt,#boardCount{font-size:14px;color:var(--muted)}
+/* abajo: panel compacto (nivel, probabilidades, guita, racha, botones y tienda en un solo marco) */
+#bottom{position:absolute;left:50%;bottom:calc(6px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(1120px,calc(100% - 16px));z-index:2;
+  background:linear-gradient(180deg,#14223a,#0c1528);border:2px solid #8a6a2c;border-radius:6px;box-shadow:0 0 0 1px #000,0 10px 30px rgba(0,0,0,.55);padding:0 8px 8px}
+#hudTop{display:flex;align-items:center;gap:12px;height:34px;position:relative}
+#lvlBox{display:flex;flex-direction:column;justify-content:center;width:200px;flex:none;margin-left:-8px;padding:3px 10px 0;background:#0a1222;border-right:1px solid #8a6a2c;border-bottom:1px solid #8a6a2c;border-bottom-right-radius:6px;height:100%}
+#lvlRow{display:flex;justify-content:space-between;align-items:baseline;line-height:1}
+#lvl{font-size:19px}
+#xpTxt{font-size:13px;color:var(--muted)}
+#xpWrap{height:4px;border-radius:2px;background:#263a5e;overflow:hidden;margin-top:4px}
+#xpBar{height:100%;background:#4fc3e8}
+#odds{display:flex;gap:10px;font-size:13px;font-weight:600;color:var(--muted);background:#0a1222;border-radius:12px;padding:2px 10px}
+#odds span{white-space:nowrap} #odds span.z{opacity:.45}
+#goldTab{position:absolute;left:50%;top:-14px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:4px 22px;min-width:110px;justify-content:center;
+  background:linear-gradient(180deg,#1c2c48,#0e182c);border:2px solid #8a6a2c;border-radius:6px 6px 0 0;border-bottom:0;clip-path:polygon(10% 0,90% 0,100% 100%,0 100%);cursor:default}
+#gold{font-size:26px;line-height:1;color:#f4e3b5}
+.coin{display:inline-block;width:.8em;height:.62em;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffe9a8,#d9a441 55%,#8a6420);box-shadow:0 1px 0 #5a3f10;vertical-align:-.02em;flex:none}
+#streak{position:absolute;left:calc(50% + 86px);display:flex;align-items:center;gap:5px;font-weight:700;font-size:16px;background:#0a1222;border-radius:14px;padding:1px 10px}
+#streak.hot{color:#ff9a5a} #streak.cold{color:#7fd0ff} #streak.none{color:var(--muted)}
+#hudRight{margin-left:auto;display:flex;align-items:center;gap:8px}
+#interest{font-size:13px;color:var(--muted);white-space:nowrap}
+#boardCount{font-size:13px;color:var(--muted);white-space:nowrap}
 #boardCount.full{color:var(--gold)}
-#xpWrap{height:7px;border-radius:4px;background:#263a5e;overflow:hidden}
-#xpBar{height:100%;background:#7fb3ff}
-#passes{display:flex;gap:10px;justify-content:center;border-radius:12px;position:relative;min-width:0}
-#passes.sell::after{content:"SOLTÁ PARA VENDER";position:absolute;inset:-6px;display:grid;place-items:center;font-family:"Big Shoulders Display",Impact,sans-serif;font-size:30px;color:#ff7a63;background:rgba(40,12,12,.85);border:2px dashed #ff7a63;border-radius:12px}
-.pass{position:relative;width:clamp(96px,12vw,158px);height:118px;border-radius:10px;background:#f4f4f2;color:#1b2233;overflow:hidden;border:0;padding:0;text-align:left;font:inherit;cursor:pointer;display:flex;flex-direction:column;transition:transform .08s}
-.pass:hover{transform:translateY(-3px)}
-.pass i{display:block;height:9px;flex:none}
-.pass div{padding:7px 9px;display:flex;flex-direction:column;gap:2px;flex:1;min-height:0}
-.pass b{font-family:"Big Shoulders Display",Impact,sans-serif;font-size:clamp(16px,1.6vw,21px);line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pass span{font-size:12px;color:#4b5672;line-height:1.25}
-.pass em{margin-top:auto;font-style:normal;font-weight:700;font-size:18px;text-align:right}
-.pass.match{background:linear-gradient(160deg,#fff4cf,#f0c25a);outline:3px solid #f0b429;outline-offset:2px}
-.pass.poor{filter:grayscale(.6) brightness(.85)}
-.pass.sold{background:rgba(255,255,255,.06);border:2px dashed #3a4d70;cursor:default}
-#money{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
-#gold{font-size:46px;line-height:1;color:var(--gold)}
-#interest{font-size:13px;color:var(--muted);text-align:right}
+#lock{min-height:28px;height:28px;padding:0 8px;border-radius:6px}
+#hudBody{display:flex;gap:8px;align-items:stretch}
+#hudBtns{display:flex;flex-direction:column;gap:6px;width:180px;flex:none}
+.hbtn{flex:1;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:4px 10px;border-radius:5px;border:1px solid #4b6290;background:linear-gradient(180deg,#22385e,#16243f);color:var(--ink);font:inherit;cursor:pointer;text-align:left}
+.hbtn:hover:not(:disabled){border-color:#9cc4ff;background:linear-gradient(180deg,#2b4675,#1b2c4c)}
+.hbtn:disabled{opacity:.45;cursor:default}
+.hbtn b{display:block;font-size:17px;line-height:1.05}
+.hbtn small{display:flex;align-items:center;gap:4px;font-size:15px;font-weight:700;color:#f4e3b5}
+.hbtn .ico{font-size:26px;color:#6fb6ff;line-height:1}
+.hbtn kbd{font:600 11px "Barlow Semi Condensed",sans-serif;color:var(--muted);border:1px solid #4b6290;border-radius:3px;padding:0 3px;margin-left:4px}
+#bottom.off #hudBtns,#bottom.off #passes,#bottom.off #lock{opacity:.5;pointer-events:none}
+#passes{flex:1;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;position:relative;min-width:0}
+#passes.sell::after{content:"SOLTÁ PARA VENDER";position:absolute;inset:-4px;display:grid;place-items:center;font-family:"Big Shoulders Display",Impact,sans-serif;font-size:30px;color:#ff7a63;background:rgba(40,12,12,.88);border:2px dashed #ff7a63;border-radius:6px;z-index:2}
+/* carta de la tienda: foto, sinergias con ícono abajo a la izquierda y barra con nombre y precio */
+.pass{position:relative;height:124px;border-radius:4px;overflow:hidden;border:2px solid var(--cc,#555);padding:0;text-align:left;font:inherit;cursor:pointer;color:#fff;
+  background:#16243f center 20%/cover no-repeat;display:flex;flex-direction:column;justify-content:flex-end;transition:transform .08s,box-shadow .08s}
+.pass:hover{transform:translateY(-3px);box-shadow:0 0 0 1px #000,0 0 14px var(--cc)}
+.pass::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,10,20,0) 35%,rgba(6,10,20,.75) 78%)}
+.pass .tr{position:relative;display:flex;flex-direction:column;gap:1px;padding:0 8px 4px;font-size:13px;text-shadow:0 1px 3px #000}
+.pass .tr span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pass .nm{position:relative;display:flex;align-items:center;justify-content:space-between;gap:4px;padding:3px 8px;background:linear-gradient(90deg,color-mix(in srgb,var(--cc) 55%,#0a1222),#0a1222)}
+.pass .nm b{font-family:"Big Shoulders Display",Impact,sans-serif;font-size:18px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pass .nm em{font-style:normal;font-weight:700;font-size:16px;display:flex;align-items:center;gap:3px;color:#f4e3b5}
+.pass small.up{position:absolute;top:5px;left:5px;font-size:11px;font-weight:700;background:#2a6fdb;color:#fff;border-radius:4px;padding:0 5px;max-width:calc(100% - 10px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pass .cp{position:absolute;top:5px;right:5px;display:flex;gap:3px}
+.pass .cp i{width:12px;height:12px;border-radius:50%;background:#0a1222;border:2px solid #3cd66b;box-shadow:0 0 6px #3cd66b}
+.pass .cp i.on{background:#3cd66b}
+.pass.match{box-shadow:0 0 0 2px #3cd66b,0 0 16px #3cd66b}
+.pass.poor{filter:grayscale(.7) brightness(.75)}
+.pass.sold{background:#0a1222;border:2px dashed #2b3c5c;cursor:default}
+.pass.sold::before{display:none}
 /* setlist | objetos */
 .stabs{display:flex;align-items:baseline;gap:5px;margin:0 0 4px;white-space:nowrap}
 .stabs button{background:none;border:0;padding:0;cursor:pointer;font-family:"Permanent Marker",cursive;font-size:19px;white-space:nowrap;color:#9aa3b8;line-height:1.1}
@@ -206,10 +233,9 @@ button{font-family:inherit}
 .trait.prev{opacity:1!important;background:#eef4ff;outline:2px dashed #7fb3ff;outline-offset:-2px}
 .trait .plus{font-family:"Big Shoulders Display",Impact,sans-serif;color:#2a6fdb;margin-left:4px}
 .trait .act{font-size:11px;font-weight:700;color:#fff;background:#2a6fdb;border-radius:4px;padding:0 4px;margin-left:4px}
-.pass small.up{font-size:12px;font-weight:700;color:#2a6fdb;line-height:1.1}
 /* guita que entra y sale */
-#goldFx{position:absolute;right:20px;bottom:150px;pointer-events:none;z-index:4}
-.gfx{position:absolute;right:0;font-family:"Big Shoulders Display",Impact,sans-serif;font-size:30px;animation:gfx 1.2s ease-out forwards;white-space:nowrap}
+#goldFx{position:absolute;left:calc(50% + 40px);bottom:190px;pointer-events:none;z-index:4}
+.gfx{position:absolute;left:0;font-family:"Big Shoulders Display",Impact,sans-serif;font-size:30px;animation:gfx 1.2s ease-out forwards;white-space:nowrap}
 .gfx.plus{color:#7ee08f} .gfx.minus{color:#ff7a63}
 @keyframes gfx{0%{opacity:0;transform:translateY(10px)}15%{opacity:1}100%{opacity:0;transform:translateY(-50px)}}
 #gold.bump{animation:bump .35s}
@@ -220,7 +246,7 @@ button{font-family:inherit}
 #soundBtn{min-height:34px;font-size:16px;padding:0 10px}
 #menu input[type=range]{width:100%}
 @media (prefers-reduced-motion:reduce){ #pop.on,.trait.pop,.trait.down,.gfx,#gold.bump,#toast.err{animation-duration:.01s} }
-@media (max-width:820px), (max-height:520px){ #pop{font-size:36px} #pop small{font-size:15px} #goldFx{bottom:100px;right:10px} }
+@media (max-width:820px), (max-height:520px){ #pop{font-size:36px} #pop small{font-size:15px} #goldFx{bottom:118px} }
 #banner{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);font-family:"Big Shoulders Display",Impact,sans-serif;font-size:72px;letter-spacing:2px;pointer-events:none;text-shadow:0 4px 24px #000;display:none;text-align:center;line-height:.95;z-index:4;white-space:nowrap}
 #banner small{display:block;font-size:28px;color:var(--ink)}
 
@@ -245,15 +271,6 @@ button{font-family:inherit}
 #ficha .top{display:flex;gap:12px;align-items:center;margin-bottom:6px}
 #ficha .foto{width:96px;height:96px;border-radius:10px;flex:none;object-fit:cover;background:#0b1224;box-shadow:0 0 0 2px var(--fc,#4b6290)}
 #ficha .top h2{margin-right:30px}
-/* pase con retrato: la foto entera de fondo y el texto abajo sobre una sombra (estilo carta) */
-.pass.ph{background-color:#0d1526;background-repeat:no-repeat;background-position:center 22%;background-size:cover;color:#fff}
-.pass.ph div{justify-content:flex-end;background:linear-gradient(180deg,rgba(9,14,28,0) 30%,rgba(9,14,28,.55) 58%,rgba(9,14,28,.94) 100%)}
-.pass.ph b{color:#fff;text-shadow:0 2px 4px #000}
-.pass.ph span{color:#d9e0ee;text-shadow:0 1px 3px #000}
-.pass.ph small.up{color:#9cc4ff;text-shadow:0 1px 3px #000}
-.pass.ph em{position:absolute;top:13px;right:6px;margin:0;background:rgba(9,14,28,.85);color:var(--gold);border-radius:6px;padding:0 6px;font-size:16px;line-height:22px}
-.pass.ph.match{background-color:#3a2f12}
-.pass.ph.match div{background:linear-gradient(180deg,rgba(58,40,8,0) 30%,rgba(58,40,8,.55) 58%,rgba(40,28,6,.94) 100%)}
 #credList .cr{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px solid #ffffff12;font-size:14px;line-height:1.35}
 #credList img{width:48px;height:48px;border-radius:6px;flex:none}
 #credList b{color:var(--gold)}
@@ -305,15 +322,13 @@ button{font-family:inherit}
   .pl{padding:3px;justify-content:center;gap:4px;flex-direction:column}
   .pi .pr{justify-content:center;font-size:12px}
   .av{width:24px;height:24px;font-size:10px}
-  #bottom{grid-template-columns:96px minmax(0,1fr) 64px;gap:8px;padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px))}
-  #lvl{font-size:15px} #xpTxt,#boardCount,#interest{display:none}
-  #lvlBox .btn{min-height:38px;font-size:13px;padding:0 6px}
-  .pass{height:86px;width:auto;flex:1;min-width:0}
-  .pass span{display:none}
-  .pass div{padding:6px 5px}
-  .pass b{font-size:14px;white-space:normal;overflow-wrap:anywhere;line-height:1.05}
-  #passes{gap:5px;min-width:0}
-  #gold{font-size:26px}
+  #bottom{width:calc(100% - 8px);padding:0 4px 4px;bottom:calc(4px + env(safe-area-inset-bottom,0px))}
+  #hudTop{height:28px;gap:6px} #lvlBox{width:96px;margin-left:-4px;padding:2px 6px 0} #lvl{font-size:14px} #xpTxt{font-size:11px}
+  #odds,#interest,#boardCount{display:none} #goldTab{top:-12px;min-width:76px;padding:3px 12px} #gold{font-size:19px}
+  #streak{left:calc(50% + 50px);font-size:13px;padding:0 6px}
+  #hudBtns{width:74px;gap:4px} .hbtn{padding:2px 6px} .hbtn b{font-size:12px} .hbtn small{font-size:12px} .hbtn .ico,.hbtn kbd{display:none}
+  .pass{height:84px} .pass .tr{display:none} .pass .nm{padding:2px 4px} .pass .nm b{font-size:13px} .pass .nm em{font-size:12px} .pass small.up{display:none}
+  #passes{gap:4px}
   #ficha{top:calc(62px + env(safe-area-inset-top,0px));right:74px;width:min(280px,calc(100% - 210px));max-height:calc(100% - 190px)}
   #toast{top:calc(62px + env(safe-area-inset-top,0px));font-size:13px}
   #flacoBar{bottom:110px;font-size:13px}
@@ -380,18 +395,26 @@ button{font-family:inherit}
   <div id="goldFx"></div>
 
   <div id="bottom">
-    <div id="lvlBox">
-      <div id="lvlRow"><span id="lvl" class="big">Convocatoria 1</span><span id="xpTxt"></span></div>
-      <div id="xpWrap"><div id="xpBar"></div></div>
-      <span id="boardCount"></span>
-      <button class="btn" id="levelup">Más convocatoria · $4</button>
-      <button class="btn" id="reroll">Cambiar la grilla · $2</button>
+    <div id="hudTop">
+      <div id="lvlBox">
+        <div id="lvlRow"><span id="lvl" class="big">Conv. 1</span><span id="xpTxt"></span></div>
+        <div id="xpWrap"><div id="xpBar"></div></div>
+      </div>
+      <div id="odds" title="Probabilidad de que salga cada coste en la grilla"></div>
+      <div id="goldTab"><span class="coin" style="font-size:22px"></span><span id="gold" class="big">0</span></div>
+      <div id="streak" title="Racha"></div>
+      <div id="hudRight">
+        <span id="boardCount"></span>
+        <span id="interest"></span>
+        <button class="btn" id="lock" aria-pressed="false" aria-label="Bloquear la grilla"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
+      </div>
     </div>
-    <div id="passes"></div>
-    <div id="money">
-      <span id="gold" class="big">$0</span>
-      <span id="interest"></span>
-      <button class="btn" id="lock" aria-pressed="false" aria-label="Bloquear la grilla"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
+    <div id="hudBody">
+      <div id="hudBtns">
+        <button class="hbtn" id="levelup"><span><b>Convocatoria<kbd>F</kbd></b><small><span class="coin"></span><span id="xpCost">4</span></small></span><span class="ico">⏫</span></button>
+        <button class="hbtn" id="reroll"><span><b>Cambiar grilla<kbd>D</kbd></b><small><span class="coin"></span><span id="rrCost">2</span></small></span><span class="ico">⟳</span></button>
+      </div>
+      <div id="passes"></div>
     </div>
   </div>
 
@@ -983,27 +1006,35 @@ button{font-family:inherit}
   function renderBottom() {
     const p = me(), need = SIM.xpNeeded(p), inc = SIM.incomePreview(p), max = p.level >= C.MAX_LEVEL, n = SIM.boardCount(p);
     $('#bottom').classList.toggle('off', !canShop());
-    $('#lvl').textContent = 'Convocatoria ' + p.level;
+    $('#lvl').textContent = 'Conv. ' + p.level;
+    $('#xpCost').textContent = C.XP_COST; $('#rrCost').textContent = C.REROLL_COST;
+    $('#odds').innerHTML = (DATA.SHOP_ODDS[p.level] || []).map((o, i) => `<span class="${o ? '' : 'z'}" style="color:${o ? COST_COLOR[i + 1] : ''}">● ${o}%</span>`).join('');
+    const stk = $('#streak'); stk.className = p.streak >= 2 ? 'hot' : p.streak <= -2 ? 'cold' : 'none';
+    stk.textContent = p.streak <= -1 ? `🧊 ${-p.streak}` : `🔥 ${Math.max(0, p.streak)}`;
+    stk.title = p.streak >= 2 ? `Racha de ${p.streak} ganadas` : p.streak <= -2 ? `Racha de ${-p.streak} perdidas` : 'Sin racha';
     $('#xpTxt').textContent = max ? 'Máxima' : `${p.xp}/${need}`;
     $('#xpBar').style.width = (max ? 100 : Math.min(100, p.xp / need * 100)) + '%';
     const lim = SIM.boardLimit(p);
-    const bc = $('#boardCount'); bc.textContent = `${n}/${lim} en el escenario`; bc.classList.toggle('full', n >= lim);
+    const bc = $('#boardCount'); bc.textContent = `${n}/${lim} en escena`; bc.classList.toggle('full', n >= lim);
     $('#levelup').disabled = p.gold < C.XP_COST || max;
     $('#reroll').disabled = p.gold < C.REROLL_COST;
-    $('#gold').textContent = '$' + p.gold;
-    const sk = p.streak >= 2 ? ` · racha de ${p.streak} 🔥` : p.streak <= -2 ? ` · racha de ${-p.streak} 🧊` : '';
-    $('#interest').textContent = `+${inc.total} la próxima (${inc.interest} de interés${inc.streak ? `, ${inc.streak} de racha` : ''})${sk}`;
+    $('#gold').textContent = p.gold;
+    $('#interest').textContent = `+${inc.total} próx.`;
+    $('#interest').title = $('#goldTab').title = `La próxima ronda: +${inc.total} (${inc.interest} de interés${inc.streak ? `, ${inc.streak} de racha` : ''})`;
     $('#lock').setAttribute('aria-pressed', String(!!p.shopLocked));
     $('#passes').innerHTML = p.shop.map((id, i) => {
       if (!id) return '<div class="pass sold" aria-hidden="true"></div>';
       const d = DATA.UNITS[id], have = SIM.countCopies(p, id, 1);
-      const traits = d.origins.map(t => DATA.TRAITS[t].name).concat(d.classes.map(t => DATA.TRAITS[t].name));
+      const traits = d.origins.concat(d.classes).map(t => DATA.TRAITS[t]);
       const snap = SIM.boardSnapshot(p), base = SIM.computeTraits(snap);
       const withIt = snap.some(e => e.unitId === id) ? base : SIM.computeTraits(snap.concat([{ unitId: id, star: 1, r: 9, c: 9 }]));
       const ups = Object.keys(withIt).filter(t => withIt[t].level > (base[t] ? base[t].level : -1) && DATA.TRAITS[t].kind !== 'unica');
       const ph = foto(id); // la de 512: el pase mide ~150 px y en pantallas densas la de 128 se ve borrosa
-      return `<button class="pass${have >= 2 ? ' match' : ''}${p.gold < d.cost ? ' poor' : ''}${ph ? ' ph' : ''}"${ph ? ` style="background-image:url('${ph}')"` : ''} data-buy="${i}" aria-label="Contratar a ${esc(d.name)} por $${d.cost}">
-        <i style="background:${COST_COLOR[d.cost]}"></i><div><b>${esc(d.short)}${d.unique ? ' ★' : ''}</b><span>${esc(traits.slice(0, 3).join(' · '))}</span>${ups.length ? `<small class="up">▲ ${esc(ups.map(t => DATA.TRAITS[t].name).join(', '))}</small>` : ''}<em>$${d.cost}</em></div></button>`;
+      return `<button class="pass${have >= 2 ? ' match' : ''}${p.gold < d.cost ? ' poor' : ''}" style="--cc:${COST_COLOR[d.cost]};${ph ? `background-image:url('${ph}')` : ''}" data-buy="${i}" aria-label="Contratar a ${esc(d.name)} por $${d.cost}">
+        ${have ? `<span class="cp" title="Tenés ${have} de 3">${[0, 1, 2].map(k => `<i class="${k < have + 1 ? 'on' : ''}"></i>`).join('')}</span>` : ''}
+        ${ups.length ? `<small class="up">▲ ${esc(ups.map(t => DATA.TRAITS[t].name).join(', '))}</small>` : ''}
+        <div class="tr">${traits.slice(0, 3).map(T => `<span>${T.icon} ${esc(T.name)}</span>`).join('')}</div>
+        <div class="nm"><b>${esc(d.short)}${d.unique ? ' ★' : ''}</b><em><span class="coin"></span>${d.cost}</em></div></button>`;
     }).join('');
   }
   function renderFlaco() {
