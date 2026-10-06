@@ -251,6 +251,21 @@ for (const seed of ['inv-1', 'inv-2']) {
     s = SIM.resolveRound(s); // no eligió: el host elige por él
     check(s.players.p0.board[24].flaco.chosen.length === 2, `El Flaco: si no elige a tiempo, se elige solo (${s.players.p0.board[24].flaco.chosen.join(', ')})`);
   }
+  // Completar el escenario solo: los del backstage suben adelante, desde el centro
+  {
+    let s = SIM.clone(SIM.createGame({ seed: 'fill', players: [{ id: 'p0', name: 'T' }] }));
+    const p = s.players.p0; p.level = 4;
+    p.bench[0] = { uid: 91, unitId: 'luca', star: 1 }; p.bench[2] = { uid: 92, unitId: 'fito', star: 1 }; p.bench[5] = { uid: 93, unitId: 'zeta', star: 1 };
+    p.board[3] = { uid: 94, unitId: 'slash', star: 1 };
+    const n = SIM.resolveRound(s), q = n.players.p0;
+    const where = id => q.board.findIndex(u => u && u.unitId === id);
+    check(where('luca') === 2 && where('fito') === 4 && where('zeta') === 1 && q.bench.every(u => !u) && n.autoFilled.p0.join() === 'luca,fito,zeta',
+      'Completar el escenario: suben solos a la fila de adelante desde el centro, y se avisa quiénes');
+    let s2 = SIM.clone(SIM.createGame({ seed: 'fill2', players: [{ id: 'p0', name: 'T' }] }));
+    s2.players.p0.level = 1; s2.players.p0.board[3] = { uid: 95, unitId: 'slash', star: 1 }; s2.players.p0.bench[0] = { uid: 96, unitId: 'luca', star: 1 };
+    const n2 = SIM.resolveRound(s2);
+    check(n2.players.p0.bench[0] && !n2.autoFilled.p0, 'Completar el escenario: no pasa del máximo de la convocatoria');
+  }
   // Online: la versión de datos queda guardada en el estado
   check(SIM.createGame({ seed: 'v', players: [{ id: 'p0', name: 'T' }] }).v === DATA.VERSION, `Versión de datos en el estado: ${DATA.VERSION}`);
 }

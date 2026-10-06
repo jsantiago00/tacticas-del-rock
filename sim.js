@@ -8,7 +8,7 @@
 const DATA = {
   // Versión de datos: si cambia la forma del estado o el plantel, se sube. Un cliente con
   // otra versión no puede entrar a una sala (tiene que recargar la página).
-  VERSION: 5,
+  VERSION: 6,
 
   CONFIG: {
     BOARD_ROWS: 4, BOARD_COLS: 7,      // mitad de tablero por jugador (en combate: 8x7)
@@ -1399,6 +1399,24 @@ const SIM = (() => {
     p.history.length = Math.min(p.history.length, 15);
   }
   const resultOf = (winner, side) => (winner === 'draw' ? 'draw' : winner === side ? 'win' : 'loss');
+  // Completar el escenario: si al empezar la pelea hay lugares libres (según la convocatoria)
+  // y músicos en el backstage, suben solos: fila de adelante primero, desde el centro.
+  const FILL_ORDER = [];
+  for (let r = 0; r < ROWS; r++) for (const c of [3, 2, 4, 1, 5, 0, 6]) FILL_ORDER.push(r * COLS + c);
+  function autoFillBoards(s) {
+    s.autoFilled = {};
+    for (const id of alivePlayers(s)) {
+      const p = s.players[id], moved = [];
+      for (let b = 0; b < C.BENCH_SIZE && boardCount(p) < p.level; b++) {
+        if (!p.bench[b]) continue;
+        const cell = FILL_ORDER.find(i => !p.board[i]);
+        if (cell == null) break;
+        p.board[cell] = p.bench[b]; p.bench[b] = null;
+        moved.push(p.board[cell].unitId);
+      }
+      if (moved.length) s.autoFilled[id] = moved;
+    }
+  }
   // El Flaco sin origen elegido al empezar la pelea: el host elige el que más le suma.
   function autoFlaco(s) {
     for (const id of alivePlayers(s)) {
@@ -1415,6 +1433,7 @@ const SIM = (() => {
     const alive = alivePlayers(s);
     const hpBefore = {};
     for (const id of alive) hpBefore[id] = s.players[id].hp;
+    autoFillBoards(s);
     autoFlaco(s);
     const pve = DATA.PVE[label];
     s.combats = [];

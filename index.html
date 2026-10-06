@@ -2,247 +2,276 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Tácticas del Rock</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800&family=Barlow+Semi+Condensed:wght@500;600;700&family=Permanent+Marker&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#110d12; --panel:#1c171e; --panel2:#262028; --line:#3a3140;
-  --text:#f1e8de; --muted:#9b8f9a; --accent:#ff4d2e; --gold:#f5c542;
-  --mine:#4aa3ff; --foe:#ff4d4d;
-  --c1:#8f949c; --c2:#3fb15f; --c3:#3a86e0; --c4:#b05ae0; --c5:#f0b02a;
+  --bg:#0d1526; --panel:rgba(15,26,44,.88); --line:#263a5e; --ink:#e8ecf4; --muted:#aeb8cc; --gold:#f2a541; --btn:#2c3f63; --paper:#ffffff; --marker:#1b2a6b;
+  --accent:#ff7a63; --mine:#7ee08f; --foe:#ff7a63;
+  --c1:#9aa0a8; --c2:#3fae67; --c3:#4a8ef0; --c4:#b26ae6; --c5:#f0b429;
 }
-*{box-sizing:border-box}
-html,body{margin:0;height:100%}
-body{
-  background:radial-gradient(ellipse at 50% 0%,#2a1620 0%,var(--bg) 60%) fixed;
-  color:var(--text);font-family:Inter,system-ui,sans-serif;font-size:14px;
-  user-select:none;-webkit-user-select:none;
-}
-button{font:inherit;color:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel2);border-radius:8px;padding:8px 12px}
-button:hover:not(:disabled){border-color:#6a5a72;background:#30283a}
-button:disabled{opacity:.45;cursor:default}
-#app{display:flex;flex-direction:column;min-height:100vh;max-width:1400px;margin:0 auto;padding:8px 16px 16px}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){ --bg:#0d1526; } }
+:root[data-theme="dark"]{ --bg:#0d1526; }
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;overflow:hidden;user-select:none;-webkit-user-select:none}
+#wrap{position:fixed;inset:0;overflow:hidden;padding-top:env(safe-area-inset-top,0px)}
+#c{display:block;width:100%;height:100%;touch-action:none}
+#numbers{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.big{font-family:"Big Shoulders Display",Impact,sans-serif;font-weight:800}
+.btn{min-height:44px;border:0;border-radius:10px;background:var(--btn);color:var(--ink);font:600 16px "Barlow Semi Condensed",sans-serif;padding:0 14px;cursor:pointer}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.gold,.btn[aria-pressed="true"]{background:var(--gold);color:#1b2233}
+button{font-family:inherit}
 
-/* ---------- topbar ---------- */
-#topbar{display:flex;align-items:center;gap:16px;padding:6px 0 10px}
-.logo{font-family:'Bebas Neue',Impact,sans-serif;font-size:34px;letter-spacing:2px;line-height:1;color:var(--accent);text-shadow:0 0 18px #ff4d2e55}
-.logo span{color:var(--text);font-size:22px}
-#roundInfo{font-family:'Bebas Neue',Impact,sans-serif;font-size:24px;letter-spacing:1px;color:var(--gold)}
-#roundInfo small{font-family:Inter;font-size:12px;color:var(--muted);letter-spacing:0;margin-left:8px}
-.spacer{flex:1}
+/* arriba */
+#top{position:absolute;top:calc(8px + env(safe-area-inset-top,0px));left:10px;right:10px;display:grid;grid-template-columns:1fr auto 1fr;align-items:start;gap:10px;pointer-events:none;z-index:3}
+#top > *{pointer-events:auto}
+.chip{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px 12px}
+#roundChip{justify-self:start}
+#round{font-size:24px;line-height:1}
+#rivalLine{font-size:14px;color:var(--muted)}
+#timer{width:min(380px,44vw);text-align:center}
+#timer .row{display:flex;align-items:baseline;justify-content:center;gap:10px}
+#phase{font-size:15px;color:var(--muted)}
+#tsec{font-size:30px;line-height:1;min-width:1ch}
+#tbarWrap{height:8px;border-radius:4px;background:#263a5e;overflow:hidden;margin-top:5px}
+#tbar{height:100%;background:var(--gold);width:100%;transition:background .2s}
+#tbar.hurry{background:#ff7a63}
+#speed{display:none;gap:6px;justify-content:center;margin-top:6px}
+#speed button{min-height:30px;font-size:13px;padding:0 10px}
+#tools{justify-self:end;display:flex;gap:8px;align-items:center}
+#gpu{font-size:12px;color:var(--muted);max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+#fps{font-size:18px}
+#menu{position:absolute;top:calc(64px + env(safe-area-inset-top,0px));right:10px;width:230px;background:#16233a;border:1px solid var(--line);border-radius:12px;padding:10px;display:none;flex-direction:column;gap:8px;z-index:6}
+#menu.on{display:flex}
+#menu .btn{min-height:38px;text-align:left}
+#menu label{display:flex;gap:8px;align-items:center;font-size:15px;color:var(--muted)}
+#roomBadge{font-weight:700;color:var(--gold);letter-spacing:2px}
 
-/* ---------- main ---------- */
-#main{display:grid;grid-template-columns:230px 1fr 250px;gap:16px;flex:1}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px}
-.panel h3{margin:0 0 8px;font-family:'Bebas Neue',Impact,sans-serif;font-weight:400;font-size:20px;letter-spacing:1px;color:var(--muted)}
-#center{display:flex;flex-direction:column;align-items:center;gap:10px}
+/* izquierda: setlist */
+#setlist{position:absolute;left:12px;top:calc(84px + env(safe-area-inset-top,0px));width:220px;max-height:calc(100% - 340px);overflow:auto;background:var(--paper);color:var(--marker);padding:14px 14px 8px;transform:rotate(-1.2deg);box-shadow:0 6px 0 rgba(0,0,0,.3);z-index:2}
+#setlist h3{font-family:"Permanent Marker",cursive;font-weight:400;font-size:22px;margin:0 0 4px}
+.trait{display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid #dfe1e6}
+.trait.off{opacity:.45}
+.dot{width:30px;height:30px;border-radius:50%;background:#b8862b;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex:none;font-size:14px}
+.trait.off .dot{background:#7b8296}
+.dot.uniq{background:#c98a12}
+.dot.solo{background:#2c3f63}
+.tn{font-family:"Permanent Marker",cursive;font-size:16px;line-height:1.1}
+.tt{font-size:13px;color:#4b5672}
+.tt b{color:var(--marker)}
 
-/* traits */
-.trait{display:flex;align-items:center;gap:8px;padding:6px;border-radius:8px;margin-bottom:4px;background:var(--panel2);opacity:.65}
-.trait.on{opacity:1;box-shadow:inset 3px 0 0 var(--tc,var(--gold))}
-.trait .tbadge{width:28px;height:28px;border-radius:6px;display:grid;place-items:center;background:#0006;font-size:16px;flex:none}
-.trait .tname{font-weight:600;font-size:13px}
-.trait .tbp{font-size:11px;color:var(--muted)}
-.trait .tbp b{color:var(--gold)}
-.trait .tnext{font-size:10px;color:var(--muted)}
-.trait .tcount{margin-left:auto;font-weight:800}
+/* derecha: público */
+#players{position:absolute;right:12px;top:calc(84px + env(safe-area-inset-top,0px));width:220px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px;z-index:2}
+.ptitle{font-size:20px;margin:2px 6px 6px}
+.pl{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:8px;cursor:pointer}
+.pl:hover{background:#1e2e4a}
+.pl.vs{background:#3a2f1c;outline:1px solid var(--gold)}
+.pl.spy{outline:2px solid #7fb3ff}
+.pl.me .pr span{color:var(--gold)}
+.pl.out{opacity:.35}
+.av{width:30px;height:30px;border-radius:50%;background:#2b3c5c;border:2px solid #4b6290;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex:none;position:relative}
+.av .st{position:absolute;right:-6px;bottom:-6px;font-size:11px}
+.pi{flex:1;min-width:0}
+.pr{display:flex;justify-content:space-between;gap:4px;font-size:15px}
+.pr span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.pd{font-size:12px;color:var(--foe)}
+.hp{height:5px;border-radius:3px;background:#0c1424;overflow:hidden;margin-top:3px}
+.hp i{display:block;height:100%;background:#e8ecf4}
 
-/* arena (canvas) */
-#arenaWrap{position:relative}
-#arena{display:block;touch-action:none}
-#capBadge{position:absolute;right:-6px;bottom:-4px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-weight:800}
-#capBadge.full{color:var(--gold)}
-#oppLabel{position:absolute;left:50%;top:-2px;transform:translate(-50%,-100%);font-family:'Bebas Neue',Impact,sans-serif;font-size:20px;letter-spacing:1px;color:var(--foe);white-space:nowrap}
-#banner{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-family:'Bebas Neue',Impact,sans-serif;font-size:64px;letter-spacing:3px;pointer-events:none;text-shadow:0 4px 24px #000;display:none;text-align:center;line-height:.95;white-space:nowrap}
-#banner small{display:block;font-size:26px;color:var(--text)}
-#combatCtrls{position:absolute;right:-4px;top:0;display:none;flex-direction:column;gap:6px}
-#combatCtrls button{padding:4px 10px;font-size:12px}
-#combatCtrls button.on{border-color:var(--gold);color:var(--gold)}
+/* abajo */
+#bottom{position:absolute;left:0;right:0;bottom:0;display:grid;grid-template-columns:210px minmax(0,1fr) 170px;gap:14px;align-items:end;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));background:linear-gradient(transparent,rgba(13,21,38,.94) 30%);z-index:2;pointer-events:none}
+#bottom > *{pointer-events:auto}
+#bottom.off #lvlBox .btn,#bottom.off #passes,#bottom.off #lock{opacity:.5;pointer-events:none}
+#lvlBox{display:flex;flex-direction:column;gap:7px}
+#lvlRow{display:flex;justify-content:space-between;align-items:baseline}
+#lvl{font-size:22px}
+#xpTxt,#boardCount{font-size:14px;color:var(--muted)}
+#boardCount.full{color:var(--gold)}
+#xpWrap{height:7px;border-radius:4px;background:#263a5e;overflow:hidden}
+#xpBar{height:100%;background:#7fb3ff}
+#passes{display:flex;gap:10px;justify-content:center;border-radius:12px;position:relative;min-width:0}
+#passes.sell::after{content:"SOLTÁ PARA VENDER";position:absolute;inset:-6px;display:grid;place-items:center;font-family:"Big Shoulders Display",Impact,sans-serif;font-size:30px;color:#ff7a63;background:rgba(40,12,12,.85);border:2px dashed #ff7a63;border-radius:12px}
+.pass{position:relative;width:clamp(96px,12vw,158px);height:118px;border-radius:10px;background:#f4f4f2;color:#1b2233;overflow:hidden;border:0;padding:0;text-align:left;font:inherit;cursor:pointer;display:flex;flex-direction:column;transition:transform .08s}
+.pass:hover{transform:translateY(-3px)}
+.pass i{display:block;height:9px;flex:none}
+.pass div{padding:7px 9px;display:flex;flex-direction:column;gap:2px;flex:1;min-height:0}
+.pass b{font-family:"Big Shoulders Display",Impact,sans-serif;font-size:clamp(16px,1.6vw,21px);line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pass span{font-size:12px;color:#4b5672;line-height:1.25}
+.pass em{margin-top:auto;font-style:normal;font-weight:700;font-size:18px;text-align:right}
+.pass.match{background:linear-gradient(160deg,#fff4cf,#f0c25a);outline:3px solid #f0b429;outline-offset:2px}
+.pass.poor{filter:grayscale(.6) brightness(.85)}
+.pass.sold{background:rgba(255,255,255,.06);border:2px dashed #3a4d70;cursor:default}
+#money{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+#gold{font-size:46px;line-height:1;color:var(--gold)}
+#interest{font-size:13px;color:var(--muted);text-align:right}
+#flacoBar{position:absolute;left:50%;bottom:220px;transform:translateX(-50%);display:none;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center;padding:8px 12px;border-radius:12px;background:#1e2a1a;border:1px solid #7ad66a;font-size:15px;z-index:3;max-width:calc(100% - 24px)}
+#flacoBar button{min-height:34px;font-size:14px}
+#spyBar{position:absolute;left:50%;top:calc(92px + env(safe-area-inset-top,0px));transform:translateX(-50%);display:none;background:#3a2f12;border:1px solid var(--gold);color:var(--gold);border-radius:10px;padding:6px 12px;cursor:pointer;font-weight:600;z-index:3;white-space:nowrap}
 
-/* HTML token (banco y "fantasma" al arrastrar) */
-.unit{position:absolute;width:56px;height:56px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  background:var(--ub,#333) center/cover;border:3px solid var(--cc,#888);cursor:grab;box-shadow:0 3px 8px #0009;line-height:1}
-.unit .u-icon{font-size:17px}
-.unit .u-name{font-size:10px;font-weight:800;max-width:52px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;text-shadow:0 1px 2px #000}
-.unit .u-stars{position:absolute;bottom:-9px;font-size:11px;color:var(--gold);text-shadow:0 0 3px #000,0 0 3px #000;letter-spacing:-1px}
-.unit.dragging{opacity:.25}
-.unit.ghost{position:fixed;pointer-events:none;z-index:1000;opacity:.9;transform:scale(1.1)}
-.cost1{--cc:var(--c1)} .cost2{--cc:var(--c2)} .cost3{--cc:var(--c3)} .cost4{--cc:var(--c4)} .cost5{--cc:var(--c5)} .cost0{--cc:#555}
+#toast{position:absolute;left:50%;top:calc(92px + env(safe-area-inset-top,0px));transform:translate(-50%,-8px);background:var(--panel);border:1px solid var(--gold);border-radius:10px;padding:8px 14px;font-size:16px;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;max-width:min(520px,80vw);text-align:center;z-index:20}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+#banner{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);font-family:"Big Shoulders Display",Impact,sans-serif;font-size:72px;letter-spacing:2px;pointer-events:none;text-shadow:0 4px 24px #000;display:none;text-align:center;line-height:.95;z-index:4;white-space:nowrap}
+#banner small{display:block;font-size:28px;color:var(--ink)}
 
-/* bench */
-#flacoBar{display:none;gap:6px;align-items:center;flex-wrap:wrap;padding:6px 10px;border-radius:10px;background:#1e2a1a;border:1px solid #7ad66a;font-size:13px}
-#flacoBar button{padding:4px 10px;font-size:12px}
-#bench{display:flex;gap:6px;padding:8px;border-radius:12px;background:var(--panel);border:1px solid var(--line)}
-.slot{width:62px;height:62px;border-radius:10px;background:#0004;border:1px dashed var(--line);position:relative}
-.slot.drop-hover{border-color:var(--gold);background:#5b4a2a55}
-.slot .unit{left:50%;top:50%;transform:translate(-50%,-50%)}
+/* ficha */
+#ficha{position:absolute;top:calc(84px + env(safe-area-inset-top,0px));right:244px;width:min(320px,calc(100% - 24px));background:#16233a;border:1px solid var(--line);border-radius:14px;overflow:hidden;display:none;z-index:5;max-height:calc(100% - 300px);overflow-y:auto}
+#ficha .band{height:7px}
+#ficha .in{padding:14px 16px}
+#ficha h2{margin:0 40px 0 0;font-family:"Big Shoulders Display",Impact,sans-serif;font-size:28px;line-height:1}
+#ficha .meta{color:var(--muted);font-size:15px;margin:4px 0 8px}
+#ficha .tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+#ficha .tag{font-size:13px;background:#24365a;border-radius:6px;padding:2px 7px}
+#ficha .stats{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;font-size:14px;margin-bottom:10px}
+#ficha .stats span{color:var(--muted)}
+#ficha .ab{background:#fff;color:#1b2a6b;border-radius:4px;padding:10px 12px;transform:rotate(-.5deg);margin-bottom:8px}
+#ficha .ab strong{font-family:"Permanent Marker",cursive;font-weight:400;font-size:19px;display:block}
+#ficha .ab p{margin:4px 0 0;color:#1b2233;font-size:15px;line-height:1.35}
+#ficha .ab p b{color:#b8862b} #ficha .ab .cur{font-weight:800;text-decoration:underline}
+#ficha .uni{background:#3a2f12;border-radius:8px;padding:8px 10px;font-size:14px;margin-bottom:8px}
+#ficha .equip{font-size:14px;color:var(--muted);margin-bottom:8px}
+#ficha .close{position:absolute;top:12px;right:10px;width:36px;height:36px;border-radius:8px;border:0;background:var(--btn);color:var(--ink);font-size:20px;cursor:pointer}
+#ficha .sell{width:100%}
 
-/* jugadores */
-.prow{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:8px;margin-bottom:4px;background:var(--panel2);cursor:pointer;border:1px solid transparent}
-.prow:hover{border-color:var(--line)}
-.prow.me{box-shadow:inset 3px 0 0 var(--mine)}
-.prow.spy{border-color:var(--gold)}
-.prow.dead{opacity:.4}
-.prow .pname{font-weight:600;flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.prow .psub{font-size:10px;color:var(--muted);font-weight:400}
-.prow .pstreak{font-size:11px;width:30px;text-align:center}
-.prow .php{width:56px;height:8px;border-radius:4px;background:#0008;overflow:hidden}
-.prow .php i{display:block;height:100%;background:linear-gradient(90deg,#4fd36a,#b6f06a)}
-.prow .phv{width:26px;text-align:right;font-weight:800}
-.prow .vs{color:var(--foe);font-size:13px}
-#roundPanel,#infoPanel{margin-top:12px}
-#infoPanel{min-height:120px}
-.res{font-size:12px}
-.res div{display:flex;justify-content:space-between;gap:6px;padding:3px 0;border-bottom:1px solid #ffffff0d}
-.res .w{color:#6dff8a} .res .l{color:var(--foe)} .res .d{color:var(--gold)}
-.res .mine{font-weight:800}
-.nextOpp{font-family:'Bebas Neue',Impact,sans-serif;font-size:22px;letter-spacing:1px;color:var(--foe);margin-bottom:6px}
-#spyBar{display:none;background:#3a2f12;border:1px solid var(--gold);color:var(--gold);border-radius:8px;padding:6px 12px;cursor:pointer;font-weight:600}
-#endScreen{position:fixed;inset:0;background:#000c;display:none;place-items:center;z-index:1400}
-#endScreen .box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;width:min(520px,92vw)}
-#endScreen h2{margin:0 0 12px;font-family:'Bebas Neue',Impact,sans-serif;font-weight:400;font-size:40px;letter-spacing:1px;color:var(--gold)}
-#endTable{width:100%;border-collapse:collapse;font-size:13px}
-#endTable td,#endTable th{padding:5px 6px;text-align:left;border-bottom:1px solid #ffffff12}
-#endTable th{color:var(--muted);font-weight:600;font-size:11px}
-#endTable tr.me td{color:var(--mine);font-weight:800}
-#endScreen .row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.dmg{position:absolute;left:0;top:0;pointer-events:none;font-family:"Big Shoulders Display",Impact,sans-serif;font-weight:800;font-size:22px;color:#fff;text-shadow:0 2px 0 #000,0 0 6px #000;white-space:nowrap;will-change:transform,opacity}
+.dmg.crit{color:var(--gold);font-size:28px}
+.dmg.magic{color:#d6a8ff}
+.dmg.heal{color:#7ee08f}
+.dmg.miss{color:#7ad66a;font-size:16px}
+
+/* lobby, menú inicial y final */
+.overlay{position:fixed;inset:0;background:#000c;display:none;place-items:center;z-index:30}
+.overlay .box{background:#16233a;border:1px solid var(--line);border-radius:14px;padding:22px;width:min(520px,92vw);max-height:92vh;overflow:auto}
+.overlay h2{margin:0 0 12px;font-family:"Big Shoulders Display",Impact,sans-serif;font-size:38px;line-height:1;color:var(--gold)}
+.overlay h2 span{color:var(--ink);letter-spacing:6px}
+.overlay h3{margin:14px 0 6px;font-family:"Big Shoulders Display",Impact,sans-serif;font-size:22px;color:var(--muted)}
+.overlay label{display:block;font-size:14px;color:var(--muted);margin:10px 0 4px}
+.overlay input,.overlay select{width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);background:#0c1424;color:var(--ink);font:inherit;font-size:16px}
+.overlay .row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.help{font-size:14px;color:var(--muted);margin-top:10px;line-height:1.45}
 .tabs{display:flex;gap:6px;margin:14px 0 4px}
 .tabs button{flex:1}
-.tabs button.on{border-color:var(--accent);color:var(--accent)}
-button.primary{border-color:var(--accent);background:#3a1a16}
-#lobby{position:fixed;inset:0;background:#000c;display:none;place-items:center;z-index:1450}
-#lobby .box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;width:min(520px,92vw)}
-#lobby h2{margin:0;font-family:'Bebas Neue',Impact,sans-serif;font-weight:400;font-size:34px;letter-spacing:1px;color:var(--accent)}
-#lobby h2 span{color:var(--gold);letter-spacing:6px}
-#lobby h3{margin:14px 0 6px;font-family:'Bebas Neue',Impact,sans-serif;font-weight:400;font-size:20px;letter-spacing:1px;color:var(--muted)}
-#lobby label{display:block;font-size:12px;color:var(--muted);margin:8px 0 4px}
-#lobby select{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:#0006;color:var(--text);font:inherit}
-#lobby .row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.tabs button.on{background:var(--gold);color:#1b2233}
 .chk{display:flex!important;gap:8px;align-items:flex-start;line-height:1.3}
-.mrow{display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--panel2);border-radius:8px;margin-bottom:4px}
-.dot{width:9px;height:9px;border-radius:50%;background:#555;flex:none}
-.dot.on{background:#4fd36a;box-shadow:0 0 6px #4fd36a}
-#roomBadge{font-weight:800;color:var(--gold);letter-spacing:2px}
-#modal select{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:#0006;color:var(--text);font:inherit}
-.info-title{font-family:'Bebas Neue',Impact,sans-serif;font-size:24px;letter-spacing:1px;line-height:1}
-.info-sub{color:var(--muted);font-size:12px;margin:2px 0 8px}
-.stats{display:grid;grid-template-columns:1fr 1fr;gap:2px 10px;font-size:12px;margin-bottom:8px}
-.stats span{color:var(--muted)}
-.ability{background:var(--panel2);border-radius:8px;padding:8px;font-size:12px;line-height:1.4}
-.ability b{color:var(--gold)}
-.ability .cur{color:var(--text);font-weight:800;text-decoration:underline}
+.chk input{width:auto}
+.mrow{display:flex;align-items:center;gap:8px;padding:7px 9px;background:#24365a;border-radius:8px;margin-bottom:4px}
+.pdot{width:9px;height:9px;border-radius:50%;background:#555;flex:none}
+.pdot.on{background:#7ee08f;box-shadow:0 0 6px #7ee08f}
+#endTable{width:100%;border-collapse:collapse;font-size:15px}
+#endTable td,#endTable th{padding:6px;text-align:left;border-bottom:1px solid #ffffff14}
+#endTable th{color:var(--muted);font-weight:600;font-size:13px}
+#endTable tr.me td{color:var(--gold);font-weight:700}
 
-/* hud */
-#hud{display:grid;grid-template-columns:210px auto 1fr auto;gap:12px;align-items:stretch;margin-top:14px}
-#hud.disabled #shop,#hud.disabled .hbtns{opacity:.5;pointer-events:none}
-.hbtns{display:flex;flex-direction:column;gap:6px;justify-content:center}
-.hbtns button{min-width:150px;text-align:left}
-.hbtns button kbd{float:right;opacity:.6;font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 4px;margin-left:8px}
-#stats .lv{font-family:'Bebas Neue',Impact,sans-serif;font-size:28px;letter-spacing:1px;line-height:1}
-.xpbar{height:8px;background:#0008;border-radius:4px;overflow:hidden;margin:4px 0}
-.xpbar i{display:block;height:100%;background:#4aa3ff}
-.goldv{font-family:'Bebas Neue',Impact,sans-serif;font-size:34px;color:var(--gold);line-height:1}
-.small{font-size:11px;color:var(--muted)}
-.odds{display:flex;gap:6px;font-size:11px;font-weight:600}
-#shop{display:flex;gap:8px;padding:8px;border-radius:12px;background:var(--panel);border:1px solid var(--line);position:relative}
-#shop.sell-hover{border-color:var(--accent);background:#3a1a16}
-#shop.sell-hover::after{content:'SOLTÁ PARA VENDER';position:absolute;inset:0;display:grid;place-items:center;font-family:'Bebas Neue',Impact,sans-serif;font-size:28px;letter-spacing:2px;color:var(--accent);background:#1c0d0bcc;border-radius:12px}
-.card{flex:1;min-width:0;height:98px;border-radius:10px;border:2px solid var(--cc);background:linear-gradient(160deg,var(--ub,#333) 0%,#140f15 85%);padding:7px 8px;cursor:pointer;position:relative;display:flex;flex-direction:column;justify-content:space-between;transition:transform .08s}
-.card:hover{transform:translateY(-3px)}
-.card.empty{border:2px dashed var(--line);background:none;cursor:default}
-.card.empty:hover{transform:none}
-.card .cn{font-weight:800;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:24px}
-.card .ct{font-size:11px;color:#ddd;line-height:1.35}
-.card .cc{position:absolute;right:7px;bottom:6px;font-weight:800;color:var(--gold)}
-.card .ci{position:absolute;right:6px;top:4px;font-size:22px;opacity:.85}
-.card.owned{box-shadow:0 0 0 2px #fff4,0 0 14px #fff3}
-.card.owned2{box-shadow:0 0 0 2px var(--gold),0 0 18px var(--gold)}
-.card.poor{filter:grayscale(.7) brightness(.7)}
-#btnReady{background:linear-gradient(180deg,#ff5a36,#c02a14);border-color:#ff7a5a;font-family:'Bebas Neue',Impact,sans-serif;font-size:24px;letter-spacing:1px;padding:8px 18px}
-#btnLock.on{border-color:var(--gold);color:var(--gold)}
-.timerRow{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
-#timerVal{margin-left:auto;font-weight:800;color:var(--gold)}
-
-/* misc */
-#toast{position:fixed;left:50%;top:14px;transform:translateX(-50%);background:#2a1414;border:1px solid var(--accent);padding:8px 16px;border-radius:8px;display:none;z-index:2000;font-weight:600}
-#modal{position:fixed;inset:0;background:#000b;display:none;place-items:center;z-index:1500}
-#modal .box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;width:min(440px,92vw)}
-#modal h2{margin:0 0 12px;font-family:'Bebas Neue',Impact,sans-serif;font-weight:400;font-size:34px;letter-spacing:1px;color:var(--accent)}
-#modal label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
-#modal input{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:#0006;color:var(--text);font:inherit}
-#modal .row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
-.help{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5}
-
-@media (max-width:1150px){
-  #main{grid-template-columns:1fr}
-  #hud{grid-template-columns:1fr 1fr}
-  #shop{grid-column:1/-1}
+/* celular y pantallas chicas */
+@media (max-width:820px), (max-height:520px){
+  #top{grid-template-columns:auto 1fr auto;gap:6px;left:6px;right:6px}
+  .chip{padding:5px 8px}
+  #round{font-size:16px;white-space:nowrap} #rivalLine{font-size:11px;max-width:96px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #qual{display:none}
+  #timer{width:auto} #tsec{font-size:22px}
+  #gpu,#fps{display:none}
+  #setlist{width:128px;top:calc(76px + env(safe-area-inset-top,0px));padding:10px 8px 6px;max-height:calc(100% - 200px)}
+  #setlist h3{font-size:16px}
+  .dot{width:22px;height:22px;font-size:12px}
+  .tn{font-size:13px} .tt{display:none}
+  #players{width:62px;top:calc(76px + env(safe-area-inset-top,0px));padding:4px}
+  .ptitle,.pi .pr span,.hp,.pd{display:none}
+  .pl{padding:3px;justify-content:center;gap:4px;flex-direction:column}
+  .pi .pr{justify-content:center;font-size:12px}
+  .av{width:24px;height:24px;font-size:10px}
+  #bottom{grid-template-columns:96px minmax(0,1fr) 64px;gap:8px;padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px))}
+  #lvl{font-size:15px} #xpTxt,#boardCount,#interest{display:none}
+  #lvlBox .btn{min-height:38px;font-size:13px;padding:0 6px}
+  .pass{height:86px;width:auto;flex:1;min-width:0}
+  .pass span{display:none}
+  .pass div{padding:6px 5px}
+  .pass b{font-size:14px;white-space:normal;overflow-wrap:anywhere;line-height:1.05}
+  #passes{gap:5px;min-width:0}
+  #gold{font-size:26px}
+  #ficha{top:calc(62px + env(safe-area-inset-top,0px));right:74px;width:min(280px,calc(100% - 210px));max-height:calc(100% - 190px)}
+  #toast{top:calc(62px + env(safe-area-inset-top,0px));font-size:13px}
+  #flacoBar{bottom:110px;font-size:13px}
+  #banner{font-size:46px} #banner small{font-size:20px}
+  #spyBar{top:calc(62px + env(safe-area-inset-top,0px));font-size:13px}
 }
+@media (max-width:520px){ #ficha{right:8px;left:8px;width:auto} }
+@media (prefers-reduced-motion:reduce){ #toast{transition:none} }
 </style>
 </head>
 <body>
-<div id="app">
-  <header id="topbar">
-    <div class="logo">TÁCTICAS <span>DEL</span> ROCK</div>
-    <div id="roundInfo"></div>
-    <div id="roomBadge"></div>
-    <div class="spacer"></div>
-    <button id="btnDet" title="Corre el mismo combate 2 veces con la misma semilla y compara">🔬 Determinismo</button>
-    <button id="btnNew">Nueva partida</button>
-  </header>
-  <div id="main">
-    <aside class="panel" id="traitsPanel"></aside>
-    <section id="center">
-      <div id="spyBar"></div>
-      <div id="arenaWrap">
-        <div id="oppLabel"></div>
-        <canvas id="arena"></canvas>
-        <div id="banner"></div>
-        <div id="combatCtrls">
-          <button data-speed="1" class="on">x1</button>
-          <button data-speed="2">x2</button>
-          <button data-speed="4">x4</button>
-          <button data-speed="skip">Saltar</button>
-        </div>
-        <div id="capBadge"></div>
+<div id="wrap">
+  <canvas id="c" aria-label="Escenario 3D"></canvas>
+  <div id="numbers"></div>
+
+  <div id="top">
+    <div class="chip" id="roundChip"><div id="round" class="big">Tácticas del Rock</div><div id="rivalLine">Rival: <strong id="rival">—</strong></div></div>
+    <div id="timer" class="chip">
+      <div class="row"><span id="phase">—</span><span id="tsec" class="big"></span><button class="btn gold" id="ready" style="min-height:32px;padding:0 10px;font-size:14px">Listo</button></div>
+      <div id="tbarWrap"><div id="tbar"></div></div>
+      <div id="speed"><button class="btn" data-speed="1">x1</button><button class="btn" data-speed="2">x2</button><button class="btn" data-speed="4">x4</button><button class="btn" data-speed="skip">Saltar</button></div>
+    </div>
+    <div id="tools">
+      <div class="chip" style="display:flex;align-items:center;gap:8px">
+        <span><span id="fps" class="big">-- fps</span><span id="gpu"></span></span>
+        <button class="btn" id="qual" style="min-height:34px;font-size:14px">Calidad: auto</button>
+        <button class="btn" id="menuBtn" style="min-height:34px;font-size:18px" aria-label="Menú">☰</button>
       </div>
-      <div id="flacoBar"></div>
-      <div id="bench"></div>
-    </section>
-    <aside>
-      <div class="panel" id="playersPanel"></div>
-      <div class="panel" id="roundPanel"></div>
-      <div class="panel" id="infoPanel"></div>
-    </aside>
+    </div>
   </div>
-  <footer id="hud">
-    <div class="panel" id="stats"></div>
-    <div class="hbtns">
-      <button id="btnXp">Comprar XP (4)<kbd>F</kbd></button>
-      <button id="btnReroll">Reroll (2)<kbd>D</kbd></button>
+  <div id="menu" role="menu">
+    <div id="roomBadge"></div>
+    <button class="btn" id="btnNew">Nueva partida</button>
+    <button class="btn" id="btnDet">🔬 Chequeo de determinismo</button>
+    <button class="btn" id="qual2">Calidad: auto</button>
+    <label id="timerOpt"><input type="checkbox" id="chkTimer"> Timer de 30 s (partida local)</label>
+    <div class="help" style="margin:0">Teclas: <b>D</b> cambiar la grilla · <b>F</b> convocatoria · <b>E</b> vender · <b>Espacio</b> listo</div>
+  </div>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+  <div id="spyBar"></div>
+  <aside id="setlist" aria-label="Sinergias activas"><h3>Setlist</h3><div id="traits"></div></aside>
+  <aside id="players" aria-label="Público"></aside>
+  <div id="flacoBar"></div>
+  <div id="banner"></div>
+
+  <div id="bottom">
+    <div id="lvlBox">
+      <div id="lvlRow"><span id="lvl" class="big">Convocatoria 1</span><span id="xpTxt"></span></div>
+      <div id="xpWrap"><div id="xpBar"></div></div>
+      <span id="boardCount"></span>
+      <button class="btn" id="levelup">Más convocatoria · $4</button>
+      <button class="btn" id="reroll">Cambiar la grilla · $2</button>
     </div>
-    <div id="shop" data-drop="sell"></div>
-    <div class="hbtns">
-      <button id="btnLock">🔓 Bloquear tienda</button>
-      <button id="btnReady">¡Listo! <kbd>Espacio</kbd></button>
-      <label class="timerRow"><input type="checkbox" id="chkTimer"> Timer<span id="timerVal"></span></label>
+    <div id="passes"></div>
+    <div id="money">
+      <span id="gold" class="big">$0</span>
+      <span id="interest"></span>
+      <button class="btn" id="lock" aria-pressed="false" aria-label="Bloquear la grilla"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
     </div>
-  </footer>
+  </div>
+
+  <div id="ficha" role="dialog" aria-label="Ficha del músico">
+    <div class="band" id="fBand"></div>
+    <button class="close" id="fClose" aria-label="Cerrar ficha">×</button>
+    <div class="in" id="fIn"></div>
+  </div>
 </div>
-<div id="toast"></div>
-<div id="endScreen"><div class="box">
+
+<div id="endScreen" class="overlay"><div class="box">
   <h2 id="endTitle"></h2>
   <table id="endTable"></table>
-  <div class="row"><button id="btnEndClose">Ver tablero</button><button id="btnEndNew" style="border-color:var(--accent)">Nueva partida</button></div>
+  <div class="row"><button class="btn" id="btnEndClose">Ver escenario</button><button class="btn gold" id="btnEndNew">Nueva partida</button></div>
 </div></div>
-<div id="modal"><div class="box">
+<div id="modal" class="overlay"><div class="box">
   <h2>Tácticas del Rock</h2>
   <label for="inName">Tu apodo</label>
   <input id="inName" maxlength="18" value="Vos">
-  <div class="tabs"><button data-tab="solo" class="on">Solo vs bots</button><button data-tab="online">Online con amigos</button></div>
+  <div class="tabs"><button class="btn on" data-tab="solo">Solo vs bots</button><button class="btn" data-tab="online">Online con amigos</button></div>
   <div data-pane="solo">
     <label for="inSeed">Semilla (misma semilla + mismas jugadas = misma partida)</label>
     <input id="inSeed">
@@ -252,22 +281,21 @@ button.primary{border-color:var(--accent);background:#3a1a16}
       <div><label for="inDiff">Dificultad</label>
         <select id="inDiff"><option value="0.6">Fácil</option><option value="0.3" selected>Normal</option><option value="0">Difícil</option></select></div>
     </div>
-    <div class="row"><button id="btnCancel">Cancelar</button><button id="btnStart" class="primary">Arrancar</button></div>
+    <div class="row"><button class="btn" id="btnCancel">Cancelar</button><button class="btn gold" id="btnStart">Arrancar</button></div>
   </div>
   <div data-pane="online" style="display:none">
     <div id="onlineOff" class="help"></div>
     <div id="onlineOn">
-      <div class="row" style="justify-content:stretch"><button id="btnCreate" class="primary" style="flex:1">Crear partida</button></div>
+      <div class="row" style="justify-content:stretch"><button class="btn gold" id="btnCreate" style="flex:1">Crear partida</button></div>
       <label for="inCode">…o unirse con un código</label>
-      <div class="row" style="margin-top:0"><input id="inCode" maxlength="5" placeholder="ABCD" style="text-transform:uppercase;letter-spacing:4px;font-weight:800"><button id="btnJoin">Unirse</button></div>
+      <div class="row" style="margin-top:0"><input id="inCode" maxlength="5" placeholder="ABCD" style="text-transform:uppercase;letter-spacing:4px;font-weight:800"><button class="btn" id="btnJoin">Unirse</button></div>
     </div>
   </div>
-  <div class="help">Arrastrá unidades entre banco y tablero. Para vender: click derecho, arrastrar a la tienda, o <b>E</b> con el mouse encima.<br>
-  <b>D</b> reroll · <b>F</b> comprar XP · <b>Espacio</b> listo.</div>
+  <div class="help">Tocá un músico para ver su ficha; con uno elegido, tocá otro lugar para moverlo (en compu también podés arrastrar). Para vender: arrastralo a la grilla o usá el botón de la ficha.</div>
 </div></div>
-<div id="lobby"><div class="box">
+<div id="lobby" class="overlay"><div class="box">
   <h2>Sala <span id="lobbyCode"></span></h2>
-  <div class="small" id="lobbyLink"></div>
+  <div class="help" id="lobbyLink"></div>
   <h3>Jugadores</h3>
   <div id="lobbyMembers"></div>
   <div id="lobbyHost">
@@ -276,81 +304,95 @@ button.primary{border-color:var(--accent);background:#3a1a16}
       <div><label for="lbBots">Completar con bots hasta</label><select id="lbBots"></select></div>
       <div><label for="lbDiff">Dificultad de los bots</label>
         <select id="lbDiff"><option value="0.6">Fácil</option><option value="0.3">Normal</option><option value="0">Difícil</option></select></div>
-      <div><label for="lbTime">Tiempo de planificación</label>
+      <div><label for="lbTime">Tiempo de armado</label>
         <select id="lbTime"><option value="20">20 s</option><option value="30">30 s</option><option value="45">45 s</option><option value="60">60 s</option></select></div>
       <div><label class="chk"><input type="checkbox" id="lbTakeover"> Si alguien se desconecta 2 rondas, lo maneja un bot hasta que vuelva</label></div>
     </div>
   </div>
   <div id="lobbyWait" class="help"></div>
-  <div class="row"><button id="btnLeave">Salir</button><button id="btnLobbyStart" class="primary">Empezar</button></div>
+  <div class="row"><button class="btn" id="btnLeave">Salir</button><button class="btn gold" id="btnLobbyStart">Empezar</button></div>
 </div></div>
 
-<script src="sim.js?v=5"></script>
-<script src="net.js?v=5"></script>
-<script src="firebase-config.js?v=5"></script>
-<script src="firebase-transport.js?v=5"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="sim.js?v=6"></script>
+<script src="net.js?v=6"></script>
+<script src="looks.js?v=6"></script>
+<script src="stage3d.js?v=6"></script>
+<script src="firebase-config.js?v=6"></script>
+<script src="firebase-transport.js?v=6"></script>
 <script>
 'use strict';
 /* =====================================================================
- * 3. UI — render (canvas para el tablero/combate, HTML para el resto) y
- *    entrada. Lee el estado de la sala (vía net.js) y manda intenciones al host.
+ * 3. UI — HUD (HTML) sobre el escenario 3D (stage3d.js).
+ *    Lee el estado de la sala (vía net.js) y manda intenciones al host.
  *    En local, esta misma pestaña también es el host (LocalTransport en memoria).
  *    El jugador de esta pestaña es localPlayerId; el estado llega siempre por el transporte.
+ *    El 3D solo dibuja: el combate se re-simula acá con SIM.stepCombat a ticks fijos.
  * ===================================================================== */
 (function UI() {
-  const C = DATA.CONFIG, ROWS = C.BOARD_ROWS, COLS = C.BOARD_COLS, TROWS = ROWS * 2;
-  const HW = 66, HH = Math.round(HW * 1.1547), VS = HH * 0.75, PAD = 18;
-  const ARENA_W = COLS * HW + HW / 2, ARENA_H = (TROWS - 1) * VS + HH + PAD * 2;
-  const TOKEN_R = 26;
-  const LOCAL_KEY = 'tacticas_rock_local_v5', ONLINE_KEY = 'tacticas_rock_online', PREF_KEY = 'tacticas_rock_prefs';
+  const C = DATA.CONFIG, COLS = C.BOARD_COLS;
+  const LOCAL_KEY = 'tacticas_rock_local_v6', ONLINE_KEY = 'tacticas_rock_online', PREF_KEY = 'tacticas_rock_prefs';
+  const COST_COLOR = ['#7b8296', '#9aa0a8', '#3fae67', '#4a8ef0', '#b26ae6', '#f0b429'];
   const $ = s => document.querySelector(s);
   const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const COST_COLOR = ['#555', '#8f949c', '#3fb15f', '#3a86e0', '#b05ae0', '#f0b02a'];
 
-  // Conexión: en local hay un servidor en memoria (host y cliente en esta pestaña);
-  // online, FirebaseTransport. La UI no distingue: habla con `client` y `session`.
   let T = null, srv = null, session = null, client = null, online = false, fbT = null;
-  let localPlayerId = null;      // uid del jugador de esta pestaña
-  let state = null;              // vista del estado (la del host + mis acciones pendientes)
-  let mode = 'menu';             // 'menu' | 'lobby' | 'planning' | 'combat' | 'waiting' | 'ended'
-  let selected = null;           // {unitId, star}
-  let spyId = null;              // jugador cuyo tablero se está mirando
-  let hoverLoc = null;
-  let replay = null;
-  let drag = null, dragOverIdx = -1;
-  let prefs = { timer: false, speed: 1, name: 'Vos' };
-  let shownCombatKey = null, beforeCombat = null, endShownFor = null;
+  let localPlayerId = null, state = null;
+  let mode = 'menu';            // 'menu' | 'lobby' | 'planning' | 'combat' | 'waiting' | 'ended'
+  let ficha = null;             // {uid?, owner?, unitId, star, cid?}
+  let selectedUid = null;       // músico propio elegido para mover
+  let spyId = null, replay = null, drag = null, hoverUid = null;
+  let prefs = { timer: false, speed: 1, name: 'Vos', quality: 'auto' };
+  let shownCombatKey = null, beforeCombat = null, endShownFor = null, phaseStart = { key: null, at: 0 };
 
   const me = () => state.players[localPlayerId];
   const viewed = () => state.players[spyId] || me();
   const pname = id => (state.players[id] ? state.players[id].name : id);
-  const cellCenter = (R, Cc) => ({ x: Cc * HW + (R & 1) * HW / 2 + HW / 2, y: PAD + R * VS + HH / 2 });
-  const unitIcon = d => d.icon || (d.classes && d.classes[0] ? DATA.TRAITS[d.classes[0]].icon : '🎵');
-  const originColor = d => { const os = d.origins || []; const o = os.find(t => t !== 'solistas') || os[0]; return o ? DATA.TRAITS[o].color : '#666'; };
   const traitTag = t => `${DATA.TRAITS[t].icon} ${DATA.TRAITS[t].name}`;
   const stars = n => '★'.repeat(n);
   const persName = p => (p.takenOver ? 'Bot (reemplazo)' : p.bot ? (DATA.BOTS.PERSONALITIES[p.bot.personality] || {}).name || p.bot.personality : 'Humano');
   const phase = () => (client && client.phase) || { name: 'lobby' };
-  const canAct = () => mode === 'planning' && phase().name === 'planning' && state && me() && me().alive;
+  const canAct = () => mode === 'planning' && phase().name === 'planning' && state && me() && me().alive && !spyId;
   const urlWithRoom = code => { const q = new URLSearchParams(location.search); if (code) q.set('sala', code); else q.delete('sala'); const s = q.toString(); return location.pathname + (s ? '?' + s : ''); };
   const onlineAvailable = () => /^https?:$/.test(location.protocol) && !!window.FIREBASE_CONFIG;
+  const initials = n => String(n).split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
-  // ---------- persistencia ----------
   try { Object.assign(prefs, JSON.parse(localStorage.getItem(PREF_KEY)) || {}); } catch (e) {}
   const savePrefs = () => { try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); } catch (e) {} };
   const loadJSON = k => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
   const saveJSON = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
+  let toastTimer = null;
+  function toast(msg, ms = 2600) {
+    const t = $('#toast'); t.textContent = msg; t.classList.add('on');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), ms);
+  }
+
+  // ---------- escenario 3D ----------
+  let stage = null;
+  try {
+    stage = STAGE3D.create({ canvas: $('#c'), overlay: $('#numbers'), onFrame, onFps: (fps, lvl) => { $('#fps').textContent = fps + ' fps'; $('#qual').textContent = $('#qual2').textContent = 'Calidad: ' + lvl; } });
+    stage.setQuality(prefs.quality || 'auto');
+    const gpu = stage.gpu, soft = /swiftshader|llvmpipe|software|microsoft basic/i.test(gpu);
+    $('#gpu').textContent = soft ? 'Sin aceleración de video' : (gpu || ''); $('#gpu').title = gpu; if (soft) $('#gpu').style.color = '#ff7a63';
+  } catch (e) {
+    console.error(e);
+    document.body.insertAdjacentHTML('beforeend', '<div style="position:fixed;inset:0;display:grid;place-items:center;background:#0d1526;color:#e8ecf4;font:20px sans-serif;text-align:center;padding:20px;z-index:99">Este navegador no puede mostrar el escenario 3D (WebGL).<br>Probá con Chrome, Edge, Firefox o Safari actualizados.</div>');
+    return;
+  }
+
   // ---------- sesión ----------
   function teardown() {
+    if (replay && stage) stage.stopCombat();
     if (session) session.destroy();
-    session = client = null; state = null; replay = null; spyId = null; selected = null;
+    session = client = null; state = null; replay = null; spyId = null; ficha = null; selectedUid = null;
     shownCombatKey = beforeCombat = endShownFor = null;
     if (srv) srv.onChange = null;
     srv = null; T = null; online = false;
     $('#banner').style.display = 'none'; $('#endScreen').style.display = 'none'; $('#lobby').style.display = 'none';
     $('#roomBadge').textContent = '';
+    stage.setPlanning({ board: [], bench: [], selected: null });
   }
   function openSession(code) {
     session = NET.createSession({ transport: T, code, onChange: onRoom });
@@ -396,7 +438,7 @@ button.primary{border-color:var(--accent);background:#3a1a16}
     try {
       await firebase();
       const r = await NET.joinRoom(fbT, { code, name });
-      if (r.error) { toast(r.error, 3000); return false; }
+      if (r.error) { toast(r.error, 4000); return false; }
       enterOnline(r.code);
       return true;
     } catch (e) { console.error(e); toast('No se pudo entrar: ' + e.message, 4000); return false; }
@@ -425,6 +467,7 @@ button.primary{border-color:var(--accent);background:#3a1a16}
     state = c.state;
     if (!state.players[localPlayerId]) { toast('No estás en esta partida', 3000); leave().then(openModal); return; }
     const ph = meta.phase;
+    if (ph.key !== phaseStart.key) phaseStart = { key: ph.key, at: T.now() };
     if (ph.name === 'planning') {
       beforeCombat = state;
       if (mode !== 'combat') mode = 'planning';
@@ -440,135 +483,49 @@ button.primary{border-color:var(--accent);background:#3a1a16}
   }
 
   // ---------- acciones ----------
-  let toastTimer = null;
-  function toast(msg, ms = 1600) {
-    const t = $('#toast'); t.textContent = msg; t.style.display = 'block';
-    clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.style.display = 'none'), ms);
-  }
   function act(action) {
-    if (!canAct()) return;
+    if (!canAct()) return false;
     const err = client.send(action);
-    if (err) { toast(err); return; }
+    if (err) { toast(err); return false; }
     nudge();
+    return true;
+  }
+  function locOfUid(p, uid) {
+    let i = p.board.findIndex(u => u && u.uid === uid);
+    if (i >= 0) return { zone: 'board', idx: i };
+    i = p.bench.findIndex(u => u && u.uid === uid);
+    return i >= 0 ? { zone: 'bench', idx: i } : null;
+  }
+  function unitByUid(p, uid) { const l = locOfUid(p, uid); return l ? (l.zone === 'board' ? p.board : p.bench)[l.idx] : null; }
+  function moveUnit(uid, to) {
+    const from = locOfUid(me(), uid);
+    if (!from || (from.zone === to.zone && from.idx === to.idx)) return;
+    if (act({ type: 'MOVE', from, to })) { selectedUid = null; }
+  }
+  function sellUid(uid) {
+    const loc = locOfUid(me(), uid);
+    if (loc && act({ type: 'SELL', loc })) { if (ficha && ficha.uid === uid) closeFicha(); selectedUid = null; }
   }
   function setSpy(id) {
     spyId = id && id !== localPlayerId ? id : null;
+    selectedUid = null; closeFicha();
     render();
   }
 
-  // ---------- canvas ----------
-  const cv = $('#arena'), ctx = cv.getContext('2d');
-  const dpr = Math.max(1, window.devicePixelRatio || 1);
-  cv.width = ARENA_W * dpr; cv.height = ARENA_H * dpr;
-  cv.style.width = ARENA_W + 'px'; cv.style.height = ARENA_H + 'px';
-  ctx.scale(dpr, dpr);
-  const IMG = {};
-  function getImg(src) {
-    if (!src) return null;
-    if (!IMG[src]) { IMG[src] = new Image(); IMG[src].src = src; }
-    const i = IMG[src];
-    return i.complete && i.naturalWidth ? i : null;
-  }
-  function hexPath(x, y, r) {
-    ctx.beginPath();
-    for (let k = 0; k < 6; k++) {
-      const a = Math.PI / 180 * (60 * k - 90);
-      const px = x + r * Math.cos(a), py = y + r * Math.sin(a);
-      k ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
-    }
-    ctx.closePath();
-  }
-  function drawHexes(planning) {
-    for (let R = 0; R < TROWS; R++) for (let Cc = 0; Cc < COLS; Cc++) {
-      const { x, y } = cellCenter(R, Cc);
-      const mine = R >= ROWS, idx = (R - ROWS) * COLS + Cc;
-      hexPath(x, y, HH / 2 - 2);
-      ctx.fillStyle = planning
-        ? (mine ? (spyId ? ((R + Cc) & 1 ? '#3d3424' : '#332b1f') : ((R + Cc) & 1 ? '#3a3042' : '#2e2634')) : '#1f1920')
-        : (mine ? '#2a2330' : '#2a2026');
-      if (planning && drag && mine && idx === dragOverIdx) ctx.fillStyle = '#5b4a2a';
-      ctx.fill();
-    }
-    const y = PAD + ROWS * VS + HH / 8;
-    const g = ctx.createLinearGradient(0, 0, ARENA_W, 0);
-    g.addColorStop(0, 'transparent'); g.addColorStop(0.5, '#ff4d2e88'); g.addColorStop(1, 'transparent');
-    ctx.fillStyle = g; ctx.fillRect(0, y - 1, ARENA_W, 2);
-  }
-  function fitText(text, maxW) {
-    if (ctx.measureText(text).width <= maxW) return text;
-    while (text.length > 1 && ctx.measureText(text + '…').width > maxW) text = text.slice(0, -1);
-    return text + '…';
-  }
-  // o: {side:'mine'|'foe', hp, shield, mana (0..1), flash, scale, alpha}
-  function drawToken(x, y, unitId, star, o = {}) {
-    const d = SIM.def(unitId), r = TOKEN_R * (o.scale || 1);
-    ctx.save();
-    ctx.globalAlpha = o.alpha ?? 1;
-    if (o.side) { ctx.beginPath(); ctx.arc(x, y, r + 5, 0, Math.PI * 2); ctx.fillStyle = o.side === 'mine' ? '#4aa3ff' : '#ff4d4d'; ctx.fill(); }
-    ctx.beginPath(); ctx.arc(x, y, r + 3, 0, Math.PI * 2); ctx.fillStyle = COST_COLOR[d.cost]; ctx.fill();
-    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = '#1d171e'; ctx.fill();
-    const img = getImg(d.img);
-    if (img) {
-      ctx.save(); ctx.clip(); ctx.drawImage(img, x - r, y - r, r * 2, r * 2); ctx.restore();
-    } else {
-      ctx.fillStyle = originColor(d) + '77'; ctx.fill();
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.font = '16px "Segoe UI Emoji","Apple Color Emoji",sans-serif';
-      ctx.fillText(unitIcon(d), x, y - 7);
-      ctx.font = '800 10px Inter,system-ui,sans-serif';
-      ctx.fillStyle = '#fff'; ctx.shadowColor = '#000'; ctx.shadowBlur = 3;
-      ctx.fillText(fitText(d.short, r * 2 - 6), x, y + 11);
-      ctx.shadowBlur = 0;
-    }
-    if (o.flash) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = `rgba(255,255,255,${o.flash * 0.6})`; ctx.fill(); }
-    ctx.font = '12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#f5c542'; ctx.shadowColor = '#000'; ctx.shadowBlur = 4;
-    ctx.fillText(stars(star), x, y + r + 4);
-    ctx.shadowBlur = 0;
-    if (o.hp != null) { // barras
-      const w = 56, bx = x - w / 2, by = y - r - 15;
-      ctx.fillStyle = '#000b'; ctx.fillRect(bx, by, w, 6);
-      ctx.fillStyle = o.side === 'foe' ? '#ff5a4a' : '#4fd36a'; ctx.fillRect(bx, by, w * o.hp, 6);
-      if (o.shield > 0) { ctx.fillStyle = '#e8e8e8cc'; ctx.fillRect(bx + w * o.hp, by, w * Math.min(1 - o.hp, o.shield), 6); }
-      if (o.mana != null) { ctx.fillStyle = '#000b'; ctx.fillRect(bx, by + 7, w, 3); ctx.fillStyle = '#4aa3ff'; ctx.fillRect(bx, by + 7, w * o.mana, 3); }
-    }
-    ctx.restore();
-  }
-  function drawPlanning() {
-    drawHexes(true);
-    viewed().board.forEach((u, i) => {
-      if (!u) return;
-      const { x, y } = cellCenter(ROWS + Math.floor(i / COLS), i % COLS);
-      const dragging = !spyId && drag && drag.ghost && drag.zone === 'board' && drag.idx === i;
-      drawToken(x, y, u.unitId, u.star, { alpha: dragging ? 0.25 : 1 });
-    });
-  }
-
-  // ---------- render HTML ----------
-  function makeTokenEl(unitId, star) {
-    const d = SIM.def(unitId);
-    const t = el('div', `unit cost${d.cost}`, d.img ? `<div class="u-stars">${stars(star)}</div>`
-      : `<div class="u-icon">${unitIcon(d)}</div><div class="u-name">${d.short}</div><div class="u-stars">${stars(star)}</div>`);
-    t.style.setProperty('--ub', d.img ? `url("${d.img}")` : originColor(d) + '66');
-    return t;
-  }
+  // ---------- render ----------
   function render() {
     if (!state || !me()) return;
-    renderTop(); renderTraits(); renderFlaco(); renderPlayers(); renderRoundPanel(); renderInfo(); renderHud(); renderShop(); renderBench();
-    $('#combatCtrls').style.display = mode === 'combat' ? 'flex' : 'none';
-    const v = viewed(), n = SIM.boardCount(v), cap = $('#capBadge');
-    cap.style.display = mode === 'combat' ? 'none' : '';
-    cap.textContent = `${n}/${v.level}`;
-    cap.classList.toggle('full', n >= v.level);
-    const bar = $('#spyBar');
-    bar.style.display = spyId && mode !== 'combat' ? 'block' : 'none';
-    if (spyId) bar.textContent = `👁 Viendo a ${pname(spyId)} (nivel ${v.level}, ${v.gold} de oro) · click para volver a tu tablero`;
+    renderTop(); renderSetlist(); renderPlayers(); renderBottom(); renderFlaco(); renderFicha();
+    const spyBar = $('#spyBar');
+    spyBar.style.display = spyId && mode !== 'combat' ? 'block' : 'none';
+    if (spyId) spyBar.textContent = `👁 Viendo a ${pname(spyId)} · tocá acá para volver`;
     if (mode !== 'combat') {
-      const pr = nextPairing();
-      $('#oppLabel').textContent = spyId ? '' : pr ? `Próximo rival: ${pname(pr.opp)}${pr.ghost ? ' (fantasma)' : ''}` : '';
+      const v = viewed();
+      const list = arr => arr.map((u, idx) => u && { uid: u.uid, unitId: u.unitId, star: u.star, idx }).filter(Boolean);
+      stage.setPlanning({ board: list(v.board), bench: list(v.bench), selected: spyId ? null : selectedUid, spy: !!spyId });
     }
   }
-  function nextPairing() { // contra quién pelea el humano en la próxima ronda
+  function nextPairing() {
     if (!state.pairings) return null;
     for (const p of state.pairings) {
       if (p.a === localPlayerId) return { opp: p.b, ghost: p.ghost };
@@ -577,10 +534,25 @@ button.primary{border-color:var(--accent);background:#3a1a16}
     return null;
   }
   function renderTop() {
-    const label = SIM.roundLabel(state.round);
-    const kind = DATA.PVE[label] ? 'PvE · ' + DATA.PVE[label].name : state.order.length === 1 ? 'Rival generado' : 'PvP';
-    const alive = state.order.filter(id => state.players[id].alive).length;
-    $('#roundInfo').innerHTML = `Ronda ${label}<small>${kind} · ${alive} vivos</small>`;
+    const label = SIM.roundLabel(state.round), pve = DATA.PVE[label], pr = nextPairing();
+    $('#round').textContent = `Ronda ${label}`;
+    $('#rival').textContent = mode === 'combat' && replay ? replay.oppName : pve ? pve.name : pr ? pname(pr.opp) + (pr.ghost ? ' (fantasma)' : '') : state.order.length === 1 ? 'rival generado' : '—';
+    const ph = phase().name;
+    $('#phase').textContent = mode === 'combat' ? 'Combate' : ph === 'planning' ? 'Armado' : ph === 'combat' ? 'Esperando a los demás' : ph === 'ended' ? 'Fin' : '';
+    const rd = $('#ready');
+    rd.style.visibility = canAct() ? 'visible' : 'hidden';
+    rd.textContent = client && client.isReady() && ph === 'planning' ? '✓ Esperando…' : 'Listo';
+    $('#speed').style.display = mode === 'combat' && replay ? 'flex' : 'none';
+    $('#speed').querySelectorAll('button').forEach(b => b.classList.toggle('gold', replay && b.dataset.speed == replay.speed));
+  }
+  function tickTimer() {
+    if (!client) return;
+    const ph = phase(), bar = $('#tbar');
+    if (!ph.endsAt || (ph.name !== 'planning' && ph.name !== 'combat')) { $('#tsec').textContent = ph.name === 'planning' ? '∞' : ''; bar.style.width = '100%'; bar.classList.remove('hurry'); return; }
+    const left = Math.max(0, (ph.endsAt - T.now()) / 1000), total = Math.max(1, (ph.endsAt - phaseStart.at) / 1000);
+    $('#tsec').textContent = Math.ceil(left);
+    bar.style.width = Math.min(100, left / total * 100) + '%';
+    bar.classList.toggle('hurry', ph.name === 'planning' && left <= 5);
   }
   function traitLevelsText(T) {
     if (T.solo) return T.solo.map((b, i) => `(${i + 1} Solista${i ? 's' : ''}) +${b}% vida, daño y poder`).join('\n') + `\n(${T.solo.length + 1} o más) nada`;
@@ -591,70 +563,78 @@ button.primary{border-color:var(--accent);background:#3a1a16}
     const fxText = f => f.type === 'castShare' ? `+${f.mana} maná al lanzar` : f.type === 'deathHealTrait' ? `cura ${f.pct}% al morir uno` : f.type === 'deathTeam' ? `al morir: escudo ${f.shield} y +${f.adPct}% daño` : f.type;
     return T.levels.map((lv, i) => `(${T.breakpoints[i]}) ` + Object.entries(lv).map(([k, v]) => (k === 'fx' ? v.map(fxText).join(', ') : `+${v} ${names[k] || k}`)).join(', ')).join('\n');
   }
-  function renderTraits() {
+  function renderSetlist() {
     const tr = SIM.computeTraits(SIM.boardSnapshot(viewed()));
-    const box = $('#traitsPanel'); box.innerHTML = `<h3>Rasgos${spyId ? ' · ' + esc(pname(spyId)) : ''}</h3>`;
     const kindRank = t => ({ unica: 0, origen: 1, clase: 2 }[DATA.TRAITS[t].kind]);
     const keys = Object.keys(tr).sort((a, b) => (tr[b].level >= 0) - (tr[a].level >= 0) || kindRank(a) - kindRank(b) || tr[a].missing - tr[b].missing || tr[b].count - tr[a].count);
-    if (!keys.length) box.appendChild(el('div', 'small', 'Poné unidades en el tablero para activar rasgos.'));
-    for (const k of keys) {
-      const T = DATA.TRAITS[k], { count, level, next, missing } = tr[k];
-      let bp = T.breakpoints.map((b, i) => (i <= level ? `<b>${b}</b>` : b)).join(' › ');
-      let nextTxt = next ? `falta${missing > 1 ? 'n' : ''} ${missing} para ${next}` : 'máximo';
-      if (T.solo) { bp = T.solo.map((b, i) => (i + 1 === count ? `<b>${b}%</b>` : b + '%')).join(' › '); nextTxt = tr[k].bonus ? `+${tr[k].bonus}% cada uno (menos es más)` : 'demasiados: sin bonus'; }
-      if (T.kind === 'unica') { bp = 'única'; nextTxt = 'siempre activa'; }
-      const row = el('div', 'trait' + (level >= 0 ? ' on' : ''),
-        `<div class="tbadge">${T.icon}</div><div><div class="tname">${T.name}</div><div class="tbp">${bp}</div><div class="tnext">${nextTxt}</div></div><div class="tcount">${count}</div>`);
-      row.style.setProperty('--tc', T.color);
-      row.title = `${T.name} (${T.kind})\n${T.desc}\n${traitLevelsText(T)}`;
-      box.appendChild(row);
-    }
+    $('#setlist h3').textContent = spyId ? `Setlist · ${pname(spyId)}` : 'Setlist';
+    $('#traits').innerHTML = keys.map(k => {
+      const T = DATA.TRAITS[k], r = tr[k], on = r.level >= 0;
+      let sub = T.breakpoints.map((b, i) => (i <= r.level ? `<b>${b}</b>` : b)).join(' / ') + (r.next ? ` · faltan ${r.missing}` : '');
+      let dot = 'dot';
+      if (T.kind === 'unica') { sub = 'Única'; dot += ' uniq'; }
+      if (T.solo) { sub = r.bonus ? `+${r.bonus}% c/u · menos es más` : 'demasiados'; dot += ' solo'; }
+      return `<div class="trait${on ? '' : ' off'}" title="${esc(T.name + '\n' + T.desc + '\n' + traitLevelsText(T))}"><span class="${dot}">${T.kind === 'unica' ? '★' : r.count}</span><div><div class="tn">${T.icon} ${esc(T.name)}</div><div class="tt">${sub}</div></div></div>`;
+    }).join('') || '<div class="tt">Subí músicos al escenario.</div>';
   }
   function renderPlayers() {
-    const box = $('#playersPanel'); box.innerHTML = '<h3>Jugadores</h3>';
-    const opp = nextPairing();
+    const box = $('#players'), pr = nextPairing(), room = client && client.room;
+    const lastDmg = {};
+    for (const c of state.combats || []) { if (c.dmgA) lastDmg[c.a] = c.dmgA; if (c.dmgB && !c.ghost) lastDmg[c.b] = c.dmgB; }
     const ids = state.order.slice().sort((a, b) => {
       const pa = state.players[a], pb = state.players[b];
       return (pb.alive - pa.alive) || (pa.alive ? pb.hp - pa.hp : pa.place - pb.place) || (a < b ? -1 : 1);
     });
-    for (const id of ids) {
+    box.innerHTML = '<div class="ptitle big">Público</div>' + ids.map(id => {
       const p = state.players[id];
-      const sk = p.streak >= 2 ? `🔥${p.streak}` : p.streak <= -2 ? `🧊${-p.streak}` : '';
-      const room = client && client.room, human = room && room.members && room.members[id];
+      const human = room && room.members && room.members[id];
       const on = human && room.presence && room.presence[id] && room.presence[id].online;
       const rdy = human && room.ready && room.ready[id] === phase().key;
-      const tag = human ? (on ? (rdy ? ' ✓' : '') : ' <span title="Desconectado">📴</span>') : '';
-      const sub = (p.alive ? `Nv ${p.level} · ${id === localPlayerId ? 'vos' : persName(p)}` : `#${p.place} · ${persName(p)}`);
-      const row = el('div', 'prow' + (id === localPlayerId ? ' me' : '') + (p.alive ? '' : ' dead') + (spyId === id ? ' spy' : ''),
-        `<div class="pname">${esc(p.name)}${tag} ${opp && opp.opp === id ? '<span class="vs" title="Próximo rival">⚔</span>' : ''}<div class="psub">${sub}</div></div>
-         <div class="pstreak">${sk}</div>
-         <div class="php"><i style="width:${Math.max(0, p.hp)}%"></i></div><div class="phv">${Math.max(0, p.hp)}</div>`);
-      row.title = id === localPlayerId ? 'Volver a tu tablero' : 'Click para espiar su tablero';
-      row.addEventListener('click', () => { if (mode !== 'combat') setSpy(spyId === id ? null : id); });
-      box.appendChild(row);
-    }
+      const st = human ? (!on ? '📴' : rdy ? '✓' : '') : p.takenOver ? '🤖' : '';
+      const cls = 'pl' + (id === localPlayerId ? ' me' : '') + (pr && pr.opp === id ? ' vs' : '') + (p.alive ? '' : ' out') + (spyId === id ? ' spy' : '');
+      const sub = p.alive ? `Nv ${p.level}${lastDmg[id] ? ` · <span class="pd">-${lastDmg[id]}</span>` : ''}` : `#${p.place}`;
+      return `<div class="${cls}" data-pid="${esc(id)}" title="${esc(p.name + ' · ' + (id === localPlayerId ? 'vos' : persName(p)))}"><span class="av">${esc(initials(p.name))}<span class="st">${st}</span></span>
+        <div class="pi"><div class="pr"><span>${esc(p.name)}</span><strong>${Math.max(0, p.hp)}</strong></div><div class="hp"><i style="width:${Math.max(0, p.hp)}%"></i></div><div class="pr" style="font-size:12px;color:var(--muted)"><span>${sub}</span></div></div></div>`;
+    }).join('');
   }
-  function renderRoundPanel() {
-    const box = $('#roundPanel');
-    const pr = nextPairing(), label = SIM.roundLabel(state.round), pve = DATA.PVE[label];
-    let html = '<h3>Ronda</h3>';
-    if (state.phase !== 'ended' && me().alive) {
-      html += `<div class="nextOpp">${pve ? 'vs ' + pve.name : pr ? `vs ${esc(pname(pr.opp))}${pr.ghost ? ' (fantasma)' : ''}` : state.order.length === 1 ? 'vs rival generado' : ''}</div>`;
+  function renderBottom() {
+    const p = me(), need = SIM.xpNeeded(p), inc = SIM.incomePreview(p), max = p.level >= C.MAX_LEVEL, n = SIM.boardCount(p);
+    $('#bottom').classList.toggle('off', !canAct());
+    $('#lvl').textContent = 'Convocatoria ' + p.level;
+    $('#xpTxt').textContent = max ? 'Máxima' : `${p.xp}/${need}`;
+    $('#xpBar').style.width = (max ? 100 : Math.min(100, p.xp / need * 100)) + '%';
+    const bc = $('#boardCount'); bc.textContent = `${n}/${p.level} en el escenario`; bc.classList.toggle('full', n >= p.level);
+    $('#levelup').disabled = p.gold < C.XP_COST || max;
+    $('#reroll').disabled = p.gold < C.REROLL_COST;
+    $('#gold').textContent = '$' + p.gold;
+    const sk = p.streak >= 2 ? ` · racha de ${p.streak} 🔥` : p.streak <= -2 ? ` · racha de ${-p.streak} 🧊` : '';
+    $('#interest').textContent = `+${inc.total} la próxima (${inc.interest} de interés${inc.streak ? `, ${inc.streak} de racha` : ''})${sk}`;
+    $('#lock').setAttribute('aria-pressed', String(!!p.shopLocked));
+    $('#passes').innerHTML = p.shop.map((id, i) => {
+      if (!id) return '<div class="pass sold" aria-hidden="true"></div>';
+      const d = DATA.UNITS[id], have = SIM.countCopies(p, id, 1);
+      const traits = d.origins.map(t => DATA.TRAITS[t].name).concat(d.classes.map(t => DATA.TRAITS[t].name));
+      return `<button class="pass${have >= 2 ? ' match' : ''}${p.gold < d.cost ? ' poor' : ''}" data-buy="${i}" aria-label="Contratar a ${esc(d.name)} por $${d.cost}">
+        <i style="background:${COST_COLOR[d.cost]}"></i><div><b>${esc(d.short)}${d.unique ? ' ★' : ''}</b><span>${esc(traits.slice(0, 3).join(' · '))}</span><em>$${d.cost}</em></div></button>`;
+    }).join('');
+  }
+  function renderFlaco() {
+    const bar = $('#flacoBar');
+    const pend = [];
+    if (canAct()) {
+      const p = me();
+      p.board.forEach((u, i) => u && SIM.flacoPending(u) && pend.push({ u, loc: { zone: 'board', idx: i } }));
+      p.bench.forEach((u, i) => u && SIM.flacoPending(u) && pend.push({ u, loc: { zone: 'bench', idx: i } }));
     }
-    const cs = state.combats || [];
-    if (cs.length) {
-      const prevLabel = cs[0].round || '';
-      const res = (w, side) => (w === 'draw' ? '<span class="d">empate</span>' : w === side ? '<span class="w">gana</span>' : '<span class="l">pierde</span>');
-      html += `<div class="small" style="margin-bottom:4px">Resultados ${prevLabel}</div><div class="res">`;
-      for (const c of cs) {
-        const mine = c.a === localPlayerId || c.b === localPlayerId;
-        const right = c.kind === 'pvp' ? esc(pname(c.b)) + (c.ghost ? ' 👻' : '') : esc(c.name);
-        const dmg = [c.dmgA ? `${esc(pname(c.a))} -${c.dmgA}` : '', c.dmgB ? `${esc(pname(c.b))} -${c.dmgB}` : ''].filter(Boolean).join(', ');
-        html += `<div class="${mine ? 'mine' : ''}" title="${dmg}"><span>${esc(pname(c.a))} ${res(c.winner, 'A')} vs ${right}</span><span class="small">${dmg ? '-' + Math.max(c.dmgA, c.dmgB) : ''}</span></div>`;
-      }
-      html += '</div>';
+    if (!pend.length) { bar.style.display = 'none'; return; }
+    const { u, loc } = pend[0], d = SIM.def(u.unitId);
+    bar.style.display = 'flex';
+    bar.innerHTML = `<span>🍃 <b>El Flaco</b> ${u.flaco.chosen.length ? `(ya es ${u.flaco.chosen.map(o => DATA.TRAITS[o].name).join(', ')}) suma` : 'elegí'} un origen:</span>`;
+    for (const o of d.origins.filter(o => !u.flaco.chosen.includes(o))) {
+      const b = el('button', 'btn', traitTag(o));
+      b.addEventListener('click', () => act({ type: 'FLACO', loc, origin: o }));
+      bar.appendChild(b);
     }
-    box.innerHTML = html;
   }
   function abilityText(unitId, star) {
     const ab = SIM.def(unitId).ability;
@@ -682,302 +662,149 @@ button.primary{border-color:var(--accent);background:#3a1a16}
     }
     return '';
   }
-  function renderInfo() {
-    const box = $('#infoPanel');
-    if (!selected) { box.innerHTML = '<h3>Info</h3><div class="small">Hacé click en una unidad o pasá el mouse por la tienda.</div>'; return; }
-    const d = SIM.def(selected.unitId), s = selected.star, m = C.STAR_MULT[s - 1];
-    const traits = d.traits.map(traitTag).join(' · ');
-    const uniq = d.unique ? `<div class="ability" style="margin-bottom:6px"><b>${traitTag(d.unique)}</b><br>${esc(DATA.TRAITS[d.unique].desc)}</div>` : '';
-    box.innerHTML = `<div class="info-title">${d.name} <span style="color:var(--gold)">${stars(s)}</span></div>
-      <div class="info-sub">${d.cost ? `Coste ${d.cost}` : 'PvE'} · ${traits || '—'}${d.bands ? `<br>🎶 ${esc(d.bands.join(', '))}` : ''}</div>
+  function openFicha(f) { ficha = f; renderFicha(); }
+  function closeFicha() { ficha = null; $('#ficha').style.display = 'none'; }
+  function renderFicha() {
+    const box = $('#ficha');
+    if (!ficha) { box.style.display = 'none'; return; }
+    const d = SIM.def(ficha.unitId), s = ficha.star, m = C.STAR_MULT[s - 1];
+    const mine = ficha.owner === localPlayerId && ficha.uid != null && canAct() && unitByUid(me(), ficha.uid);
+    $('#fBand').style.background = COST_COLOR[d.cost || 0];
+    $('#fIn').innerHTML = `<h2>${esc(d.name)}</h2>
+      <div class="meta">${d.cost ? `Coste ${d.cost}` : 'Público hostil'} · <span style="color:var(--gold)">${stars(s)}</span>${d.bands ? ` · ${esc(d.bands.join(', '))}` : ''}</div>
+      <div class="tags">${d.traits.map(t => `<span class="tag">${traitTag(t)}</span>`).join('')}</div>
       <div class="stats">
         <div><span>Vida</span> ${Math.round(d.hp * m)}</div><div><span>Daño</span> ${Math.round(d.ad * m)}</div>
         <div><span>Vel. ataque</span> ${d.as}</div><div><span>Rango</span> ${d.range}</div>
         <div><span>Armadura</span> ${d.armor}</div><div><span>Res. mág.</span> ${d.mr}</div>
         ${d.ability ? `<div><span>Maná</span> ${d.startMana}/${d.maxMana}</div>` : ''}
       </div>
-      ${uniq}${d.ability ? `<div class="ability"><b>${d.ability.name}</b><br>${abilityText(selected.unitId, s)}</div>` : ''}`;
-  }
-  function renderHud() {
-    const p = me();
-    $('#hud').classList.toggle('disabled', !canAct());
-    const rd = $('#btnReady'), waitingOthers = client && client.isReady() && phase().name === 'planning';
-    rd.innerHTML = waitingOthers ? '✓ Esperando…' : '¡Listo! <kbd>Espacio</kbd>';
-    const need = SIM.xpNeeded(p), inc = SIM.incomePreview(p), max = p.level >= C.MAX_LEVEL;
-    const odds = DATA.SHOP_ODDS[p.level].map((o, i) => `<span style="color:var(--c${i + 1})">${o}%</span>`).join('');
-    $('#stats').innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:flex-end">
-        <div><div class="lv">Nivel ${p.level}</div><div class="small">${max ? 'MAX' : `${p.xp}/${need} XP`}</div></div>
-        <div class="goldv">🪙 ${p.gold}</div>
-      </div>
-      <div class="xpbar"><i style="width:${max ? 100 : (p.xp / need) * 100}%"></i></div>
-      <div class="odds">${odds}</div>
-      <div class="small" style="margin-top:4px">Próx. ingreso: +${inc.total} (${inc.base} base + ${inc.interest} int. + ${inc.streak} racha)</div>`;
-    $('#btnXp').disabled = p.gold < C.XP_COST || max;
-    $('#btnReroll').disabled = p.gold < C.REROLL_COST;
-    const lock = $('#btnLock');
-    lock.classList.toggle('on', p.shopLocked);
-    lock.textContent = p.shopLocked ? '🔒 Tienda bloqueada' : '🔓 Bloquear tienda';
-  }
-  function renderShop() {
-    const p = me(), box = $('#shop'); box.innerHTML = '';
-    p.shop.forEach((id, i) => {
-      if (!id) { box.appendChild(el('div', 'card empty')); return; }
-      const d = DATA.UNITS[id];
-      const have = SIM.countCopies(p, id, 1);
-      const card = el('div', `card cost${d.cost}` + (have >= 2 ? ' owned2' : have === 1 ? ' owned' : '') + (p.gold < d.cost ? ' poor' : ''),
-        `<div class="ci">${unitIcon(d)}</div><div class="cn">${d.short}</div>
-         <div class="ct">${d.origins.map(traitTag).join(' · ')}<br>${d.classes.map(traitTag).join(' · ')}${d.unique ? `<br>★ ${DATA.TRAITS[d.unique].name}` : ''}</div>
-         <div class="cc">🪙${d.cost}</div>`);
-      card.style.setProperty('--ub', originColor(d) + '66');
-      card.addEventListener('click', () => act({ type: 'BUY', slot: i }));
-      card.addEventListener('pointerenter', () => { selected = { unitId: id, star: 1 }; renderInfo(); });
-      box.appendChild(card);
-    });
-  }
-  // El Flaco: si tiene un origen para elegir, se pregunta acá.
-  function renderFlaco() {
-    const bar = $('#flacoBar');
-    const mine = me(), pend = [];
-    if (!spyId && canAct()) {
-      mine.board.forEach((u, i) => u && SIM.flacoPending(u) && pend.push({ u, loc: { zone: 'board', idx: i } }));
-      mine.bench.forEach((u, i) => u && SIM.flacoPending(u) && pend.push({ u, loc: { zone: 'bench', idx: i } }));
-    }
-    if (!pend.length) { bar.style.display = 'none'; return; }
-    const { u, loc } = pend[0], d = SIM.def(u.unitId);
-    const options = d.origins.filter(o => !u.flaco.chosen.includes(o));
-    bar.style.display = 'flex';
-    bar.innerHTML = `<span>🍃 <b>El Flaco</b> ${u.flaco.chosen.length ? `(ya es ${u.flaco.chosen.map(o => DATA.TRAITS[o].name).join(', ')}) suma` : 'elegí'} un origen:</span>`;
-    for (const o of options) {
-      const b = el('button', '', traitTag(o));
-      b.addEventListener('click', () => act({ type: 'FLACO', loc, origin: o }));
-      bar.appendChild(b);
-    }
-  }
-  function renderBench() {
-    const v = viewed(), box = $('#bench'); box.innerHTML = '';
-    v.bench.forEach((u, i) => {
-      const slot = el('div', 'slot');
-      if (!spyId) { slot.dataset.drop = 'bench'; slot.dataset.idx = i; }
-      if (u) {
-        const t = makeTokenEl(u.unitId, u.star);
-        if (!spyId) { t.dataset.zone = 'bench'; t.dataset.idx = i; }
-        t.dataset.unit = u.unitId; t.dataset.star = u.star;
-        slot.appendChild(t);
-      }
-      box.appendChild(slot);
-    });
+      ${d.unique ? `<div class="uni"><b>${traitTag(d.unique)}</b><br>${esc(DATA.TRAITS[d.unique].desc)}</div>` : ''}
+      ${d.ability ? `<div class="ab"><strong>${esc(d.ability.name)}</strong><p>${abilityText(ficha.unitId, s)}</p></div>` : ''}
+      <div class="equip">Equipo: —</div>
+      ${mine ? `<button class="btn sell" id="fSell">Vender · $${SIM.sellValue({ unitId: ficha.unitId, star: s })}</button>` : ''}`;
+    box.style.display = 'block';
+    const sb = $('#fSell'); if (sb) sb.addEventListener('click', () => sellUid(ficha.uid));
   }
 
-  // ---------- entrada: arrastrar, vender, teclado ----------
-  function canvasPoint(e) { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
-  function boardIdxAt(e) { // celda de la mitad de abajo bajo el puntero, o -1
-    const { x, y } = canvasPoint(e);
-    let best = -1, bd = HW * 0.55;
-    for (let i = 0; i < ROWS * COLS; i++) {
-      const c = cellCenter(ROWS + Math.floor(i / COLS), i % COLS), d = Math.hypot(c.x - x, c.y - y);
-      if (d < bd) { bd = d; best = i; }
+  // ---------- entrada sobre el escenario: tocar / arrastrar / click derecho ----------
+  const cv = $('#c');
+  const overPasses = (x, y) => { const r = $('#passes').getBoundingClientRect(); return x >= r.left - 8 && x <= r.right + 8 && y >= r.top - 8 && y <= r.bottom + 8; };
+  function unitInfo(uid) { const p = viewed(), u = unitByUid(p, uid); return u ? { uid, owner: p.id, unitId: u.unitId, star: u.star } : null; }
+  cv.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || !state) return;
+    if (canAct()) {
+      const h = stage.pick(e.clientX, e.clientY, { unitsOnly: true });
+      if (h && h.kind === 'unit') { drag = { uid: h.uid, sx: e.clientX, sy: e.clientY, on: false }; cv.setPointerCapture(e.pointerId); }
     }
-    return best;
-  }
-  function boardUnitAt(e, p) { // índice de una unidad del tablero de `p` bajo el puntero
-    const { x, y } = canvasPoint(e);
-    return p.board.findIndex((u, i) => {
-      if (!u) return false;
-      const c = cellCenter(ROWS + Math.floor(i / COLS), i % COLS);
-      return Math.hypot(c.x - x, c.y - y) <= TOKEN_R + 3;
-    });
-  }
-  function locAt(e) { // origen de arrastre (solo mi tablero/banco)
-    if (spyId) return null;
-    if (e.target === cv) { const i = boardUnitAt(e, me()); return i >= 0 ? { zone: 'board', idx: i } : null; }
-    const t = e.target.closest && e.target.closest('.unit[data-zone]');
-    return t ? { zone: t.dataset.zone, idx: +t.dataset.idx } : null;
-  }
-  function combatUnitAt(e) {
-    if (!replay || e.target !== cv) return null;
-    const { x, y } = canvasPoint(e);
-    return replay.cs.units.find(u => u.alive && (p => Math.hypot(p.x - x, p.y - y) <= TOKEN_R)(unitXY(u, replay.alpha))) || null;
-  }
-  const unitAtLoc = loc => (loc.zone === 'bench' ? me().bench : me().board)[loc.idx];
-  let benchHover = null;
-  function setBenchHover(t) {
-    if (benchHover === t) return;
-    if (benchHover) benchHover.classList.remove('drop-hover', 'sell-hover');
-    benchHover = t;
-    if (t) t.classList.add(t.dataset.drop === 'sell' ? 'sell-hover' : 'drop-hover');
-  }
-  function dropAt(e) {
-    const t = document.elementFromPoint(e.clientX, e.clientY);
-    if (t === cv) { const i = boardIdxAt(e); return i >= 0 ? { zone: 'board', idx: i } : null; }
-    const z = t && t.closest('[data-drop]');
-    return z ? { zone: z.dataset.drop, idx: +z.dataset.idx, el: z } : null;
-  }
-  function selectUnit(unitId, star) { selected = { unitId, star }; renderInfo(); }
-
-  document.addEventListener('pointerdown', e => {
-    if (e.button !== 0) return;
-    if (mode === 'combat') { const u = combatUnitAt(e); if (u) selectUnit(u.unitId, u.star); return; }
-    if (spyId) { // espiando: click = info
-      if (e.target === cv) { const i = boardUnitAt(e, viewed()); if (i >= 0) selectUnit(viewed().board[i].unitId, viewed().board[i].star); }
-      else { const t = e.target.closest && e.target.closest('.unit[data-unit]'); if (t) selectUnit(t.dataset.unit, +t.dataset.star); }
+  });
+  cv.addEventListener('pointermove', e => {
+    if (!drag) { // para la tecla E: qué músico propio está bajo el puntero
+      if (canAct()) { const h = stage.pick(e.clientX, e.clientY, { unitsOnly: true }); hoverUid = h && h.kind === 'unit' ? h.uid : null; }
       return;
     }
-    if (mode !== 'planning') return;
-    const loc = locAt(e);
-    if (!loc) return;
-    drag = { ...loc, sx: e.clientX, sy: e.clientY, ghost: null, el: loc.zone === 'bench' ? e.target.closest('.unit') : null };
-    e.preventDefault();
+    if (!drag.on && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 8) return;
+    drag.on = true;
+    stage.dragTo(drag.uid, e.clientX, e.clientY);
+    const sell = overPasses(e.clientX, e.clientY);
+    $('#passes').classList.toggle('sell', sell);
+    stage.highlight(sell ? null : stage.dropTarget(e.clientX, e.clientY));
   });
-  document.addEventListener('pointermove', e => {
-    if (!drag) { hoverLoc = mode === 'planning' ? locAt(e) : null; return; }
-    if (!drag.ghost) {
-      if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 5) return;
-      const u = unitAtLoc(drag);
-      drag.ghost = makeTokenEl(u.unitId, u.star);
-      drag.ghost.classList.add('ghost');
-      document.body.appendChild(drag.ghost);
-      if (drag.el) drag.el.classList.add('dragging');
+  cv.addEventListener('pointerup', e => {
+    const d = drag; drag = null;
+    if (d && d.on) {
+      stage.dragEnd(); stage.highlight(null); $('#passes').classList.remove('sell');
+      if (overPasses(e.clientX, e.clientY)) sellUid(d.uid);
+      else { const t = stage.dropTarget(e.clientX, e.clientY); if (t) moveUnit(d.uid, { zone: t.kind, idx: t.idx }); }
+      render();
+      return;
     }
-    drag.ghost.style.left = e.clientX - 28 + 'px';
-    drag.ghost.style.top = e.clientY - 28 + 'px';
-    const d = dropAt(e);
-    dragOverIdx = d && d.zone === 'board' ? d.idx : -1;
-    setBenchHover(d && d.el ? d.el : null);
+    tap(e.clientX, e.clientY);
   });
-  document.addEventListener('pointerup', e => {
-    if (!drag) return;
-    const d = drag; drag = null; dragOverIdx = -1;
-    setBenchHover(null);
-    const from = { zone: d.zone, idx: d.idx };
-    if (!d.ghost) { const u = unitAtLoc(from); if (u) selectUnit(u.unitId, u.star); return; } // fue un click
-    d.ghost.remove();
-    if (d.el) d.el.classList.remove('dragging');
-    const to = dropAt(e);
-    if (!to) return;
-    if (to.zone === 'sell') act({ type: 'SELL', loc: from });
-    else act({ type: 'MOVE', from, to: { zone: to.zone, idx: to.idx } });
+  // Tocar: elegir un músico (abre su ficha); con uno elegido, tocar otro lugar lo mueve (o intercambia).
+  function tap(x, y) {
+    if (!state) return;
+    const h = stage.pick(x, y);
+    if (!h) { selectedUid = null; closeFicha(); render(); return; }
+    if (h.kind === 'cunit') {
+      const u = replay && replay.cs.units[h.cid];
+      if (u) openFicha({ unitId: u.unitId, star: u.star, cid: h.cid });
+      return;
+    }
+    if (h.kind === 'unit') {
+      if (selectedUid && selectedUid !== h.uid && canAct()) { const to = locOfUid(me(), h.uid); if (to) moveUnit(selectedUid, to); render(); return; }
+      if (selectedUid === h.uid) { selectedUid = null; closeFicha(); render(); return; }
+      selectedUid = canAct() ? h.uid : null;
+      openFicha(unitInfo(h.uid));
+      render();
+      return;
+    }
+    if (selectedUid && canAct()) { moveUnit(selectedUid, { zone: h.kind, idx: h.idx }); render(); }
+  }
+  cv.addEventListener('contextmenu', e => { // click derecho = vender
+    e.preventDefault();
+    if (!canAct()) return;
+    const h = stage.pick(e.clientX, e.clientY, { unitsOnly: true });
+    if (h && h.kind === 'unit') sellUid(h.uid);
   });
-  document.addEventListener('contextmenu', e => { // click derecho = vender
-    if (mode !== 'planning') return;
-    const loc = locAt(e);
-    if (loc) { e.preventDefault(); act({ type: 'SELL', loc }); }
+  $('#passes').addEventListener('click', e => {
+    const b = e.target.closest('[data-buy]');
+    if (b) act({ type: 'BUY', slot: +b.dataset.buy });
   });
+  $('#passes').addEventListener('pointerover', e => { // en compu, pasar por un pase muestra la ficha
+    const b = e.target.closest('[data-buy]');
+    if (b && e.pointerType === 'mouse') { const id = me().shop[+b.dataset.buy]; if (id) openFicha({ unitId: id, star: 1 }); }
+  });
+  $('#players').addEventListener('click', e => { const r = e.target.closest('[data-pid]'); if (r && mode !== 'combat') setSpy(spyId === r.dataset.pid ? null : r.dataset.pid); });
+  $('#spyBar').addEventListener('click', () => setSpy(null));
+  $('#fClose').addEventListener('click', () => { selectedUid = null; closeFicha(); render(); });
   document.addEventListener('keydown', e => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || $('#modal').style.display === 'grid' || $('#lobby').style.display === 'grid') return;
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || document.querySelector('.overlay[style*="grid"]')) return;
     const k = e.key.toLowerCase();
-    if (k === 'escape') setSpy(null);
+    if (k === 'escape') { selectedUid = null; closeFicha(); setSpy(null); $('#menu').classList.remove('on'); }
     else if (k === 'd') act({ type: 'REROLL' });
     else if (k === 'f') act({ type: 'BUY_XP' });
-    else if (k === 'e' && hoverLoc) { act({ type: 'SELL', loc: hoverLoc }); hoverLoc = null; }
+    else if (k === 'e' && hoverUid) { sellUid(hoverUid); hoverUid = null; }
     else if (k === ' ') { e.preventDefault(); onReady(); }
   });
-  $('#spyBar').addEventListener('click', () => setSpy(null));
-
-  // ---------- timer de la fase (lo define el host con phaseEndsAt, en hora del servidor) ----------
-  function tickTimer() {
-    const lbl = $('#timerVal'), ph = phase();
-    $('#chkTimer').parentElement.style.display = online ? 'none' : '';
-    if (!client || !ph.endsAt || (ph.name !== 'planning' && ph.name !== 'combat')) { lbl.textContent = online && ph.name === 'planning' ? '' : ''; return; }
-    const left = Math.max(0, Math.ceil((ph.endsAt - T.now()) / 1000));
-    lbl.textContent = (ph.name === 'combat' ? 'pelea ' : '') + left + 's';
-  }
 
   // ---------- ronda y combate ----------
   function onReady() {
     if (!canAct()) return;
-    spyId = null;
     client.ready();
     nudge();
-    renderHud();
+    renderTop();
   }
   function startCombatView() {
-    mode = 'combat';
-    selected = null; spyId = null;
+    mode = 'combat'; selectedUid = null; spyId = null; closeFicha();
     const entry = state.combats.find(c => c.a === localPlayerId || (c.b === localPlayerId && !c.ghost));
+    const filled = state.autoFilled && state.autoFilled[localPlayerId];
+    if (filled && filled.length) toast('Subieron solos al escenario: ' + filled.map(id => SIM.def(id).short).join(', '), 4000);
     if (!entry) { mode = 'waiting'; client.ready(); nudge(); render(); return; }
-    render();
     const flip = entry.a !== localPlayerId; // el jugador local siempre se ve abajo
-    const opp = entry.kind === 'pvp' ? (flip ? pname(entry.a) : pname(entry.b) + (entry.ghost ? ' (fantasma)' : '')) : entry.name;
-    $('#oppLabel').textContent = 'vs ' + opp;
     const cs = SIM.createCombat(entry.snapA, entry.snapB, entry.seed); // re-simulación local, solo para verla
     const hpBefore = beforeCombat && beforeCombat.players[localPlayerId] ? beforeCombat.players[localPlayerId].hp : me().hp;
-    replay = { cs, entry, flip, mySide: flip ? 1 : 0, hpBefore, acc: 0, alpha: 0, last: performance.now(), speed: prefs.speed || 1, finished: false, floaters: [], fx: {} };
-    $('#combatCtrls').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.speed == replay.speed));
+    const oppName = entry.kind === 'pvp' ? (flip ? pname(entry.a) : pname(entry.b) + (entry.ghost ? ' (fantasma)' : '')) : entry.name;
+    replay = { cs, entry, flip, mySide: flip ? 1 : 0, hpBefore, oppName, acc: 0, last: performance.now(), speed: prefs.speed || 1, finished: false };
+    stage.startCombat(cs, flip);
+    render();
   }
-  function unitXY(u, alpha) {
-    const tnow = replay.cs.tick + alpha, span = u.moveEnd - u.moveStart;
-    const k = span > 0 ? Math.max(0, Math.min(1, (tnow - u.moveStart) / span)) : 1;
-    const disp = (R, Cc) => (replay.flip ? cellCenter(TROWS - 1 - R, COLS - 1 - Cc) : cellCenter(R, Cc));
-    const a = disp(u.fromR, u.fromC), b = disp(u.r, u.c);
-    return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k };
-  }
-  function addFloater(cid, text, color, size, now) {
-    const p = unitXY(replay.cs.units[cid], 0);
-    replay.floaters.push({ x: p.x + (Math.random() * 20 - 10), y: p.y - 20, text, color, size, born: now });
-  }
-  function handleEvents(events, now) {
-    const rp = replay, fx = id => (rp.fx[id] ||= { flash: 0, pulse: 0, died: 0 });
-    const many = rp.speed > 2;
-    for (const ev of events) {
-      if (ev.t === 'atk') fx(ev.s).pulse = now;
-      else if (ev.t === 'dmg') { fx(ev.d).flash = now; if (!many) addFloater(ev.d, ev.a, ev.c ? '#ff9a3c' : ev.k === 'magic' ? '#d48cff' : '#ffd9a0', ev.c ? 16 : 13, now); }
-      else if (ev.t === 'heal' && !many) addFloater(ev.d, '+' + ev.a, '#6dff8a', 13, now);
-      else if (ev.t === 'cast') addFloater(ev.s, ev.n, '#f5c542', 18, now);
-      else if (ev.t === 'stun') addFloater(ev.d, '💫', '#fff', 16, now);
-      else if (ev.t === 'push') addFloater(ev.d, '¡POGO!', '#ff7a3c', 15, now);
-      else if (ev.t === 'miss' && !many) addFloater(ev.d, 'esquiva', '#7ad66a', 12, now);
-      else if (ev.t === 'silence') addFloater(ev.d, '🔇', '#fff', 16, now);
-      else if (ev.t === 'confuse') addFloater(ev.d, '😵', '#fff', 16, now);
-      else if (ev.t === 'slow' && !many) addFloater(ev.d, '❄', '#7fe0ff', 15, now);
-      else if (ev.t === 'control') addFloater(ev.d, '💻 HACKEADO', '#3cd6d6', 16, now);
-      else if (ev.t === 'free') addFloater(ev.d, 'libre', '#ccc', 12, now);
-      else if (ev.t === 'revive') addFloater(ev.d, '¡VUELVE!', '#f5c542', 18, now);
-      else if (ev.t === 'legacy') addFloater(ev.s, 'GRACIAS TOTALES', '#f5c542', 18, now);
-      else if (ev.t === 'die') fx(ev.d).died = now;
-    }
-  }
-  function drawCombat(now) {
+  // Cada cuadro del escenario: avanzar la re-simulación a ticks fijos (si el dibujo va lento, se saltean cuadros, no ticks).
+  function onFrame(now) {
+    tickTimer();
     const rp = replay;
-    drawHexes(false);
-    for (const u of rp.cs.units) {
-      const f = rp.fx[u.cid] || {};
-      let alpha = 1;
-      if (!u.alive) { alpha = 1 - (now - (f.died || 0)) / 400; if (alpha <= 0) continue; }
-      const p = unitXY(u, rp.alpha);
-      const pulse = f.pulse ? Math.max(0, 1 - (now - f.pulse) / 160) : 0;
-      const flash = f.flash ? Math.max(0, 1 - (now - f.flash) / 140) : 0;
-      drawToken(p.x, p.y, u.unitId, u.star, {
-        side: u.side === rp.mySide ? 'mine' : 'foe', alpha, flash, scale: 1 + pulse * 0.1,
-        hp: u.hp / u.maxHp, shield: u.shield / u.maxHp, mana: u.maxMana ? u.mana / u.maxMana : null,
-      });
-    }
-    ctx.save();
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.shadowColor = '#000'; ctx.shadowBlur = 4;
-    rp.floaters = rp.floaters.filter(fl => now - fl.born < 800);
-    for (const fl of rp.floaters) {
-      const k = (now - fl.born) / 800;
-      ctx.globalAlpha = 1 - k;
-      ctx.font = `800 ${fl.size}px ${fl.size >= 18 ? '"Bebas Neue",Impact' : 'Inter,system-ui'},sans-serif`;
-      ctx.fillStyle = fl.color;
-      ctx.fillText(fl.text, fl.x, fl.y - k * 34);
-    }
-    ctx.restore();
-  }
-  function stepReplay(now) {
-    const rp = replay;
-    if (rp.finished) return;
+    if (!rp || rp.finished) return;
     const dt = Math.min(0.1, (now - rp.last) / 1000); rp.last = now;
     rp.acc += dt * C.TICK_RATE * rp.speed;
-    while (rp.acc >= 1 && !rp.cs.done) { SIM.stepCombat(rp.cs); handleEvents(rp.cs.events, now); rp.acc -= 1; }
-    rp.alpha = rp.cs.done ? 0 : rp.acc;
+    while (rp.acc >= 1 && !rp.cs.done) { SIM.stepCombat(rp.cs); stage.combatEvents(rp.cs.events); rp.acc -= 1; }
+    stage.setAlpha(rp.cs.done ? 0 : rp.acc);
     if (rp.cs.done) endCombat();
   }
   function skipCombat() {
     const rp = replay;
     if (!rp || rp.finished) return;
     while (!rp.cs.done) SIM.stepCombat(rp.cs);
-    rp.alpha = 0;
+    stage.setAlpha(0);
     endCombat();
   }
   function endCombat() {
@@ -985,14 +812,16 @@ button.primary{border-color:var(--accent);background:#3a1a16}
     if (rp.finished) return;
     rp.finished = true;
     if (rp.cs.hash !== rp.entry.hash) console.error(`DESYNC ronda ${rp.entry.round}: host ${rp.entry.hash}, local ${rp.cs.hash}`);
-    const won = rp.cs.winner === (rp.mySide === 0 ? 'A' : 'B');
+    const myTeam = rp.mySide, won = rp.cs.winner === (myTeam === 0 ? 'A' : 'B');
+    stage.celebrate(won ? myTeam : 1 - myTeam);
     const dmg = rp.hpBefore - me().hp;
     const b = $('#banner');
     b.style.display = 'block';
-    b.style.color = won ? '#6dff8a' : rp.cs.winner === 'draw' ? 'var(--gold)' : 'var(--foe)';
-    b.innerHTML = (won ? '¡GANASTE!' : rp.cs.winner === 'draw' ? 'EMPATE' : 'PERDISTE') + (dmg > 0 ? `<small>-${dmg} de vida</small>` : '');
+    b.style.color = won ? '#7ee08f' : rp.cs.winner === 'draw' ? 'var(--gold)' : 'var(--foe)';
+    b.innerHTML = (won ? '¡OTRA, OTRA!' : rp.cs.winner === 'draw' ? 'EMPATE' : 'SE FUE EL PÚBLICO') + (dmg > 0 ? `<small>-${dmg} de público</small>` : won ? '<small>Ganaste la ronda</small>' : '');
     setTimeout(() => {
       b.style.display = 'none';
+      stage.stopCombat();
       replay = null;
       if (!client) return;
       client.ready(); // ya vi mi pelea
@@ -1001,28 +830,27 @@ button.primary{border-color:var(--accent);background:#3a1a16}
       nudge();
       render();
       if (mode === 'ended' || !me().alive) showEndOnce();
-    }, 1500 / Math.min(2, rp.speed));
+    }, 1800 / Math.min(2, rp.speed));
   }
+  $('#speed').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b || !replay) return;
+    if (b.dataset.speed === 'skip') { skipCombat(); return; }
+    replay.speed = prefs.speed = +b.dataset.speed; savePrefs(); renderTop();
+  });
   function showEndOnce() {
     const key = phase().name === 'ended' ? 'ended' : 'dead';
     if (endShownFor === key) return;
     endShownFor = key;
     const p = me(), ended = key === 'ended';
-    $('#endTitle').textContent = ended ? (p.place === 1 ? '¡CAMPEÓN DEL ROCK!' : `Terminaste #${p.place}`) : `Te eliminaron · #${p.place}`;
+    $('#endTitle').textContent = ended ? (p.place === 1 ? '¡CAMPEÓN DEL ROCK!' : `Terminaste #${p.place}`) : `Te quedaste sin público · #${p.place}`;
     const ids = state.order.slice().sort((a, b) => (state.players[a].place || 0) - (state.players[b].place || 0) || state.players[b].hp - state.players[a].hp);
     $('#endTable').innerHTML = '<tr><th>#</th><th>Jugador</th><th>Tipo</th><th>Hasta</th></tr>' + ids.map(id => {
       const q = state.players[id];
       return `<tr class="${id === localPlayerId ? 'me' : ''}"><td>${q.place ?? '-'}</td><td>${esc(q.name)}</td><td>${persName(q)}</td><td>${q.place ? (q.history[0] ? q.history[0].round : '-') : 'sigue'}</td></tr>`;
     }).join('');
-    $('#btnEndClose').textContent = ended ? 'Ver tablero' : 'Seguir mirando';
+    $('#btnEndClose').textContent = ended ? 'Ver escenario' : 'Seguir mirando';
     $('#endScreen').style.display = 'grid';
   }
-  $('#combatCtrls').addEventListener('click', e => {
-    const b = e.target.closest('button'); if (!b || !replay) return;
-    if (b.dataset.speed === 'skip') { skipCombat(); return; }
-    replay.speed = prefs.speed = +b.dataset.speed; savePrefs();
-    $('#combatCtrls').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
-  });
 
   // ---------- lobby ----------
   function renderLobby() {
@@ -1035,11 +863,10 @@ button.primary{border-color:var(--accent);background:#3a1a16}
     const members = Object.keys(room.members || {}).map(uid => ({ uid, ...room.members[uid] })).sort((a, b) => a.joinedAt - b.joinedAt);
     $('#lobbyMembers').innerHTML = members.map(m => {
       const on = room.presence && room.presence[m.uid] && room.presence[m.uid].online;
-      return `<div class="mrow"><span class="dot ${on ? 'on' : ''}"></span><b>${esc(m.name)}</b>${m.uid === meta.hostId ? ' <span class="small">👑 host</span>' : ''}${m.uid === T.uid ? ' <span class="small">(vos)</span>' : ''}</div>`;
+      return `<div class="mrow"><span class="pdot ${on ? 'on' : ''}"></span><b>${esc(m.name)}</b>${m.uid === meta.hostId ? ' <span class="help" style="margin:0">👑 host</span>' : ''}${m.uid === T.uid ? ' <span class="help" style="margin:0">(vos)</span>' : ''}</div>`;
     }).join('');
     const humans = members.length, seats = Math.min(8, humans + (st.bots ?? 0));
-    const sel = $('#lbBots');
-    sel.innerHTML = Array.from({ length: 8 - humans + 1 }, (_, i) => humans + i)
+    $('#lbBots').innerHTML = Array.from({ length: 8 - humans + 1 }, (_, i) => humans + i)
       .map(n => `<option value="${n - humans}" ${n === Math.max(seats, humans) ? 'selected' : ''}>${n} lugares (${n - humans} bots)</option>`).join('');
     $('#lbDiff').value = String(st.difficulty ?? 0.3);
     $('#lbTime').value = String(st.planningSeconds || 30);
@@ -1060,35 +887,34 @@ button.primary{border-color:var(--accent);background:#3a1a16}
   });
   $('#btnLeave').addEventListener('click', () => leave().then(openModal));
 
-  // ---------- loop de dibujo ----------
-  function frame(now) {
-    ctx.clearRect(0, 0, ARENA_W, ARENA_H);
-    if (state && me()) {
-      if (replay) { stepReplay(now); drawCombat(now); } else drawPlanning();
-    }
-    if (client) tickTimer();
-    requestAnimationFrame(frame);
-  }
-
   // ---------- botones ----------
-  $('#btnXp').addEventListener('click', () => act({ type: 'BUY_XP' }));
-  $('#btnReroll').addEventListener('click', () => act({ type: 'REROLL' }));
-  $('#btnLock').addEventListener('click', () => act({ type: 'LOCK' }));
-  $('#btnReady').addEventListener('click', onReady);
+  $('#levelup').addEventListener('click', () => act({ type: 'BUY_XP' }));
+  $('#reroll').addEventListener('click', () => act({ type: 'REROLL' }));
+  $('#lock').addEventListener('click', () => { if (act({ type: 'LOCK' })) toast(me().shopLocked ? 'Grilla desbloqueada' : 'Grilla bloqueada para la próxima ronda'); });
+  $('#ready').addEventListener('click', onReady);
+  $('#menuBtn').addEventListener('click', () => $('#menu').classList.toggle('on'));
+  const cycleQuality = () => {
+    const cycle = ['auto', 'alta', 'media', 'baja'];
+    prefs.quality = cycle[(cycle.indexOf(prefs.quality || 'auto') + 1) % cycle.length]; savePrefs();
+    stage.setQuality(prefs.quality);
+    toast('Calidad: ' + prefs.quality);
+  };
+  $('#qual').addEventListener('click', cycleQuality);
+  $('#qual2').addEventListener('click', cycleQuality);
   $('#chkTimer').checked = prefs.timer;
   $('#chkTimer').addEventListener('change', e => {
     prefs.timer = e.target.checked; savePrefs();
     if (!online && client) NET.updateSettings(T, client.code, { planningSeconds: prefs.timer ? C.PLANNING_SECONDS : 0 }); // vale desde la próxima ronda
   });
   $('#btnDet').addEventListener('click', () => {
-    toast('Corriendo chequeo de determinismo…', 5000);
+    $('#menu').classList.remove('on');
+    toast('Corriendo chequeo de determinismo…', 6000);
     setTimeout(() => {
       const c = SIM.selfTest(30, 'ui-' + Date.now());
       const g = SIM.checkGameDeterminism('ui-' + Date.now());
       console.log('Combates:', c, 'Partida completa de 8 bots:', g);
-      const ok = c.ok && g.ok;
-      toast(ok ? `✔ Determinista: ${c.combats} combates + una partida de 8 bots (${g.rounds} rondas), 2 veces cada uno`
-               : `✘ Diferencias: combates ${c.fails}/${c.combats}${g.ok ? '' : `, partida desde la ronda ${g.firstDiffAfterRound}`} (ver consola)`, 4000);
+      toast(c.ok && g.ok ? `✔ Determinista: ${c.combats} combates + una partida de 8 bots (${g.rounds} rondas), 2 veces cada uno`
+                         : `✘ Diferencias: combates ${c.fails}/${c.combats}${g.ok ? '' : `, partida desde la ronda ${g.firstDiffAfterRound}`} (ver consola)`, 5000);
     }, 30);
   });
   function setTab(tab) {
@@ -1097,6 +923,7 @@ button.primary{border-color:var(--accent);background:#3a1a16}
   }
   document.querySelectorAll('#modal .tabs button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
   function openModal(tab) {
+    $('#menu').classList.remove('on');
     $('#inSeed').value = Math.floor(Math.random() * 1e9).toString(36); // la UI sí puede usar Math.random
     $('#inName').value = prefs.name || 'Vos';
     const ok = onlineAvailable();
@@ -1109,7 +936,6 @@ button.primary{border-color:var(--accent);background:#3a1a16}
     setTab(tab || (sala ? 'online' : 'solo'));
     $('#btnCancel').style.display = state ? '' : 'none';
     $('#modal').style.display = 'grid';
-    $('#inName').focus();
   }
   const nameIn = () => { const n = $('#inName').value.trim() || 'Vos'; prefs.name = n; savePrefs(); return n; };
   $('#btnNew').addEventListener('click', () => { if (mode !== 'combat') openModal(); });
@@ -1136,7 +962,6 @@ button.primary{border-color:var(--accent);background:#3a1a16}
   });
 
   // ---------- simulación masiva (consola): runBalance(200) ----------
-  // Corre M partidas de 8 bots con semillas distintas, en tandas para no congelar la pestaña.
   window.runBalance = function (M = 100, { batch = 3, seedPrefix = 'bal', difficulty = 0.3 } = {}) {
     const summaries = [];
     const slots = SIM.makeSlots({ bots: 8, difficulty });
@@ -1161,7 +986,7 @@ button.primary{border-color:var(--accent);background:#3a1a16}
   };
 
   // ---------- arranque ----------
-  window.GAME = { SIM, NET, DATA, get state() { return state; }, get client() { return client; }, get session() { return session; }, get transport() { return T; } }; // para depurar desde la consola
+  window.GAME = { SIM, NET, DATA, stage, get state() { return state; }, get client() { return client; }, get session() { return session; }, get transport() { return T; }, get replay() { return replay; } }; // para depurar desde la consola
   (async () => {
     const saved = loadJSON(ONLINE_KEY);
     const sala = new URLSearchParams(location.search).get('sala');
@@ -1170,15 +995,14 @@ button.primary{border-color:var(--accent);background:#3a1a16}
       try {
         await firebase();
         const meta = await fbT.get(`rooms/${code}/meta`), member = meta && await fbT.get(`rooms/${code}/members/${fbT.uid}`);
-        if (member) { enterOnline(code); requestAnimationFrame(frame); return; }
+        if (member) { enterOnline(code); return; }
       } catch (e) { console.error(e); }
       saveJSON(ONLINE_KEY, null);
-      if (sala) { openModal('online'); requestAnimationFrame(frame); return; }
+      if (sala) { openModal('online'); return; }
     }
     const tree = loadJSON(LOCAL_KEY);
     if (tree && tree.rooms && tree.rooms.LOCAL && tree.rooms.LOCAL.state && tree.rooms.LOCAL.meta.dataVersion === DATA.VERSION) resumeLocal(tree);
     else openModal();
-    requestAnimationFrame(frame);
   })();
 })();
 </script>
