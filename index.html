@@ -220,9 +220,15 @@ button{font-family:inherit}
 #ficha .top{display:flex;gap:12px;align-items:center;margin-bottom:6px}
 #ficha .foto{width:96px;height:96px;border-radius:10px;flex:none;object-fit:cover;background:#0b1224;box-shadow:0 0 0 2px var(--fc,#4b6290)}
 #ficha .top h2{margin-right:30px}
-.pass.ph{background-repeat:no-repeat;background-position:right top;background-size:auto 100%}
-.pass.ph div{background:linear-gradient(90deg,#f4f4f2 52%,rgba(244,244,242,.55) 78%,rgba(244,244,242,0))}
-.pass.ph.match div{background:linear-gradient(90deg,#f7e3a0 52%,rgba(247,227,160,.5) 78%,rgba(247,227,160,0))}
+/* pase con retrato: la foto entera de fondo y el texto abajo sobre una sombra (estilo carta) */
+.pass.ph{background-color:#0d1526;background-repeat:no-repeat;background-position:center 22%;background-size:cover;color:#fff}
+.pass.ph div{justify-content:flex-end;background:linear-gradient(180deg,rgba(9,14,28,0) 30%,rgba(9,14,28,.55) 58%,rgba(9,14,28,.94) 100%)}
+.pass.ph b{color:#fff;text-shadow:0 2px 4px #000}
+.pass.ph span{color:#d9e0ee;text-shadow:0 1px 3px #000}
+.pass.ph small.up{color:#9cc4ff;text-shadow:0 1px 3px #000}
+.pass.ph em{position:absolute;top:13px;right:6px;margin:0;background:rgba(9,14,28,.85);color:var(--gold);border-radius:6px;padding:0 6px;font-size:16px;line-height:22px}
+.pass.ph.match{background-color:#3a2f12}
+.pass.ph.match div{background:linear-gradient(180deg,rgba(58,40,8,0) 30%,rgba(58,40,8,.55) 58%,rgba(40,28,6,.94) 100%)}
 #credList .cr{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px solid #ffffff12;font-size:14px;line-height:1.35}
 #credList img{width:48px;height:48px;border-radius:6px;flex:none}
 #credList b{color:var(--gold)}
@@ -901,7 +907,7 @@ button{font-family:inherit}
       const snap = SIM.boardSnapshot(p), base = SIM.computeTraits(snap);
       const withIt = snap.some(e => e.unitId === id) ? base : SIM.computeTraits(snap.concat([{ unitId: id, star: 1, r: 9, c: 9 }]));
       const ups = Object.keys(withIt).filter(t => withIt[t].level > (base[t] ? base[t].level : -1) && DATA.TRAITS[t].kind !== 'unica');
-      const ph = foto(id, true);
+      const ph = foto(id); // la de 512: el pase mide ~150 px y en pantallas densas la de 128 se ve borrosa
       return `<button class="pass${have >= 2 ? ' match' : ''}${p.gold < d.cost ? ' poor' : ''}${ph ? ' ph' : ''}"${ph ? ` style="background-image:url('${ph}')"` : ''} data-buy="${i}" aria-label="Contratar a ${esc(d.name)} por $${d.cost}">
         <i style="background:${COST_COLOR[d.cost]}"></i><div><b>${esc(d.short)}${d.unique ? ' ★' : ''}</b><span>${esc(traits.slice(0, 3).join(' · '))}</span>${ups.length ? `<small class="up">▲ ${esc(ups.map(t => DATA.TRAITS[t].name).join(', '))}</small>` : ''}<em>$${d.cost}</em></div></button>`;
     }).join('');
