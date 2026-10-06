@@ -40,7 +40,7 @@ const DATA = {
   // copias de CADA campeón con 8 jugadores. Se escala: round(valor * jugadores / 8)
   POOL_SIZE_8P: { 1: 30, 2: 25, 3: 18, 4: 10, 5: 9 },
 
-  // Rival generado (Etapa 1). Por etapa: nivel (= cantidad de unidades) en cada ronda,
+  // Rival generado (solo modo práctica: partida de 1 jugador). Por etapa: nivel (= cantidad de unidades) en cada ronda,
   // y probabilidad de que cada unidad salga ★2 / ★3. Etapas mayores usan la última definida.
   OPPONENT: {
     LEVEL: { 2: [2, 3, 3, 4, 4, 4], 3: [5, 5, 5, 6, 6, 6], 4: [6, 7, 7, 7, 7, 8], 5: [8, 8, 8, 8, 9, 9], 6: [9, 9, 9, 9, 10, 10], 7: [10, 10, 10, 10, 10, 10] },
@@ -172,6 +172,34 @@ const DATA = {
                ability: { name: 'El pogo más grande del mundo', type: 'teamBuffAS', pct: [40, 60, 200], duration: 5 } },
   },
 
+  // Bots. La IA vive en SIM (runBotTurn); acá solo parámetros.
+  BOTS: {
+    NAMES: ['La Tana', 'El Rulo', 'Bocha', 'Pochi', 'El Tano', 'Cachi', 'La Colo', 'El Ruso', 'Chiche', 'Tucu'],
+    // personalidad y dificultad de cada bot, en orden de lugar (se usan los primeros N)
+    LINEUP: [
+      { personality: 'equilibrado', difficulty: 0.3 }, { personality: 'ahorrador', difficulty: 0.3 },
+      { personality: 'reroll', difficulty: 0.3 }, { personality: 'fiel', difficulty: 0.3 },
+      { personality: 'equilibrado', difficulty: 0.3 }, { personality: 'ahorrador', difficulty: 0.3 },
+      { personality: 'reroll', difficulty: 0.3 }, { personality: 'fiel', difficulty: 0.3 },
+    ],
+    // difficulty (0..1) = probabilidad de errores: olvidarse de subir, compras al azar, mal posicionamiento.
+    // levels: nivel objetivo por etapa. econ: oro que intenta guardar (interés). levelReserve: oro que
+    //   no toca para subir de nivel. rollAbove: rerollea el oro por encima de esto (desde rollFromStage).
+    // aggroHp: con esta vida o menos se pone agresivo (gasta todo). focus: cuántos rasgos persigue.
+    // loyalty: cuánto pesan sus rasgos al comprar. cheapMax: prefiere unidades de hasta este coste.
+    // originOnly: apuesta a un único origen fijo durante toda la partida.
+    PERSONALITIES: {
+      equilibrado: { name: 'Equilibrado', levels: { 1: 1, 2: 4, 3: 5, 4: 7, 5: 8, 6: 9, 7: 10 }, econ: 30, levelReserve: 10,
+                     rollAbove: 50, rollFromStage: 2, maxRolls: 10, aggroHp: 40, focus: 2, loyalty: 0.5, buyThreshold: 6 },
+      ahorrador:   { name: 'Ahorrador', levels: { 1: 1, 2: 5, 3: 6, 4: 8, 5: 9, 6: 10 }, econ: 50, levelReserve: 50,
+                     rollAbove: 60, rollFromStage: 3, maxRolls: 6, aggroHp: 30, focus: 2, loyalty: 0.5, buyThreshold: 7 },
+      reroll:      { name: 'Reroll', levels: { 1: 1, 2: 4, 3: 5, 4: 6, 5: 7, 6: 8, 7: 9 }, econ: 20, levelReserve: 20,
+                     rollAbove: 20, rollFromStage: 3, maxRolls: 15, aggroHp: 40, focus: 2, loyalty: 0.6, buyThreshold: 6, cheapMax: 2 },
+      fiel:        { name: 'Fiel a la banda', levels: { 1: 1, 2: 4, 3: 5, 4: 7, 5: 8, 6: 9, 7: 10 }, econ: 30, levelReserve: 10,
+                     rollAbove: 50, rollFromStage: 2, maxRolls: 10, aggroHp: 40, focus: 1, loyalty: 1, buyThreshold: 6, originOnly: true },
+    },
+  },
+
   // Enemigos de las rondas PvE de la etapa 1 (no están en el pool)
   CREEPS: {
     sonidista: { name: 'Sonidista', short: 'Sonidista', cost: 0, traits: [], icon: '🎚️',
@@ -193,15 +221,29 @@ const DATA = {
  *    (solo + - * / round floor min max abs, que son idénticos en todo motor JS).
  *    Todo el estado es JSON plano. Las funciones públicas que reciben un
  *    `state` de partida NO lo mutan: devuelven uno nuevo.
- *    (El estado de combate `cs` sí se muta en stepCombat, por rendimiento;
- *     es efímero y también es JSON plano.)
+ *    (Internamente se usan versiones "InPlace" sobre una copia propia, por
+ *     rendimiento. El estado de combate `cs` también se muta en stepCombat.)
  *
  *  ESTADO DE PARTIDA
- *  { v, seed, rng, nextUid, poolPlayers, round:{stage,num}, phase:'planning'|'ended',
- *    pool:{unitId:copias}, order:[pid], players:{pid: Player}, combats:[CombatRecord] }
- *  Player = { id,name,isBot,alive,place,hp,gold,level,xp,streak,shop:[unitId|null],
- *             shopLocked, bench:[Unit|null], board:[Unit|null] (idx=r*7+c), history:[...] }
+ *  { v, seed, rng, nextUid, poolPlayers, round:{stage,num}, roundsPlayed,
+ *    phase:'planning'|'ended', pool:{unitId:copias}, order:[pid],
+ *    players:{pid: Player}, pairings:[{a,b,ghost}]|null, combats:[CombatRecord] }
+ *  Player = { id,name,isBot,bot:{personality,difficulty}|null, rng, alive,place,hp,gold,
+ *             level,xp,streak,lastOpp, shop:[unitId|null], shopLocked,
+ *             bench:[Unit|null], board:[Unit|null] (idx=r*7+c), history:[...], finalBoard }
  *  Unit   = { uid, unitId, star }
+ *
+ *  ALEATORIEDAD
+ *  - s.rng: cosas de la ronda (emparejamientos, orden de los bots, semillas de combate,
+ *    rival generado). Solo lo consumen createGame / resolveRound / runAllBots, que corre el host.
+ *  - p.rng: la tienda de cada jugador (rerolls). Así el reroll de uno no le cambia
+ *    la tienda a otro.
+ *  - IMPORTANTE (Etapa 3): el resultado de un reroll igual depende del estado del POOL
+ *    compartido, y por lo tanto del ORDEN en que se aplican las acciones de todos los
+ *    jugadores. Ese orden lo define el host: aplica las acciones en el orden en que las
+ *    recibe y sincroniza el estado. Los clientes leen su tienda del estado sincronizado;
+ *    NUNCA la recalculan localmente.
+ *  - Determinismo = misma semilla + misma secuencia ordenada de acciones -> mismo estado.
  * ===================================================================== */
 const SIM = (() => {
   const C = DATA.CONFIG;
@@ -210,12 +252,13 @@ const SIM = (() => {
   const UNIT_IDS = Object.keys(DATA.UNITS).sort();
   const IDS_BY_COST = {};
   for (const id of UNIT_IDS) (IDS_BY_COST[DATA.UNITS[id].cost] ||= []).push(id);
+  const ORIGINS = Object.keys(DATA.TRAITS).filter(t => DATA.TRAITS[t].kind === 'origen').sort();
 
   const def = id => DATA.UNITS[id] || DATA.CREEPS[id];
   const clone = o => JSON.parse(JSON.stringify(o));
   const copiesOf = star => (star === 1 ? 1 : star === 2 ? 3 : 9);
   const byStage = (table, stage) => { // valor de la etapa, o el de la última etapa definida
-    const keys = Object.keys(table).map(Number).sort((a, b) => a - b);
+    const keys = Object.keys(table).filter(k => k !== 'default').map(Number).sort((a, b) => a - b);
     let k = keys[0];
     for (const x of keys) if (x <= stage) k = x;
     return table[k];
@@ -235,6 +278,12 @@ const SIM = (() => {
     return h >>> 0;
   }
   const seedFrom = x => fnv(2166136261, String(x));
+  const stateHash = s => fnv(2166136261, JSON.stringify(s));
+  function shuffle(arr, obj) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) { const j = rngInt(obj, i + 1); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  }
 
   // ---------- Hex (filas "odd-r", hexágonos con punta arriba) ----------
   const N_EVEN = [[-1, -1], [-1, 0], [0, -1], [0, 1], [1, -1], [1, 0]];
@@ -255,14 +304,17 @@ const SIM = (() => {
   const udist = (a, b) => hexDist(a.r, a.c, b.r, b.c);
 
   // ---------- Jugadores, banco y tablero ----------
-  function makePlayer(id, name, isBot) {
+  function makePlayer(s, slot) {
     return {
-      id, name, isBot: !!isBot, alive: true, place: null,
-      hp: C.START_HP, gold: C.START_GOLD, level: C.START_LEVEL, xp: 0, streak: 0,
+      id: slot.id, name: slot.name, isBot: !!slot.isBot,
+      bot: slot.isBot ? { personality: slot.personality || 'equilibrado', difficulty: slot.difficulty ?? 0.3 } : null,
+      rng: seedFrom(s.seed + '|shop|' + slot.id),
+      alive: true, place: null,
+      hp: C.START_HP, gold: C.START_GOLD, level: C.START_LEVEL, xp: 0, streak: 0, lastOpp: null,
       shop: Array(C.SHOP_SIZE).fill(null), shopLocked: false,
       bench: Array(C.BENCH_SIZE).fill(null),
       board: Array(ROWS * COLS).fill(null),   // índice = r*COLS + c, r=0 fila del frente
-      lastIncome: null, history: [],
+      lastIncome: null, history: [], finalBoard: null,
     };
   }
   const validIdx = (i, n) => Number.isInteger(i) && i >= 0 && i < n;
@@ -278,7 +330,10 @@ const SIM = (() => {
     return out;
   }
   function countCopies(p, unitId, star) {
-    return owned(p).filter(o => o.u.unitId === unitId && (star == null || o.u.star === star)).length;
+    let n = 0;
+    for (const u of p.board) if (u && u.unitId === unitId && (star == null || u.star === star)) n++;
+    for (const u of p.bench) if (u && u.unitId === unitId && (star == null || u.star === star)) n++;
+    return n;
   }
   const xpNeeded = p => DATA.XP_TO_LEVEL[p.level] || 0;
   function addXp(p, n) {
@@ -316,22 +371,24 @@ const SIM = (() => {
     for (let k = 0; k < 5; k++) { acc += odds[k]; if (odds[k] > 0) cost = k + 1; if (roll < acc) break; }
     return cost;
   }
-  function pickFromPool(s, cost) {
+  function pickFromPool(s, rngObj, cost) {
     const ids = IDS_BY_COST[cost] || [];
     const total = ids.reduce((n, id) => n + s.pool[id], 0);
     if (total <= 0) return null;
-    let r = rngInt(s, total);
+    let r = rngInt(rngObj, total);
     for (const id of ids) { r -= s.pool[id]; if (r < 0) return id; }
     return null;
   }
   // Las unidades en tienda salen del pool; al rerollear las no compradas vuelven.
+  // El RNG es el del jugador (p.rng), pero QUÉ sale depende del pool en ese momento:
+  // ver la nota de ALEATORIEDAD arriba.
   function rollShop(s, p) {
     for (let i = 0; i < p.shop.length; i++) if (p.shop[i]) { s.pool[p.shop[i]]++; p.shop[i] = null; }
     for (let i = 0; i < C.SHOP_SIZE; i++) {
-      const cost = rollCost(s, p.level);
-      let id = pickFromPool(s, cost);
-      for (let c2 = cost - 1; !id && c2 >= 1; c2--) id = pickFromPool(s, c2);
-      for (let c2 = cost + 1; !id && c2 <= 5; c2++) id = pickFromPool(s, c2);
+      const cost = rollCost(p, p.level);
+      let id = pickFromPool(s, p, cost);
+      for (let c2 = cost - 1; !id && c2 >= 1; c2--) id = pickFromPool(s, p, c2);
+      for (let c2 = cost + 1; !id && c2 <= 5; c2++) id = pickFromPool(s, p, c2);
       p.shop[i] = id;
       if (id) s.pool[id]--;
     }
@@ -345,7 +402,7 @@ const SIM = (() => {
 
   // ---------- Acciones del jugador: applyAction(state, pid, action) -> state ----------
   // {type:'BUY',slot} {type:'SELL',loc} {type:'MOVE',from,to} {type:'REROLL'} {type:'BUY_XP'} {type:'LOCK',value?}
-  // loc = {zone:'bench'|'board', idx}
+  // loc = {zone:'bench'|'board', idx}. Humanos y bots usan exactamente estas acciones.
   function validateAction(s, pid, a) {
     const p = s.players[pid];
     if (!p) return 'Jugador inexistente';
@@ -381,9 +438,8 @@ const SIM = (() => {
       default: return 'Acción desconocida';
     }
   }
-  function applyAction(state, pid, a) {
-    if (validateAction(state, pid, a)) return state; // inválida: mismo objeto, sin cambios
-    const s = clone(state);
+  // Aplica una acción YA VALIDADA mutando `s`. Solo para uso interno.
+  function applyInPlace(s, pid, a) {
     const p = s.players[pid];
     switch (a.type) {
       case 'BUY': {
@@ -413,6 +469,11 @@ const SIM = (() => {
       case 'BUY_XP': p.gold -= C.XP_COST; addXp(p, C.XP_AMOUNT); break;
       case 'LOCK': p.shopLocked = typeof a.value === 'boolean' ? a.value : !p.shopLocked; break;
     }
+  }
+  function applyAction(state, pid, a) {
+    if (validateAction(state, pid, a)) return state; // inválida: mismo objeto, sin cambios
+    const s = clone(state);
+    applyInPlace(s, pid, a);
     return s;
   }
 
@@ -440,7 +501,7 @@ const SIM = (() => {
     return out;
   }
 
-  // ---------- Rival generado (Etapa 1) ----------
+  // ---------- Rival generado (modo práctica de 1 jugador) ----------
   // Usa el RNG de `rngObj` (normalmente el state). No toca el pool.
   function generateOpponentBoard(rngObj, round) {
     const O = DATA.OPPONENT;
@@ -703,6 +764,160 @@ const SIM = (() => {
     return { ok: fails === 0, combats: n, fails };
   }
 
+  // ---------- Bots ----------
+  // Los bots ven lo mismo que un jugador (su tienda, oro, banco y tablero) y actúan
+  // SOLO con las acciones de validateAction/applyAction. Su aleatoriedad propia
+  // (errores por dificultad) sale de un RNG derivado de semilla+ronda+id, que no
+  // toca s.rng ni p.rng: un bot "pensando" no le cambia nada a nadie.
+  const POWER = u => def(u.unitId).cost * copiesOf(u.star);
+  const FRONT_CELLS = [3, 2, 4, 1, 5, 0, 6, 10, 9, 11, 8, 12, 7, 13, 17, 16, 18, 15, 19, 14, 20, 24, 23, 25, 22, 26, 21, 27];
+  const BACK_CELLS = [24, 23, 25, 22, 26, 21, 17, 16, 18, 15, 19, 14, 20, 10, 9, 11, 8, 12, 7, 13, 3, 2, 4, 1, 5, 0, 6];
+  const CARRY_CELL = 27; // esquina de atrás
+  const favoriteOrigin = (s, id) => ORIGINS[fnv(s.seed, '|fav|' + id) % ORIGINS.length];
+
+  function botTargets(p, P, fav) {
+    if (fav) return [fav];
+    const score = {}, seen = {};
+    for (const o of owned(p)) {
+      if (seen[o.u.unitId]) continue;
+      seen[o.u.unitId] = true;
+      for (const t of def(o.u.unitId).traits) score[t] = (score[t] || 0) + 2 + (o.u.star - 1);
+    }
+    for (const id of p.shop) if (id) for (const t of DATA.UNITS[id].traits) score[t] = (score[t] || 0) + 0.5;
+    const active = computeTraits(boardSnapshot(p)); // lealtad: lo que ya está activo pesa más
+    for (const t of Object.keys(active)) if (active[t].level >= 0) score[t] += 2 * P.loyalty;
+    return Object.keys(score).sort((a, b) => score[b] - score[a] || (a < b ? -1 : 1)).slice(0, P.focus);
+  }
+  function unitScore(p, unitId, star, targets, P, fav) {
+    const d = DATA.UNITS[unitId];
+    let sc = 0;
+    const pair = countCopies(p, unitId, star);
+    if (star < 3) sc += pair >= 2 ? 10 : pair === 1 ? 5 : 0;
+    sc += d.traits.filter(t => targets.includes(t)).length * 3 * (0.5 + P.loyalty);
+    if (fav && d.traits.includes(fav)) sc += 6;
+    sc += d.cost * (p.level >= d.cost + 3 ? 1 : 0.4);
+    if (P.cheapMax && d.cost <= P.cheapMax) sc += 3;
+    return sc;
+  }
+
+  // Decide y aplica el turno de un bot sobre `s` (lo muta). Devuelve las acciones usadas.
+  function botTurnInPlace(s, id) {
+    const actions = [];
+    const p = () => s.players[id];
+    if (!p() || !p().alive || !p().isBot || s.phase !== 'planning') return actions;
+    const act = a => { if (validateAction(s, id, a)) return false; applyInPlace(s, id, a); actions.push(a); return true; };
+    const P = DATA.BOTS.PERSONALITIES[p().bot.personality] || DATA.BOTS.PERSONALITIES.equilibrado;
+    const diff = p().bot.difficulty || 0;
+    const stage = s.round.stage;
+    const brng = { rng: seedFrom(s.seed + '|bot|' + roundLabel(s.round) + '|' + id) };
+    const oops = k => rngNext(brng) < diff * k;
+    const aggressive = p().hp <= P.aggroHp;
+    const fav = P.originOnly ? favoriteOrigin(s, id) : null;
+    const reserve = () => (aggressive || stage <= 1 ? 0 : Math.round(P.econ * Math.min(1, (stage - 1) / 2)));
+    let targets = botTargets(p(), P, fav);
+    const score = u => unitScore(p(), u.unitId, u.star, targets, P, fav) + (u.star - 1) * 6;
+
+    // Vende lo que menos sirve del banco (sin romper pares) si su puntaje es menor a `than`.
+    const sellJunk = than => {
+      let worst = -1, ws = Infinity;
+      p().bench.forEach((u, i) => {
+        if (!u || countCopies(p(), u.unitId, u.star) > 1) return;
+        const sc = score(u);
+        if (sc < ws) { ws = sc; worst = i; }
+      });
+      return worst >= 0 && ws < than && act({ type: 'SELL', loc: { zone: 'bench', idx: worst } });
+    };
+
+    // 1) nivel
+    const wantLevel = byStage(P.levels, stage);
+    if (!oops(0.5)) {
+      const keep = aggressive ? 0 : Math.min(reserve(), P.levelReserve);
+      for (let g = 0; g < 30 && p().level < wantLevel && p().gold - C.XP_COST >= keep; g++) if (!act({ type: 'BUY_XP' })) break;
+    }
+    // 2) compras
+    const buyPass = () => {
+      targets = botTargets(p(), P, fav);
+      for (let i = 0; i < C.SHOP_SIZE; i++) {
+        const unitId = p().shop[i];
+        if (!unitId) continue;
+        const cost = DATA.UNITS[unitId].cost;
+        if (p().gold < cost) continue;
+        const sc = unitScore(p(), unitId, 1, targets, P, fav);
+        const units = owned(p()).length;
+        const needBodies = units < p().level;
+        const random = oops(0.25);
+        const pairish = countCopies(p(), unitId, 1) >= 1;
+        if (!(random || needBodies || sc >= P.buyThreshold)) continue;
+        if (!random && !needBodies && !pairish && p().gold - cost < reserve()) continue;
+        if (benchFree(p()) === 0 && countCopies(p(), unitId, 1) < 2 && !sellJunk(sc)) continue;
+        act({ type: 'BUY', slot: i });
+      }
+    };
+    buyPass();
+    // 3) rerolls
+    const rollFloor = aggressive ? 0 : stage >= P.rollFromStage ? P.rollAbove : Infinity;
+    for (let g = 0; g < (aggressive ? 25 : P.maxRolls) && p().gold >= C.REROLL_COST && p().gold - C.REROLL_COST >= rollFloor; g++) {
+      if (!act({ type: 'REROLL' })) break;
+      buyPass();
+    }
+    // 4) tablero: las `level` unidades más valiosas; cuerpo a cuerpo adelante, rango atrás,
+    //    la más valiosa de rango en la esquina de atrás.
+    const pl = p();
+    const all = owned(pl).map(o => ({ ...o, pow: POWER(o.u) + def(o.u.unitId).traits.filter(t => targets.includes(t)).length * 1.5 }));
+    all.sort((a, b) => b.pow - a.pow || a.u.uid - b.u.uid);
+    const chosen = all.slice(0, pl.level);
+    const chosenIds = new Set(chosen.map(o => o.u.uid));
+    const melee = chosen.filter(o => def(o.u.unitId).range <= 1), ranged = chosen.filter(o => def(o.u.unitId).range > 1);
+    const target = {}, used = new Set();
+    const take = (uid, cells) => { const c = cells.find(x => !used.has(x)); used.add(c); target[uid] = c; };
+    if (ranged.length) take(ranged[0].u.uid, [CARRY_CELL]);
+    for (const o of ranged.slice(1)) take(o.u.uid, BACK_CELLS);
+    for (const o of melee) take(o.u.uid, FRONT_CELLS);
+    if (oops(0.7)) { // mal posicionamiento
+      const cells = shuffle(Object.values(target), brng), uids = Object.keys(target);
+      uids.forEach((u, i) => (target[u] = cells[i]));
+    }
+    const where = uid => {
+      const b = p().board.findIndex(u => u && u.uid === uid);
+      return b >= 0 ? { zone: 'board', idx: b } : { zone: 'bench', idx: p().bench.findIndex(u => u && u.uid === uid) };
+    };
+    p().board.forEach((u, i) => { // sacar del tablero lo que no se eligió
+      if (!u || chosenIds.has(u.uid)) return;
+      const free = p().bench.indexOf(null);
+      if (free >= 0) act({ type: 'MOVE', from: { zone: 'board', idx: i }, to: { zone: 'bench', idx: free } });
+    });
+    for (const o of chosen) {
+      const from = where(o.u.uid), t = target[o.u.uid];
+      if (from.zone === 'board' && from.idx === t) continue;
+      if (!act({ type: 'MOVE', from, to: { zone: 'board', idx: t } })) {
+        const extra = p().board.findIndex(u => u && !chosenIds.has(u.uid));
+        if (extra >= 0) act({ type: 'MOVE', from, to: { zone: 'board', idx: extra } });
+      }
+    }
+    // 5) no acumular: vender del banco lo que no forma pares ni encaja (deja hasta 4)
+    for (let g = 0; g < C.BENCH_SIZE && C.BENCH_SIZE - benchFree(p()) > 4; g++) if (!sellJunk(P.buyThreshold + 4)) break;
+    if (benchFree(p()) === 0) sellJunk(Infinity);
+    return actions;
+  }
+  // API pública: qué haría el bot con este estado. No muta `state`.
+  // Aplicar la lista en orden con applyAction reproduce exactamente su turno.
+  function runBotTurn(state, botId) {
+    return botTurnInPlace(clone(state), botId);
+  }
+  // Hace jugar a todos los bots vivos, en un orden barajado con s.rng cada ronda.
+  // Cada bot decide y APLICA sus acciones antes de que decida el siguiente, así ve el pool real.
+  // El host lo llama al inicio de cada planificación, antes de procesar acciones humanas.
+  function runAllBots(state, log) {
+    if (state.phase !== 'planning') return state;
+    const s = clone(state);
+    const bots = shuffle(alivePlayers(s).filter(id => s.players[id].isBot), s);
+    for (const id of bots) {
+      const actions = botTurnInPlace(s, id);
+      if (log) log.push({ id, actions });
+    }
+    return s;
+  }
+
   // ---------- Flujo de partida (lo corre el host) ----------
   const roundsInStage = st => C.ROUNDS_PER_STAGE[st] || C.ROUNDS_PER_STAGE.default;
   const roundLabel = r => `${r.stage}-${r.num}`;
@@ -718,16 +933,58 @@ const SIM = (() => {
     return byStage(C.STAGE_DAMAGE, stage) + surv.reduce((n, u) => n + u.star, 0);
   }
 
-  function createGame({ seed, players, poolPlayers = 8 }) {
+  // Lugares de una partida: humanos + bots con nombres/personalidades de DATA.BOTS.
+  function makeSlots({ humans = [], bots = 7, difficulty = null } = {}) {
+    const slots = humans.map(h => ({ id: h.id, name: h.name, isBot: false }));
+    const B = DATA.BOTS;
+    for (let i = 0; i < bots; i++) {
+      const lu = B.LINEUP[i % B.LINEUP.length];
+      slots.push({ id: 'b' + (i + 1), name: B.NAMES[i % B.NAMES.length], isBot: true,
+                   personality: lu.personality, difficulty: difficulty ?? lu.difficulty });
+    }
+    return slots;
+  }
+  // slots: [{id, name, isBot, personality?, difficulty?}]. poolPlayers: por defecto la cantidad
+  // de lugares (1 jugador = modo práctica, pool de 8).
+  function createGame({ seed, slots, players, poolPlayers }) {
+    slots = slots || players;
     const s = {
-      v: 2, seed: seedFrom(seed), rng: seedFrom(seed), nextUid: 1, poolPlayers,
-      round: { stage: 1, num: 1 }, phase: 'planning',
-      pool: {}, players: {}, order: [], combats: [],
+      v: 3, seed: seedFrom(seed), rng: seedFrom(seed), nextUid: 1,
+      poolPlayers: poolPlayers || (slots.length === 1 ? 8 : slots.length),
+      round: { stage: 1, num: 1 }, roundsPlayed: 0, phase: 'planning',
+      pool: {}, players: {}, order: [], pairings: null, combats: [],
     };
-    for (const id of UNIT_IDS) s.pool[id] = poolSize(DATA.UNITS[id].cost, poolPlayers);
-    for (const pl of players) { s.players[pl.id] = makePlayer(pl.id, pl.name, pl.isBot); s.order.push(pl.id); }
+    for (const id of UNIT_IDS) s.pool[id] = poolSize(DATA.UNITS[id].cost, s.poolPlayers);
+    for (const sl of slots) { s.players[sl.id] = makePlayer(s, sl); s.order.push(sl.id); }
     startPlanning(s, true);
     return s;
+  }
+  // Empareja a los vivos evitando repetir el rival de la ronda anterior cuando se puede.
+  // Si son impares, el que sobra pelea contra el fantasma (copia del tablero) de otro.
+  function makePairings(s) {
+    const alive = alivePlayers(s);
+    if (alive.length < 2) return [];
+    const repeat = (a, b) => s.players[a].lastOpp === b || s.players[b].lastOpp === a;
+    let best = null, bestRepeats = Infinity;
+    for (let attempt = 0; attempt < 12 && bestRepeats > 0; attempt++) { // varios barajados, el de menos repeticiones
+      const list = shuffle(alive, s), pairs = [];
+      let repeats = 0;
+      while (list.length >= 2) {
+        const a = list.shift();
+        let j = list.findIndex(b => !repeat(a, b));
+        if (j < 0) { j = 0; repeats++; }
+        pairs.push({ a, b: list.splice(j, 1)[0], ghost: false });
+      }
+      if (list.length === 1) {
+        const a = list[0], others = alive.filter(x => x !== a);
+        const pref = others.filter(x => x !== s.players[a].lastOpp);
+        if (!pref.length) repeats++;
+        const pool = pref.length ? pref : others;
+        pairs.push({ a, b: pool[rngInt(s, pool.length)], ghost: true });
+      }
+      if (repeats < bestRepeats) { best = pairs; bestRepeats = repeats; }
+    }
+    return best;
   }
   function startPlanning(s, first) {
     for (const id of alivePlayers(s)) {
@@ -738,52 +995,76 @@ const SIM = (() => {
       if (!first) addXp(p, C.PASSIVE_XP);
       if (first || !p.shopLocked) rollShop(s, p);
     }
+    const pvp = !DATA.PVE[roundLabel(s.round)] && s.order.length > 1;
+    s.pairings = pvp ? makePairings(s) : null;
     s.phase = 'planning';
   }
-  function eliminate(s) {
+  // Puestos: los que mueren en la misma ronda se ordenan por la vida que tenían ANTES de la ronda.
+  function eliminate(s, hpBefore) {
     const alive = alivePlayers(s);
     const dead = alive.filter(id => s.players[id].hp <= 0)
-      .sort((a, b) => s.players[a].hp - s.players[b].hp || (a < b ? -1 : 1));
+      .sort((a, b) => hpBefore[a] - hpBefore[b] || s.players[a].hp - s.players[b].hp || (a < b ? -1 : 1));
     const remaining = alive.length - dead.length;
     dead.forEach((id, k) => {
       const p = s.players[id];
       p.alive = false; p.place = remaining + dead.length - k;
+      p.finalBoard = boardSnapshot(p);
       returnUnitsToPool(s, p);
     });
     if (remaining === 0 || (s.order.length > 1 && remaining <= 1)) {
-      for (const id of alivePlayers(s)) s.players[id].place = 1;
+      for (const id of alivePlayers(s)) { const p = s.players[id]; p.place = 1; p.finalBoard = boardSnapshot(p); }
       s.phase = 'ended';
     }
   }
-  // Resuelve todas las peleas de la ronda y arranca la siguiente planificación.
-  // Etapa 1: cada jugador vivo pelea contra creeps (etapa 1) o contra un tablero generado.
-  // (En la Etapa 2 acá se agregan los emparejamientos entre jugadores.)
+  function addHistory(p, round, vs, result, dmg) {
+    p.history.unshift({ round, vs, result, dmg });
+    p.history.length = Math.min(p.history.length, 40);
+  }
+  const resultOf = (winner, side) => (winner === 'draw' ? 'draw' : winner === side ? 'win' : 'loss');
+  // Resuelve TODAS las peleas de la ronda (sin render), aplica daño, elimina, asigna puestos
+  // y arranca la siguiente planificación (con sus emparejamientos ya decididos).
   function resolveRound(state) {
     if (state.phase !== 'planning') return state;
     const s = clone(state);
-    const label = roundLabel(s.round);
+    const label = roundLabel(s.round), stage = s.round.stage;
+    const alive = alivePlayers(s);
+    const hpBefore = {};
+    for (const id of alive) hpBefore[id] = s.players[id].hp;
     const pve = DATA.PVE[label];
     s.combats = [];
-    for (const id of alivePlayers(s)) {
-      const p = s.players[id], seed = rngSeed(s);
-      const opp = pve ? { name: pve.name, units: clone(pve.units) } : generateOpponentBoard(s, s.round);
-      const snapA = boardSnapshot(p);
-      const res = simulateCombat(snapA, opp.units, seed);
-      const won = res.winner === 'A';
-      let dmg = 0;
-      if (pve) {
-        if (won) p.gold += C.PVE_WIN_GOLD;
-        else dmg = res.survivorsB.reduce((n, u) => n + u.star, 0);
-      } else {
-        if (!won) dmg = playerDamage(s.round.stage, res.survivorsB);
-        p.streak = won ? (p.streak > 0 ? p.streak + 1 : 1) : (p.streak < 0 ? p.streak - 1 : -1);
+    const streak = (p, won) => { p.streak = won ? (p.streak > 0 ? p.streak + 1 : 1) : (p.streak < 0 ? p.streak - 1 : -1); };
+
+    if (pve || s.order.length === 1) { // creeps (etapa 1) o rival generado (modo práctica)
+      for (const id of alive) {
+        const p = s.players[id], seed = rngSeed(s);
+        const opp = pve ? { name: pve.name, units: clone(pve.units) } : generateOpponentBoard(s, s.round);
+        const snapA = boardSnapshot(p), res = simulateCombat(snapA, opp.units, seed);
+        const won = res.winner === 'A';
+        let dmg = 0;
+        if (pve) { if (won) p.gold += C.PVE_WIN_GOLD; else dmg = res.survivorsB.reduce((n, u) => n + u.star, 0); }
+        else { if (!won) dmg = playerDamage(stage, res.survivorsB); streak(p, won); }
+        p.hp -= dmg;
+        addHistory(p, label, opp.name, resultOf(res.winner, 'A'), dmg);
+        s.combats.push({ round: label, kind: pve ? 'pve' : 'gen', a: id, b: null, ghost: false, name: opp.name, snapA, snapB: opp.units, seed, winner: res.winner, hash: res.hash, dmgA: dmg, dmgB: 0 });
       }
-      p.hp -= dmg;
-      p.history.unshift({ round: label, vs: opp.name, result: res.winner === 'draw' ? 'draw' : won ? 'win' : 'loss', dmg });
-      p.history.length = Math.min(p.history.length, 40);
-      s.combats.push({ kind: pve ? 'pve' : 'gen', a: id, name: opp.name, snapA, snapB: opp.units, seed, winner: res.winner, hash: res.hash });
+    } else {
+      for (const { a, b, ghost } of s.pairings) {
+        const pa = s.players[a], pb = s.players[b], seed = rngSeed(s);
+        const snapA = boardSnapshot(pa), snapB = boardSnapshot(pb);
+        const res = simulateCombat(snapA, snapB, seed);
+        const dmgA = res.winner === 'A' ? 0 : playerDamage(stage, res.survivorsB);
+        const dmgB = ghost || res.winner === 'B' ? 0 : playerDamage(stage, res.survivorsA);
+        pa.hp -= dmgA; streak(pa, res.winner === 'A'); pa.lastOpp = b;
+        addHistory(pa, label, pb.name + (ghost ? ' (fantasma)' : ''), resultOf(res.winner, 'A'), dmgA);
+        if (!ghost) {
+          pb.hp -= dmgB; streak(pb, res.winner === 'B'); pb.lastOpp = a;
+          addHistory(pb, label, pa.name, resultOf(res.winner, 'B'), dmgB);
+        }
+        s.combats.push({ round: label, kind: 'pvp', a, b, ghost, name: pb.name, snapA, snapB, seed, winner: res.winner, hash: res.hash, dmgA, dmgB });
+      }
     }
-    eliminate(s);
+    s.roundsPlayed++;
+    eliminate(s, hpBefore);
     if (s.phase !== 'ended') {
       s.round.num++;
       if (s.round.num > roundsInStage(s.round.stage)) { s.round.stage++; s.round.num = 1; }
@@ -792,15 +1073,84 @@ const SIM = (() => {
     return s;
   }
 
+  // ---------- Partidas completas sin UI (balance y chequeo de determinismo) ----------
+  // Todos los lugares son bots. Devuelve el estado final y, si se pide, el hash del
+  // estado después de cada ronda.
+  function simulateGame({ seed, slots = makeSlots({ bots: 8 }), maxRounds = 200, trackHashes = false } = {}) {
+    let s = runAllBots(createGame({ seed, slots }));
+    const hashes = trackHashes ? [stateHash(s)] : null;
+    for (let n = 0; s.phase !== 'ended' && n < maxRounds; n++) {
+      s = resolveRound(s);
+      if (s.phase !== 'ended') s = runAllBots(s);
+      if (hashes) hashes.push(stateHash(s));
+    }
+    return { state: s, hashes, summary: gameSummary(s) };
+  }
+  function checkGameDeterminism(seed = 'det', slots) {
+    const a = simulateGame({ seed, slots, trackHashes: true }), b = simulateGame({ seed, slots, trackHashes: true });
+    const n = Math.max(a.hashes.length, b.hashes.length);
+    let firstDiff = -1;
+    for (let i = 0; i < n && firstDiff < 0; i++) if (a.hashes[i] !== b.hashes[i]) firstDiff = i;
+    return { ok: firstDiff < 0, rounds: a.state.roundsPlayed, firstDiffAfterRound: firstDiff, finalHash: a.hashes[a.hashes.length - 1] };
+  }
+  function gameSummary(s) {
+    return {
+      rounds: s.roundsPlayed,
+      players: s.order.map(id => {
+        const p = s.players[id], snap = p.finalBoard || boardSnapshot(p), tr = computeTraits(snap);
+        return {
+          id, place: p.place, personality: p.bot ? p.bot.personality : 'humano', difficulty: p.bot ? p.bot.difficulty : null,
+          traits: Object.keys(tr).filter(t => tr[t].level >= 0).map(t => `${DATA.TRAITS[t].name} ${DATA.TRAITS[t].breakpoints[tr[t].level]}`),
+          units: [...new Set(snap.map(e => e.unitId))],
+        };
+      }),
+    };
+  }
+  // Junta resúmenes de muchas partidas en tablas listas para console.table.
+  function balanceStats(summaries) {
+    const r2 = x => Math.round(x * 100) / 100, pct = x => Math.round(x * 1000) / 10;
+    const acc = (map, key, place) => {
+      const e = (map[key] ||= { n: 0, sum: 0, top4: 0, wins: 0 });
+      e.n++; e.sum += place; if (place <= 4) e.top4++; if (place === 1) e.wins++;
+    };
+    const pers = {}, traits = {}, winUnits = {};
+    let rounds = 0;
+    for (const g of summaries) {
+      rounds += g.rounds;
+      for (const p of g.players) {
+        acc(pers, p.personality, p.place);
+        for (const t of p.traits) acc(traits, t, p.place);
+        if (p.place === 1) for (const u of p.units) winUnits[u] = (winUnits[u] || 0) + 1;
+      }
+    }
+    const table = (map, label) => Object.entries(map)
+      .map(([k, e]) => ({ [label]: k, apariciones: e.n, puestoProm: r2(e.sum / e.n), top4: pct(e.top4 / e.n) + '%', ganadas: pct(e.wins / e.n) + '%' }))
+      .sort((a, b) => a.puestoProm - b.puestoProm);
+    const games = summaries.length;
+    return {
+      partidas: games,
+      rondasProm: r2(rounds / games),
+      personalidades: table(pers, 'personalidad').map(r => ({ ...r, personalidad: (DATA.BOTS.PERSONALITIES[r.personalidad] || { name: r.personalidad }).name })),
+      rasgos: table(traits, 'rasgo'),
+      unidadesGanadoras: Object.entries(winUnits).sort((a, b) => b[1] - a[1])
+        .map(([u, n]) => ({ unidad: DATA.UNITS[u].name, coste: DATA.UNITS[u].cost, enTablerosGanadores: pct(n / games) + '%' })),
+    };
+  }
+
   return {
-    // partida
-    createGame, resolveRound, applyAction, validateAction,
+    // partida (host)
+    createGame, makeSlots, resolveRound, runAllBots,
+    // acciones (humanos y bots)
+    applyAction, validateAction, runBotTurn,
     // combate
     createCombat, stepCombat, simulateCombat, checkDeterminism, selfTest, generateOpponentBoard,
+    // sin UI
+    simulateGame, checkGameDeterminism, gameSummary, balanceStats, stateHash,
     // helpers de lectura (sin efectos)
     computeTraits, boardSnapshot, incomePreview, sellValue, countCopies, boardCount, benchFree,
     roundLabel, roundsInStage, xpNeeded, hexDist, def, clone, seedFrom,
   };
 })();
+
 
 if (typeof module !== 'undefined') module.exports = { DATA, SIM };

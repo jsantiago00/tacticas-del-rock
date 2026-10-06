@@ -77,15 +77,37 @@ button:disabled{opacity:.45;cursor:default}
 .slot.drop-hover{border-color:var(--gold);background:#5b4a2a55}
 .slot .unit{left:50%;top:50%;transform:translate(-50%,-50%)}
 
-/* panel de partida */
-.bighp{display:flex;align-items:baseline;gap:8px}
-.bighp b{font-family:'Bebas Neue',Impact,sans-serif;font-size:40px;line-height:1}
-.hpbar{height:10px;border-radius:5px;background:#0008;overflow:hidden;margin:4px 0 8px}
-.hpbar i{display:block;height:100%;background:linear-gradient(90deg,#4fd36a,#b6f06a)}
-.hist{font-size:12px;max-height:190px;overflow:auto}
-.hist div{display:flex;justify-content:space-between;gap:6px;padding:3px 0;border-bottom:1px solid #ffffff0d}
-.hist .w{color:#6dff8a} .hist .l{color:var(--foe)} .hist .d{color:var(--gold)}
-#infoPanel{margin-top:12px;min-height:120px}
+/* jugadores */
+.prow{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:8px;margin-bottom:4px;background:var(--panel2);cursor:pointer;border:1px solid transparent}
+.prow:hover{border-color:var(--line)}
+.prow.me{box-shadow:inset 3px 0 0 var(--mine)}
+.prow.spy{border-color:var(--gold)}
+.prow.dead{opacity:.4}
+.prow .pname{font-weight:600;flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.prow .psub{font-size:10px;color:var(--muted);font-weight:400}
+.prow .pstreak{font-size:11px;width:30px;text-align:center}
+.prow .php{width:56px;height:8px;border-radius:4px;background:#0008;overflow:hidden}
+.prow .php i{display:block;height:100%;background:linear-gradient(90deg,#4fd36a,#b6f06a)}
+.prow .phv{width:26px;text-align:right;font-weight:800}
+.prow .vs{color:var(--foe);font-size:13px}
+#roundPanel,#infoPanel{margin-top:12px}
+#infoPanel{min-height:120px}
+.res{font-size:12px}
+.res div{display:flex;justify-content:space-between;gap:6px;padding:3px 0;border-bottom:1px solid #ffffff0d}
+.res .w{color:#6dff8a} .res .l{color:var(--foe)} .res .d{color:var(--gold)}
+.res .mine{font-weight:800}
+.nextOpp{font-family:'Bebas Neue',Impact,sans-serif;font-size:22px;letter-spacing:1px;color:var(--foe);margin-bottom:6px}
+#spyBar{display:none;background:#3a2f12;border:1px solid var(--gold);color:var(--gold);border-radius:8px;padding:6px 12px;cursor:pointer;font-weight:600}
+#endScreen{position:fixed;inset:0;background:#000c;display:none;place-items:center;z-index:1400}
+#endScreen .box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;width:min(520px,92vw)}
+#endScreen h2{margin:0 0 12px;font-family:'Bebas Neue',Impact,sans-serif;font-weight:400;font-size:40px;letter-spacing:1px;color:var(--gold)}
+#endTable{width:100%;border-collapse:collapse;font-size:13px}
+#endTable td,#endTable th{padding:5px 6px;text-align:left;border-bottom:1px solid #ffffff12}
+#endTable th{color:var(--muted);font-weight:600;font-size:11px}
+#endTable tr.me td{color:var(--mine);font-weight:800}
+#endScreen .row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#modal select{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:#0006;color:var(--text);font:inherit}
 .info-title{font-family:'Bebas Neue',Impact,sans-serif;font-size:24px;letter-spacing:1px;line-height:1}
 .info-sub{color:var(--muted);font-size:12px;margin:2px 0 8px}
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:2px 10px;font-size:12px;margin-bottom:8px}
@@ -154,6 +176,7 @@ button:disabled{opacity:.45;cursor:default}
   <div id="main">
     <aside class="panel" id="traitsPanel"></aside>
     <section id="center">
+      <div id="spyBar"></div>
       <div id="arenaWrap">
         <div id="oppLabel"></div>
         <canvas id="arena"></canvas>
@@ -169,7 +192,8 @@ button:disabled{opacity:.45;cursor:default}
       <div id="bench"></div>
     </section>
     <aside>
-      <div class="panel" id="gamePanel"></div>
+      <div class="panel" id="playersPanel"></div>
+      <div class="panel" id="roundPanel"></div>
       <div class="panel" id="infoPanel"></div>
     </aside>
   </div>
@@ -188,12 +212,23 @@ button:disabled{opacity:.45;cursor:default}
   </footer>
 </div>
 <div id="toast"></div>
+<div id="endScreen"><div class="box">
+  <h2 id="endTitle"></h2>
+  <table id="endTable"></table>
+  <div class="row"><button id="btnEndClose">Ver tablero</button><button id="btnEndNew" style="border-color:var(--accent)">Nueva partida</button></div>
+</div></div>
 <div id="modal"><div class="box">
   <h2>Nueva partida</h2>
   <label for="inName">Tu nombre</label>
   <input id="inName" maxlength="18" value="Vos">
   <label for="inSeed">Semilla (misma semilla + mismas jugadas = misma partida)</label>
   <input id="inSeed">
+  <div class="row2">
+    <div><label for="inBots">Bots rivales</label>
+      <select id="inBots"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option selected>7</option></select></div>
+    <div><label for="inDiff">Dificultad</label>
+      <select id="inDiff"><option value="0.6">Fácil</option><option value="0.3" selected>Normal</option><option value="0">Difícil</option></select></div>
+  </div>
   <div class="help">Arrastrá unidades entre banco y tablero. Para vender: click derecho, arrastrar a la tienda, o <b>E</b> con el mouse encima.<br>
   <b>D</b> reroll · <b>F</b> comprar XP · <b>Espacio</b> listo.</div>
   <div class="row"><button id="btnCancel">Cancelar</button><button id="btnStart" style="border-color:var(--accent)">Arrancar</button></div>
@@ -203,51 +238,55 @@ button:disabled{opacity:.45;cursor:default}
 <script>
 'use strict';
 /* =====================================================================
- * 2b. BOTS — Etapa 2. Van a usar solo SIM.applyAction, igual que un humano.
- * ===================================================================== */
-
-/* =====================================================================
  * 3. UI — render (canvas para el tablero/combate, HTML para el resto) y
  *    entrada. Solo lee el estado y despacha acciones a SIM.
+ *    En local la UI hace de "host": llama a resolveRound y runAllBots.
+ *    (Etapa 3: HUMAN pasa a ser el id del jugador local y el host es otro.)
  * ===================================================================== */
 (function UI() {
-  if (typeof document === 'undefined') return;
   const C = DATA.CONFIG, ROWS = C.BOARD_ROWS, COLS = C.BOARD_COLS, TROWS = ROWS * 2;
   const HW = 66, HH = Math.round(HW * 1.1547), VS = HH * 0.75, PAD = 18;
   const ARENA_W = COLS * HW + HW / 2, ARENA_H = (TROWS - 1) * VS + HH + PAD * 2;
   const TOKEN_R = 26;
-  const SAVE_KEY = 'tacticas_rock_save_v2', PREF_KEY = 'tacticas_rock_prefs';
+  const SAVE_KEY = 'tacticas_rock_save_v3', PREF_KEY = 'tacticas_rock_prefs';
   const HUMAN = 'p0';
   const $ = s => document.querySelector(s);
   const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const CLASS_ICON = { guitarrista: '🎸', voz: '🎤', bajista: '🪕', baterista: '🥁', tecladista: '🎹' };
   const COST_COLOR = ['#555', '#8f949c', '#3fb15f', '#3a86e0', '#b05ae0', '#f0b02a'];
 
   let state = null;
   let mode = 'planning';   // 'planning' | 'combat' | 'ended'
   let selected = null;     // {unitId, star}
+  let spyId = null;        // jugador cuyo tablero se está mirando
   let hoverLoc = null;
   let replay = null;
   let drag = null, dragOverIdx = -1;
-  let prefs = { timer: false };
+  let prefs = { timer: false, speed: 1 };
   let timerEnd = 0;
 
   const me = () => state.players[HUMAN];
+  const viewed = () => state.players[spyId] || me();
+  const pname = id => (state.players[id] ? state.players[id].name : id);
   const cellCenter = (R, Cc) => ({ x: Cc * HW + (R & 1) * HW / 2 + HW / 2, y: PAD + R * VS + HH / 2 });
   const unitIcon = d => d.icon || CLASS_ICON[d.traits.find(t => CLASS_ICON[t])] || '🎵';
   const originColor = d => { const o = d.traits.find(t => DATA.TRAITS[t].kind === 'origen'); return o ? DATA.TRAITS[o].color : '#666'; };
   const stars = n => '★'.repeat(n);
+  const persName = p => (p.bot ? (DATA.BOTS.PERSONALITIES[p.bot.personality] || {}).name || p.bot.personality : 'Humano');
 
   // ---------- persistencia ----------
   function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) {} }
-  function load() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); return s && s.v === 2 ? s : null; } catch (e) { return null; } }
+  function load() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); return s && s.v === 3 ? s : null; } catch (e) { return null; } }
   try { Object.assign(prefs, JSON.parse(localStorage.getItem(PREF_KEY)) || {}); } catch (e) {}
   const savePrefs = () => { try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); } catch (e) {} };
 
-  function newGame(name, seed) {
-    state = SIM.createGame({ seed, players: [{ id: HUMAN, name: name || 'Vos', isBot: false }] });
-    mode = 'planning'; selected = null; replay = null;
+  function newGame(name, seed, bots, difficulty) {
+    const slots = SIM.makeSlots({ humans: [{ id: HUMAN, name: name || 'Vos' }], bots, difficulty });
+    state = SIM.runAllBots(SIM.createGame({ seed, slots })); // los bots compran al inicio de la planificación
+    mode = 'planning'; selected = null; replay = null; spyId = null;
     $('#banner').style.display = 'none';
+    $('#endScreen').style.display = 'none';
     save(); render(); resetTimer();
   }
 
@@ -263,6 +302,10 @@ button:disabled{opacity:.45;cursor:default}
     if (err) { toast(err); return; }
     state = SIM.applyAction(state, HUMAN, action);
     save(); render();
+  }
+  function setSpy(id) {
+    spyId = id && id !== HUMAN ? id : null;
+    render();
   }
 
   // ---------- canvas ----------
@@ -293,7 +336,7 @@ button:disabled{opacity:.45;cursor:default}
       const mine = R >= ROWS, idx = (R - ROWS) * COLS + Cc;
       hexPath(x, y, HH / 2 - 2);
       ctx.fillStyle = planning
-        ? (mine ? ((R + Cc) & 1 ? '#3a3042' : '#2e2634') : '#1f1920')
+        ? (mine ? (spyId ? ((R + Cc) & 1 ? '#3d3424' : '#332b1f') : ((R + Cc) & 1 ? '#3a3042' : '#2e2634')) : '#1f1920')
         : (mine ? '#2a2330' : '#2a2026');
       if (planning && drag && mine && idx === dragOverIdx) ctx.fillStyle = '#5b4a2a';
       ctx.fill();
@@ -345,10 +388,10 @@ button:disabled{opacity:.45;cursor:default}
   }
   function drawPlanning() {
     drawHexes(true);
-    me().board.forEach((u, i) => {
+    viewed().board.forEach((u, i) => {
       if (!u) return;
       const { x, y } = cellCenter(ROWS + Math.floor(i / COLS), i % COLS);
-      const dragging = drag && drag.ghost && drag.zone === 'board' && drag.idx === i;
+      const dragging = !spyId && drag && drag.ghost && drag.zone === 'board' && drag.idx === i;
       drawToken(x, y, u.unitId, u.star, { alpha: dragging ? 0.25 : 1 });
     });
   }
@@ -362,26 +405,41 @@ button:disabled{opacity:.45;cursor:default}
     return t;
   }
   function render() {
-    renderTop(); renderTraits(); renderGamePanel(); renderInfo(); renderHud(); renderShop(); renderBench();
+    renderTop(); renderTraits(); renderPlayers(); renderRoundPanel(); renderInfo(); renderHud(); renderShop(); renderBench();
     $('#combatCtrls').style.display = mode === 'combat' ? 'flex' : 'none';
-    const cap = $('#capBadge'), n = SIM.boardCount(me());
+    const v = viewed(), n = SIM.boardCount(v), cap = $('#capBadge');
     cap.style.display = mode === 'combat' ? 'none' : '';
-    cap.textContent = `${n}/${me().level}`;
-    cap.classList.toggle('full', n >= me().level);
-    if (mode !== 'combat') $('#oppLabel').textContent = '';
+    cap.textContent = `${n}/${v.level}`;
+    cap.classList.toggle('full', n >= v.level);
+    const bar = $('#spyBar');
+    bar.style.display = spyId && mode !== 'combat' ? 'block' : 'none';
+    if (spyId) bar.textContent = `👁 Viendo a ${pname(spyId)} (nivel ${v.level}, ${v.gold} de oro) · click para volver a tu tablero`;
+    if (mode !== 'combat') {
+      const pr = nextPairing();
+      $('#oppLabel').textContent = spyId ? '' : pr ? `Próximo rival: ${pname(pr.opp)}${pr.ghost ? ' (fantasma)' : ''}` : '';
+    }
+  }
+  function nextPairing() { // contra quién pelea el humano en la próxima ronda
+    if (!state.pairings) return null;
+    for (const p of state.pairings) {
+      if (p.a === HUMAN) return { opp: p.b, ghost: p.ghost };
+      if (p.b === HUMAN && !p.ghost) return { opp: p.a, ghost: false };
+    }
+    return null;
   }
   function renderTop() {
     const label = SIM.roundLabel(state.round);
-    const kind = DATA.PVE[label] ? 'PvE · ' + DATA.PVE[label].name : 'Rival generado';
-    $('#roundInfo').innerHTML = `Ronda ${label}<small>${kind}</small>`;
+    const kind = DATA.PVE[label] ? 'PvE · ' + DATA.PVE[label].name : state.order.length === 1 ? 'Rival generado' : 'PvP';
+    const alive = state.order.filter(id => state.players[id].alive).length;
+    $('#roundInfo').innerHTML = `Ronda ${label}<small>${kind} · ${alive} vivos</small>`;
   }
   function traitLevelsText(T) {
     const names = { hp: 'Vida', armor: 'Armadura', mr: 'Res. mágica', ap: '% Poder hab.', adPct: '% Daño', asPct: '% Vel. ataque', lifesteal: '% Robo de vida', manaRegen: 'Maná/s', shield: 'Escudo' };
     return T.levels.map((lv, i) => `(${T.breakpoints[i]}) ` + Object.entries(lv).map(([k, v]) => `+${v} ${names[k] || k}`).join(', ')).join('\n');
   }
   function renderTraits() {
-    const tr = SIM.computeTraits(SIM.boardSnapshot(me()));
-    const box = $('#traitsPanel'); box.innerHTML = '<h3>Rasgos</h3>';
+    const tr = SIM.computeTraits(SIM.boardSnapshot(viewed()));
+    const box = $('#traitsPanel'); box.innerHTML = `<h3>Rasgos${spyId ? ' · ' + esc(pname(spyId)) : ''}</h3>`;
     const keys = Object.keys(tr).sort((a, b) => (tr[b].level >= 0) - (tr[a].level >= 0) || tr[a].missing - tr[b].missing || tr[b].count - tr[a].count);
     if (!keys.length) box.appendChild(el('div', 'small', 'Poné unidades en el tablero para activar rasgos.'));
     for (const k of keys) {
@@ -395,15 +453,47 @@ button:disabled{opacity:.45;cursor:default}
       box.appendChild(row);
     }
   }
-  function renderGamePanel() {
-    const p = me();
-    const sk = p.streak >= 2 ? `🔥 Racha de ${p.streak} victorias` : p.streak <= -2 ? `🧊 Racha de ${-p.streak} derrotas` : '';
-    const hist = p.history.map(h => `<div><span>${h.round} · ${h.vs}</span><span class="${h.result[0]}">${h.result === 'win' ? 'Victoria' : h.result === 'draw' ? 'Empate' : 'Derrota'}${h.dmg ? ' -' + h.dmg : ''}</span></div>`).join('');
-    $('#gamePanel').innerHTML = `<h3>${p.name}</h3>
-      <div class="bighp"><b>${Math.max(0, p.hp)}</b><span class="small">de vida</span></div>
-      <div class="hpbar"><i style="width:${Math.max(0, p.hp)}%"></i></div>
-      <div class="small" style="margin-bottom:6px">${sk || '&nbsp;'}</div>
-      <div class="hist">${hist || '<span class="small">Todavía no hubo peleas.</span>'}</div>`;
+  function renderPlayers() {
+    const box = $('#playersPanel'); box.innerHTML = '<h3>Jugadores</h3>';
+    const opp = nextPairing();
+    const ids = state.order.slice().sort((a, b) => {
+      const pa = state.players[a], pb = state.players[b];
+      return (pb.alive - pa.alive) || (pa.alive ? pb.hp - pa.hp : pa.place - pb.place) || (a < b ? -1 : 1);
+    });
+    for (const id of ids) {
+      const p = state.players[id];
+      const sk = p.streak >= 2 ? `🔥${p.streak}` : p.streak <= -2 ? `🧊${-p.streak}` : '';
+      const sub = p.alive ? `Nv ${p.level} · ${id === HUMAN ? 'vos' : persName(p)}` : `#${p.place} · ${persName(p)}`;
+      const row = el('div', 'prow' + (id === HUMAN ? ' me' : '') + (p.alive ? '' : ' dead') + (spyId === id ? ' spy' : ''),
+        `<div class="pname">${esc(p.name)} ${opp && opp.opp === id ? '<span class="vs" title="Próximo rival">⚔</span>' : ''}<div class="psub">${sub}</div></div>
+         <div class="pstreak">${sk}</div>
+         <div class="php"><i style="width:${Math.max(0, p.hp)}%"></i></div><div class="phv">${Math.max(0, p.hp)}</div>`);
+      row.title = id === HUMAN ? 'Volver a tu tablero' : 'Click para espiar su tablero';
+      row.addEventListener('click', () => { if (mode !== 'combat') setSpy(spyId === id ? null : id); });
+      box.appendChild(row);
+    }
+  }
+  function renderRoundPanel() {
+    const box = $('#roundPanel');
+    const pr = nextPairing(), label = SIM.roundLabel(state.round), pve = DATA.PVE[label];
+    let html = '<h3>Ronda</h3>';
+    if (state.phase !== 'ended' && me().alive) {
+      html += `<div class="nextOpp">${pve ? 'vs ' + pve.name : pr ? `vs ${esc(pname(pr.opp))}${pr.ghost ? ' (fantasma)' : ''}` : state.order.length === 1 ? 'vs rival generado' : ''}</div>`;
+    }
+    const cs = state.combats || [];
+    if (cs.length) {
+      const prevLabel = cs[0].round || '';
+      const res = (w, side) => (w === 'draw' ? '<span class="d">empate</span>' : w === side ? '<span class="w">gana</span>' : '<span class="l">pierde</span>');
+      html += `<div class="small" style="margin-bottom:4px">Resultados ${prevLabel}</div><div class="res">`;
+      for (const c of cs) {
+        const mine = c.a === HUMAN || c.b === HUMAN;
+        const right = c.kind === 'pvp' ? esc(pname(c.b)) + (c.ghost ? ' 👻' : '') : esc(c.name);
+        const dmg = [c.dmgA ? `${esc(pname(c.a))} -${c.dmgA}` : '', c.dmgB ? `${esc(pname(c.b))} -${c.dmgB}` : ''].filter(Boolean).join(', ');
+        html += `<div class="${mine ? 'mine' : ''}" title="${dmg}"><span>${esc(pname(c.a))} ${res(c.winner, 'A')} vs ${right}</span><span class="small">${dmg ? '-' + Math.max(c.dmgA, c.dmgB) : ''}</span></div>`;
+      }
+      html += '</div>';
+    }
+    box.innerHTML = html;
   }
   function abilityText(ab, star) {
     if (!ab) return 'Sin habilidad.';
@@ -475,13 +565,14 @@ button:disabled{opacity:.45;cursor:default}
     });
   }
   function renderBench() {
-    const p = me(), box = $('#bench'); box.innerHTML = '';
-    p.bench.forEach((u, i) => {
+    const v = viewed(), box = $('#bench'); box.innerHTML = '';
+    v.bench.forEach((u, i) => {
       const slot = el('div', 'slot');
-      slot.dataset.drop = 'bench'; slot.dataset.idx = i;
+      if (!spyId) { slot.dataset.drop = 'bench'; slot.dataset.idx = i; }
       if (u) {
         const t = makeTokenEl(u.unitId, u.star);
-        t.dataset.zone = 'bench'; t.dataset.idx = i;
+        if (!spyId) { t.dataset.zone = 'bench'; t.dataset.idx = i; }
+        t.dataset.unit = u.unitId; t.dataset.star = u.star;
         slot.appendChild(t);
       }
       box.appendChild(slot);
@@ -490,7 +581,7 @@ button:disabled{opacity:.45;cursor:default}
 
   // ---------- entrada: arrastrar, vender, teclado ----------
   function canvasPoint(e) { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
-  function boardIdxAt(e) { // celda de MI mitad bajo el puntero, o -1
+  function boardIdxAt(e) { // celda de la mitad de abajo bajo el puntero, o -1
     const { x, y } = canvasPoint(e);
     let best = -1, bd = HW * 0.55;
     for (let i = 0; i < ROWS * COLS; i++) {
@@ -499,16 +590,17 @@ button:disabled{opacity:.45;cursor:default}
     }
     return best;
   }
-  function boardUnitAt(e) { // índice de una unidad mía del tablero bajo el puntero
+  function boardUnitAt(e, p) { // índice de una unidad del tablero de `p` bajo el puntero
     const { x, y } = canvasPoint(e);
-    return me().board.findIndex((u, i) => {
+    return p.board.findIndex((u, i) => {
       if (!u) return false;
       const c = cellCenter(ROWS + Math.floor(i / COLS), i % COLS);
       return Math.hypot(c.x - x, c.y - y) <= TOKEN_R + 3;
     });
   }
-  function locAt(e) { // origen de arrastre bajo el puntero
-    if (e.target === cv) { const i = boardUnitAt(e); return i >= 0 ? { zone: 'board', idx: i } : null; }
+  function locAt(e) { // origen de arrastre (solo mi tablero/banco)
+    if (spyId) return null;
+    if (e.target === cv) { const i = boardUnitAt(e, me()); return i >= 0 ? { zone: 'board', idx: i } : null; }
     const t = e.target.closest && e.target.closest('.unit[data-zone]');
     return t ? { zone: t.dataset.zone, idx: +t.dataset.idx } : null;
   }
@@ -531,10 +623,16 @@ button:disabled{opacity:.45;cursor:default}
     const z = t && t.closest('[data-drop]');
     return z ? { zone: z.dataset.drop, idx: +z.dataset.idx, el: z } : null;
   }
+  function selectUnit(unitId, star) { selected = { unitId, star }; renderInfo(); }
 
   document.addEventListener('pointerdown', e => {
     if (e.button !== 0) return;
-    if (mode === 'combat') { const u = combatUnitAt(e); if (u) { selected = { unitId: u.unitId, star: u.star }; renderInfo(); } return; }
+    if (mode === 'combat') { const u = combatUnitAt(e); if (u) selectUnit(u.unitId, u.star); return; }
+    if (spyId) { // espiando: click = info
+      if (e.target === cv) { const i = boardUnitAt(e, viewed()); if (i >= 0) selectUnit(viewed().board[i].unitId, viewed().board[i].star); }
+      else { const t = e.target.closest && e.target.closest('.unit[data-unit]'); if (t) selectUnit(t.dataset.unit, +t.dataset.star); }
+      return;
+    }
     if (mode !== 'planning') return;
     const loc = locAt(e);
     if (!loc) return;
@@ -562,11 +660,7 @@ button:disabled{opacity:.45;cursor:default}
     const d = drag; drag = null; dragOverIdx = -1;
     setBenchHover(null);
     const from = { zone: d.zone, idx: d.idx };
-    if (!d.ghost) { // fue un click
-      const u = unitAtLoc(from);
-      if (u) { selected = { unitId: u.unitId, star: u.star }; renderInfo(); }
-      return;
-    }
+    if (!d.ghost) { const u = unitAtLoc(from); if (u) selectUnit(u.unitId, u.star); return; } // fue un click
     d.ghost.remove();
     if (d.el) d.el.classList.remove('dragging');
     const to = dropAt(e);
@@ -580,13 +674,15 @@ button:disabled{opacity:.45;cursor:default}
     if (loc) { e.preventDefault(); act({ type: 'SELL', loc }); }
   });
   document.addEventListener('keydown', e => {
-    if (e.target.tagName === 'INPUT' || $('#modal').style.display === 'grid') return;
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || $('#modal').style.display === 'grid') return;
     const k = e.key.toLowerCase();
-    if (k === 'd') act({ type: 'REROLL' });
+    if (k === 'escape') setSpy(null);
+    else if (k === 'd') act({ type: 'REROLL' });
     else if (k === 'f') act({ type: 'BUY_XP' });
     else if (k === 'e' && hoverLoc) { act({ type: 'SELL', loc: hoverLoc }); hoverLoc = null; }
     else if (k === ' ') { e.preventDefault(); onReady(); }
   });
+  $('#spyBar').addEventListener('click', () => setSpy(null));
 
   // ---------- timer de planificación (solo UI; en la Etapa 3 lo maneja el host) ----------
   function resetTimer() { timerEnd = performance.now() + C.PLANNING_SECONDS * 1000; }
@@ -601,8 +697,9 @@ button:disabled{opacity:.45;cursor:default}
   // ---------- ronda y combate ----------
   function onReady() {
     if (mode !== 'planning') return;
-    const next = SIM.resolveRound(state);
-    const entry = next.combats.find(c => c.a === HUMAN);
+    spyId = null;
+    const next = SIM.resolveRound(state); // todas las peleas, sin render
+    const entry = next.combats.find(c => c.a === HUMAN || (c.b === HUMAN && !c.ghost));
     if (!entry) { finishRound(next); return; }
     startCombatView(entry, next);
   }
@@ -610,15 +707,18 @@ button:disabled{opacity:.45;cursor:default}
     mode = 'combat';
     selected = null;
     render();
-    $('#oppLabel').textContent = 'vs ' + entry.name;
-    const cs = SIM.createCombat(entry.snapA, entry.snapB, entry.seed);
-    replay = { cs, entry, next, acc: 0, alpha: 0, last: performance.now(), speed: replay?.speed || prefs.speed || 1, finished: false, floaters: [], fx: {} };
+    const flip = entry.a !== HUMAN; // el humano siempre se ve abajo
+    const opp = entry.kind === 'pvp' ? (flip ? pname(entry.a) : pname(entry.b) + (entry.ghost ? ' (fantasma)' : '')) : entry.name;
+    $('#oppLabel').textContent = 'vs ' + opp;
+    const cs = SIM.createCombat(entry.snapA, entry.snapB, entry.seed); // re-simulación local, solo para verla
+    replay = { cs, entry, next, flip, mySide: flip ? 1 : 0, acc: 0, alpha: 0, last: performance.now(), speed: prefs.speed || 1, finished: false, floaters: [], fx: {} };
     $('#combatCtrls').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.speed == replay.speed));
   }
   function unitXY(u, alpha) {
     const tnow = replay.cs.tick + alpha, span = u.moveEnd - u.moveStart;
     const k = span > 0 ? Math.max(0, Math.min(1, (tnow - u.moveStart) / span)) : 1;
-    const a = cellCenter(u.fromR, u.fromC), b = cellCenter(u.r, u.c);
+    const disp = (R, Cc) => (replay.flip ? cellCenter(TROWS - 1 - R, COLS - 1 - Cc) : cellCenter(R, Cc));
+    const a = disp(u.fromR, u.fromC), b = disp(u.r, u.c);
     return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k };
   }
   function addFloater(cid, text, color, size, now) {
@@ -649,7 +749,7 @@ button:disabled{opacity:.45;cursor:default}
       const pulse = f.pulse ? Math.max(0, 1 - (now - f.pulse) / 160) : 0;
       const flash = f.flash ? Math.max(0, 1 - (now - f.flash) / 140) : 0;
       drawToken(p.x, p.y, u.unitId, u.star, {
-        side: u.side === 0 ? 'mine' : 'foe', alpha, flash, scale: 1 + pulse * 0.1,
+        side: u.side === rp.mySide ? 'mine' : 'foe', alpha, flash, scale: 1 + pulse * 0.1,
         hp: u.hp / u.maxHp, shield: u.shield / u.maxHp, mana: u.maxMana ? u.mana / u.maxMana : null,
       });
     }
@@ -686,24 +786,35 @@ button:disabled{opacity:.45;cursor:default}
     if (rp.finished) return;
     rp.finished = true;
     if (rp.cs.hash !== rp.entry.hash) console.error('DESYNC: la re-simulación no coincide con la del host', rp.cs.hash, rp.entry.hash);
-    const won = rp.cs.winner === 'A';
+    const won = rp.cs.winner === (rp.mySide === 0 ? 'A' : 'B');
     const dmg = me().hp - rp.next.players[HUMAN].hp;
     const b = $('#banner');
     b.style.display = 'block';
     b.style.color = won ? '#6dff8a' : rp.cs.winner === 'draw' ? 'var(--gold)' : 'var(--foe)';
     b.innerHTML = (won ? '¡GANASTE!' : rp.cs.winner === 'draw' ? 'EMPATE' : 'PERDISTE') + (dmg > 0 ? `<small>-${dmg} de vida</small>` : '');
-    setTimeout(() => { b.style.display = 'none'; finishRound(rp.next); }, 1500);
+    setTimeout(() => { b.style.display = 'none'; finishRound(rp.next); }, 1500 / Math.min(2, rp.speed));
   }
   function finishRound(next) {
+    if (next.phase !== 'ended') {
+      if (next.players[HUMAN].alive) next = SIM.runAllBots(next); // los bots compran al arrancar la planificación
+      else { // te eliminaron: el resto de la partida se resuelve sin animación
+        for (let n = 0; n < 200 && next.phase !== 'ended'; n++) { next = SIM.runAllBots(next); next = SIM.resolveRound(next); }
+      }
+    }
     state = next; replay = null;
     mode = state.phase === 'ended' || !me().alive ? 'ended' : 'planning';
     save(); render(); resetTimer();
-    if (mode === 'ended') {
-      const last = me().history[0];
-      const b = $('#banner');
-      b.style.display = 'block'; b.style.color = 'var(--accent)';
-      b.innerHTML = `SE TERMINÓ EL RECITAL<small>Llegaste a la ronda ${last ? last.round : '-'} · "Nueva partida" para otra</small>`;
-    }
+    if (mode === 'ended') showEnd();
+  }
+  function showEnd() {
+    const p = me();
+    $('#endTitle').textContent = p.place === 1 ? '¡CAMPEÓN DEL ROCK!' : `Terminaste #${p.place}`;
+    const ids = state.order.slice().sort((a, b) => (state.players[a].place || 99) - (state.players[b].place || 99));
+    $('#endTable').innerHTML = '<tr><th>#</th><th>Jugador</th><th>Tipo</th><th>Hasta</th></tr>' + ids.map(id => {
+      const q = state.players[id];
+      return `<tr class="${id === HUMAN ? 'me' : ''}"><td>${q.place ?? '-'}</td><td>${esc(q.name)}</td><td>${persName(q)}</td><td>${q.history[0] ? q.history[0].round : '-'}</td></tr>`;
+    }).join('');
+    $('#endScreen').style.display = 'grid';
   }
   $('#combatCtrls').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b || !replay) return;
@@ -730,9 +841,15 @@ button:disabled{opacity:.45;cursor:default}
   $('#chkTimer').checked = prefs.timer;
   $('#chkTimer').addEventListener('change', e => { prefs.timer = e.target.checked; savePrefs(); resetTimer(); });
   $('#btnDet').addEventListener('click', () => {
-    const r = SIM.selfTest(30, 'ui-' + Date.now());
-    console.log('SIM.selfTest', r);
-    toast(r.ok ? `✔ Determinista: ${r.combats} combates corridos 2 veces, mismo resultado` : `✘ ${r.fails} de ${r.combats} combates difieren (ver consola)`, 3000);
+    toast('Corriendo chequeo de determinismo…', 5000);
+    setTimeout(() => {
+      const c = SIM.selfTest(30, 'ui-' + Date.now());
+      const g = SIM.checkGameDeterminism('ui-' + Date.now());
+      console.log('Combates:', c, 'Partida completa de 8 bots:', g);
+      const ok = c.ok && g.ok;
+      toast(ok ? `✔ Determinista: ${c.combats} combates + una partida de 8 bots (${g.rounds} rondas), 2 veces cada uno`
+               : `✘ Diferencias: combates ${c.fails}/${c.combats}${g.ok ? '' : `, partida desde la ronda ${g.firstDiffAfterRound}`} (ver consola)`, 4000);
+    }, 30);
   });
   function openModal() {
     $('#inSeed').value = Math.floor(Math.random() * 1e9).toString(36); // la UI sí puede usar Math.random
@@ -740,11 +857,35 @@ button:disabled{opacity:.45;cursor:default}
     $('#inName').focus();
   }
   $('#btnNew').addEventListener('click', () => { if (mode !== 'combat') openModal(); });
+  $('#btnEndNew').addEventListener('click', () => { $('#endScreen').style.display = 'none'; openModal(); });
+  $('#btnEndClose').addEventListener('click', () => { $('#endScreen').style.display = 'none'; });
   $('#btnCancel').addEventListener('click', () => { if (state) $('#modal').style.display = 'none'; });
   $('#btnStart').addEventListener('click', () => {
     $('#modal').style.display = 'none';
-    newGame($('#inName').value.trim(), $('#inSeed').value.trim() || 'rock');
+    newGame($('#inName').value.trim(), $('#inSeed').value.trim() || 'rock', +$('#inBots').value, +$('#inDiff').value);
   });
+
+  // ---------- simulación masiva (consola): runBalance(200) ----------
+  // Corre M partidas de 8 bots con semillas distintas, en tandas para no congelar la pestaña.
+  window.runBalance = function (M = 100, { batch = 3, seedPrefix = 'bal', difficulty = 0.3 } = {}) {
+    const summaries = [];
+    const slots = SIM.makeSlots({ bots: 8, difficulty });
+    const t0 = performance.now();
+    return new Promise(resolve => {
+      const step = () => {
+        for (let k = 0; k < batch && summaries.length < M; k++) summaries.push(SIM.simulateGame({ seed: `${seedPrefix}-${summaries.length}`, slots }).summary);
+        if (summaries.length % 20 < batch) console.log(`runBalance: ${summaries.length}/${M}`);
+        if (summaries.length < M) { setTimeout(step, 0); return; }
+        const st = SIM.balanceStats(summaries);
+        console.log(`%c${M} partidas en ${((performance.now() - t0) / 1000).toFixed(1)}s · ${st.rondasProm} rondas en promedio`, 'font-weight:bold');
+        console.log('Personalidades'); console.table(st.personalidades);
+        console.log('Rasgos activos al final'); console.table(st.rasgos);
+        console.log('Unidades en tableros ganadores'); console.table(st.unidadesGanadoras.slice(0, 15));
+        resolve(st);
+      };
+      step();
+    });
+  };
 
   // ---------- arranque ----------
   window.GAME = { SIM, DATA, get state() { return state; } };
@@ -752,6 +893,7 @@ button:disabled{opacity:.45;cursor:default}
   if (state) {
     mode = state.phase === 'ended' || !me().alive ? 'ended' : 'planning';
     render(); resetTimer();
+    if (mode === 'ended') showEnd();
   } else openModal();
   requestAnimationFrame(frame);
 })();
