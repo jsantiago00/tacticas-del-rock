@@ -1,0 +1,806 @@
+/* Tácticas del Rock — DATA + SIM.
+ * Lo carga index.html con <script src="sim.js"> y Node con require("./sim.js").
+ * Script clásico (no módulo ES) para que también funcione abriendo el archivo directo. */
+'use strict';
+/* =====================================================================
+ * 1. DATA — todo lo editable del juego. Objetos planos, sin lógica.
+ * ===================================================================== */
+const DATA = {
+  CONFIG: {
+    BOARD_ROWS: 4, BOARD_COLS: 7,      // mitad de tablero por jugador (en combate: 8x7)
+    BENCH_SIZE: 9, SHOP_SIZE: 5,
+    START_HP: 100, START_GOLD: 0, START_LEVEL: 1, MAX_LEVEL: 10,
+    REROLL_COST: 2, XP_COST: 4, XP_AMOUNT: 4, PASSIVE_XP: 2,
+    BASE_INCOME: 5, INTEREST_PER: 10, INTEREST_MAX: 5,
+    STREAK_BONUS: [[5, 3], [4, 2], [2, 1]],   // [racha mínima, oro extra] (victorias o derrotas)
+    PVE_WIN_GOLD: 2,
+    ROUNDS_PER_STAGE: { 1: 3, default: 6 },
+    // daño al perder = STAGE_DAMAGE[etapa] + suma de estrellas de las unidades rivales vivas
+    STAGE_DAMAGE: { 1: 0, 2: 2, 3: 4, 4: 6, 5: 8, 6: 10, 7: 15 },
+    PLANNING_SECONDS: 30,              // timer opcional de la fase de planificación
+    // combate
+    TICK_RATE: 30, COMBAT_SECONDS: 30,
+    MOVE_TICKS: 14,          // ticks para moverse 1 hex
+    CAST_TICKS: 10,          // ticks "ocupado" al castear
+    MANA_LOCK_TICKS: 30,     // ticks sin ganar maná tras castear
+    MANA_PER_ATTACK: 10, MANA_ON_HIT_CAP: 15,
+    CRIT_CHANCE: 0.25, CRIT_MULT: 1.4,
+    STAR_MULT: [1, 1.8, 3.2], // multiplicador de vida y daño por estrellas
+  },
+
+  // % de probabilidad de cada coste (1..5) según nivel del jugador
+  SHOP_ODDS: {
+    1: [100, 0, 0, 0, 0], 2: [100, 0, 0, 0, 0], 3: [75, 25, 0, 0, 0],
+    4: [55, 30, 15, 0, 0], 5: [45, 33, 20, 2, 0], 6: [30, 40, 25, 5, 0],
+    7: [19, 30, 40, 10, 1], 8: [15, 20, 32, 30, 3], 9: [10, 17, 25, 33, 15],
+    10: [5, 10, 20, 40, 25],
+  },
+  // XP necesaria para pasar del nivel N al N+1 (tipo TFT)
+  XP_TO_LEVEL: { 1: 2, 2: 2, 3: 6, 4: 10, 5: 20, 6: 36, 7: 48, 8: 76, 9: 84 },
+  // copias de CADA campeón con 8 jugadores. Se escala: round(valor * jugadores / 8)
+  POOL_SIZE_8P: { 1: 30, 2: 25, 3: 18, 4: 10, 5: 9 },
+
+  // Rival generado (Etapa 1). Por etapa: nivel (= cantidad de unidades) en cada ronda,
+  // y probabilidad de que cada unidad salga ★2 / ★3. Etapas mayores usan la última definida.
+  OPPONENT: {
+    LEVEL: { 2: [2, 3, 3, 4, 4, 4], 3: [5, 5, 5, 6, 6, 6], 4: [6, 7, 7, 7, 7, 8], 5: [8, 8, 8, 8, 9, 9], 6: [9, 9, 9, 9, 10, 10], 7: [10, 10, 10, 10, 10, 10] },
+    STAR2: { 2: 0.10, 3: 0.25, 4: 0.45, 5: 0.60, 6: 0.70, 7: 0.80 },
+    STAR3: { 2: 0, 3: 0, 4: 0.02, 5: 0.06, 6: 0.12, 7: 0.20 },
+    NAMES: ['Los Cover de Barrio', 'Banda Tributo', 'Los del Sótano', 'Garage Sónico', 'Los Teloneros',
+            'La Banda del Pasillo', 'Ruido Blanco', 'Los Desafinados', 'Sala de Ensayo', 'Los Sin Pase'],
+  },
+
+  // scope 'trait' = solo las unidades con el rasgo; 'team' = todo el equipo.
+  // Stats posibles: hp, armor, mr, ap, adPct, asPct, lifesteal, manaRegen, shield
+  TRAITS: {
+    // --- orígenes (época / escena) ---
+    pionero:    { name: 'Pionero',    kind: 'origen', icon: '📻', color: '#c98b3a', scope: 'team', breakpoints: [2, 4, 6],
+                  desc: 'Los que abrieron el camino. TODO tu equipo gana Vida máxima.',
+                  levels: [{ hp: 100 }, { hp: 250 }, { hp: 450 }] },
+    ochentoso:  { name: 'Ochentoso',  kind: 'origen', icon: '📼', color: '#e04fa0', scope: 'trait', breakpoints: [2, 4, 6],
+                  desc: 'Sintetizadores y hombreras. Los Ochentosos ganan Poder de habilidad.',
+                  levels: [{ ap: 20 }, { ap: 45 }, { ap: 80 }] },
+    ricotero:   { name: 'Ricotero',   kind: 'origen', icon: '🌀', color: '#4a7cff', scope: 'team', breakpoints: [2, 4],
+                  desc: 'Misa ricotera: TODO tu equipo gana Velocidad de ataque.',
+                  levels: [{ asPct: 10 }, { asPct: 25 }] },
+    barrial:    { name: 'Barrial',    kind: 'origen', icon: '🔥', color: '#3fbf6a', scope: 'trait', breakpoints: [2, 4, 6],
+                  desc: 'Aguante: los Barriales ganan Daño de ataque y Robo de vida.',
+                  levels: [{ adPct: 15, lifesteal: 10 }, { adPct: 35, lifesteal: 20 }, { adPct: 60, lifesteal: 35 }] },
+    // --- clases (instrumento / rol) ---
+    guitarrista:{ name: 'Guitarrista',kind: 'clase', icon: '🎸', color: '#ff7a3c', scope: 'trait', breakpoints: [2, 4, 6],
+                  desc: 'Los Guitarristas ganan Velocidad de ataque.',
+                  levels: [{ asPct: 20 }, { asPct: 45 }, { asPct: 80 }] },
+    voz:        { name: 'Voz',        kind: 'clase', icon: '🎤', color: '#ffd23c', scope: 'trait', breakpoints: [2, 4, 6],
+                  desc: 'Las Voces regeneran maná por segundo.',
+                  levels: [{ manaRegen: 2 }, { manaRegen: 4 }, { manaRegen: 8 }] },
+    bajista:    { name: 'Bajista',    kind: 'clase', icon: '🪕', color: '#a0a0a0', scope: 'trait', breakpoints: [2, 4],
+                  desc: 'Los Bajistas sostienen todo: ganan Vida máxima.',
+                  levels: [{ hp: 300 }, { hp: 700 }] },
+    baterista:  { name: 'Baterista',  kind: 'clase', icon: '🥁', color: '#c0c0c0', scope: 'trait', breakpoints: [2, 4],
+                  desc: 'Los Bateristas ganan Armadura y Resistencia mágica.',
+                  levels: [{ armor: 30, mr: 30 }, { armor: 70, mr: 70 }] },
+    tecladista: { name: 'Tecladista', kind: 'clase', icon: '🎹', color: '#3cd6d6', scope: 'team', breakpoints: [2, 4],
+                  desc: 'TODO tu equipo arranca el combate con un escudo.',
+                  levels: [{ shield: 150 }, { shield: 350 }] },
+  },
+
+  // Tipos de habilidad: nuke, aoe, multi, all, push, shield, teamShield, heal, healAll, buffAS, teamBuffAS
+  // Valores en arrays = [★1, ★2, ★3]. Duraciones/stun en segundos. `img` (opcional) = URL de retrato.
+  UNITS: {
+    // ---- coste 1 ----
+    pity:    { name: 'Pity Álvarez', short: 'Pity', cost: 1, traits: ['barrial', 'voz'], img: null,
+               hp: 500, ad: 40, as: 0.65, range: 3, armor: 15, mr: 15, startMana: 20, maxMana: 70,
+               ability: { name: '¡Ehh, coso!', type: 'nuke', dmg: [200, 300, 450] } },
+    juanse:  { name: 'Juanse', short: 'Juanse', cost: 1, traits: ['barrial', 'guitarrista'], img: null,
+               hp: 550, ad: 50, as: 0.7, range: 1, armor: 25, mr: 20, startMana: 0, maxMana: 60,
+               ability: { name: 'Rock del gato', type: 'buffAS', pct: [50, 70, 100], duration: 4 } },
+    semilla: { name: 'Semilla Bucciarelli', short: 'Semilla', cost: 1, traits: ['ricotero', 'bajista'], img: null,
+               hp: 650, ad: 45, as: 0.55, range: 1, armor: 40, mr: 30, startMana: 30, maxMana: 80,
+               ability: { name: 'Bajo continuo', type: 'shield', amount: [250, 350, 500], duration: 4 } },
+    sidotti: { name: 'Walter Sidotti', short: 'Sidotti', cost: 1, traits: ['ricotero', 'baterista'], img: null,
+               hp: 650, ad: 45, as: 0.6, range: 1, armor: 35, mr: 35, startMana: 20, maxMana: 70,
+               ability: { name: 'Redoble', type: 'nuke', dmg: [100, 150, 225], stun: [1.25, 1.5, 2] } },
+    moro:    { name: 'Oscar Moro', short: 'Moro', cost: 1, traits: ['pionero', 'baterista'], img: null,
+               hp: 650, ad: 45, as: 0.6, range: 1, armor: 40, mr: 30, startMana: 40, maxMana: 90,
+               ability: { name: 'Platillazo', type: 'aoe', center: 'self', radius: 1, dmg: [120, 180, 270] } },
+    abuelo:  { name: 'Miguel Abuelo', short: 'M. Abuelo', cost: 1, traits: ['ochentoso', 'voz'], img: null,
+               hp: 500, ad: 40, as: 0.65, range: 3, armor: 15, mr: 15, startMana: 0, maxMana: 60,
+               ability: { name: 'Mil horas', type: 'heal', count: 1, amount: [150, 200, 300] } },
+    // ---- coste 2 ----
+    ciro:    { name: 'Ciro Martínez', short: 'Ciro', cost: 2, traits: ['barrial', 'voz'], img: null,
+               hp: 600, ad: 45, as: 0.7, range: 3, armor: 20, mr: 20, startMana: 10, maxMana: 60,
+               ability: { name: 'Armonicazo', type: 'multi', count: 3, dmg: [150, 225, 340] } },
+    zeta:    { name: 'Zeta Bosio', short: 'Zeta', cost: 2, traits: ['ochentoso', 'bajista'], img: null,
+               hp: 750, ad: 50, as: 0.6, range: 1, armor: 40, mr: 40, startMana: 30, maxMana: 80,
+               ability: { name: 'Línea de bajo', type: 'shield', amount: [350, 450, 600], duration: 4 } },
+    alberti: { name: 'Charly Alberti', short: 'Alberti', cost: 2, traits: ['ochentoso', 'baterista'], img: null,
+               hp: 700, ad: 55, as: 0.65, range: 1, armor: 35, mr: 35, startMana: 20, maxMana: 70,
+               ability: { name: 'Doble bombo', type: 'aoe', center: 'self', radius: 1, dmg: [150, 225, 340], stun: [0.75, 0.75, 1] } },
+    lebon:   { name: 'David Lebón', short: 'Lebón', cost: 2, traits: ['pionero', 'guitarrista'], img: null,
+               hp: 600, ad: 55, as: 0.7, range: 2, armor: 25, mr: 20, startMana: 0, maxMana: 60,
+               ability: { name: 'Solo de guitarra', type: 'aoe', center: 'target', radius: 1, dmg: [170, 250, 380] } },
+    tete:    { name: 'Tete Iglesias', short: 'Tete', cost: 2, traits: ['barrial', 'bajista'], img: null,
+               hp: 750, ad: 50, as: 0.6, range: 1, armor: 35, mr: 35, startMana: 30, maxMana: 80,
+               ability: { name: 'Línea grave', type: 'shield', amount: [300, 400, 550], duration: 4 } },
+    tanque:  { name: 'Tanque Iglesias', short: 'Tanque', cost: 2, traits: ['barrial', 'baterista'], img: null,
+               hp: 700, ad: 55, as: 0.65, range: 1, armor: 35, mr: 30, startMana: 20, maxMana: 70,
+               ability: { name: 'Pogo', type: 'push', dmg: [140, 210, 320], distance: 2, stun: [0.75, 0.75, 1] } },
+    // ---- coste 3 ----
+    fito:    { name: 'Fito Páez', short: 'Fito', cost: 3, traits: ['ochentoso', 'tecladista'], img: null,
+               hp: 700, ad: 45, as: 0.7, range: 4, armor: 25, mr: 30, startMana: 30, maxMana: 80,
+               ability: { name: 'Mariposa Tecknicolor', type: 'heal', count: 2, amount: [250, 350, 550] } },
+    skay:    { name: 'Skay Beilinson', short: 'Skay', cost: 3, traits: ['ricotero', 'guitarrista'], img: null,
+               hp: 750, ad: 65, as: 0.75, range: 2, armor: 30, mr: 30, startMana: 10, maxMana: 60,
+               ability: { name: 'Riff pirata', type: 'multi', count: 4, dmg: [180, 270, 400] } },
+    pappo:   { name: 'Pappo', short: 'Pappo', cost: 3, traits: ['pionero', 'guitarrista'], img: null,
+               hp: 850, ad: 70, as: 0.7, range: 1, armor: 40, mr: 30, startMana: 0, maxMana: 70,
+               ability: { name: 'Sucio y desprolijo', type: 'aoe', center: 'target', radius: 1, dmg: [250, 375, 560] } },
+    luca:    { name: 'Luca Prodan', short: 'Luca', cost: 3, traits: ['ochentoso', 'voz'], img: null,
+               hp: 700, ad: 50, as: 0.7, range: 3, armor: 20, mr: 25, startMana: 20, maxMana: 75,
+               ability: { name: 'Mañana en el Abasto', type: 'nuke', dmg: [350, 525, 800] } },
+    chizzo:  { name: 'Chizzo Nápoli', short: 'Chizzo', cost: 3, traits: ['barrial', 'guitarrista'], img: null,
+               hp: 800, ad: 65, as: 0.75, range: 1, armor: 35, mr: 30, startMana: 0, maxMana: 60,
+               ability: { name: 'Hielasangre', type: 'buffAS', pct: [60, 80, 120], duration: 5 } },
+    lito:    { name: 'Lito Vitale', short: 'Lito', cost: 3, traits: ['pionero', 'tecladista'], img: null,
+               hp: 700, ad: 45, as: 0.7, range: 3, armor: 25, mr: 30, startMana: 20, maxMana: 70,
+               ability: { name: 'Ese amigo del alma', type: 'teamShield', amount: [150, 225, 350], duration: 4 } },
+    // ---- coste 4 ----
+    cerati:  { name: 'Gustavo Cerati', short: 'Cerati', cost: 4, traits: ['ochentoso', 'voz', 'guitarrista'], img: null,
+               hp: 850, ad: 70, as: 0.8, range: 3, armor: 30, mr: 30, startMana: 20, maxMana: 80,
+               ability: { name: 'De música ligera', type: 'multi', count: 5, dmg: [250, 375, 1200] } },
+    mollo:   { name: 'Ricardo Mollo', short: 'Mollo', cost: 4, traits: ['barrial', 'guitarrista'], img: null,
+               hp: 950, ad: 75, as: 0.8, range: 1, armor: 45, mr: 40, startMana: 10, maxMana: 70,
+               ability: { name: 'Paisano de Hurlingham', type: 'aoe', center: 'target', radius: 1, dmg: [300, 450, 1200], stun: [1, 1, 2] } },
+    gieco:   { name: 'León Gieco', short: 'Gieco', cost: 4, traits: ['pionero', 'voz'], img: null,
+               hp: 850, ad: 55, as: 0.7, range: 3, armor: 30, mr: 35, startMana: 30, maxMana: 90,
+               ability: { name: 'Sólo le pido a Dios', type: 'healAll', amount: [200, 300, 900] } },
+    calamaro:{ name: 'Andrés Calamaro', short: 'Calamaro', cost: 4, traits: ['ochentoso', 'tecladista'], img: null,
+               hp: 850, ad: 60, as: 0.75, range: 3, armor: 30, mr: 30, startMana: 20, maxMana: 80,
+               ability: { name: 'Flaca', type: 'teamShield', amount: [200, 300, 800], duration: 5 } },
+    aznar:   { name: 'Pedro Aznar', short: 'Aznar', cost: 4, traits: ['pionero', 'bajista'], img: null,
+               hp: 1000, ad: 60, as: 0.65, range: 1, armor: 45, mr: 45, startMana: 40, maxMana: 90,
+               ability: { name: 'Seminare', type: 'shield', amount: [600, 800, 1600], duration: 5 } },
+    // ---- coste 5 ----
+    charly:  { name: 'Charly García', short: 'Charly', cost: 5, traits: ['pionero', 'ochentoso', 'tecladista'], img: null,
+               hp: 1000, ad: 70, as: 0.8, range: 3, armor: 35, mr: 35, startMana: 30, maxMana: 100,
+               ability: { name: 'Say No More', type: 'all', dmg: [300, 450, 2000], stun: [1.5, 1.5, 3] } },
+    spinetta:{ name: 'Luis Alberto Spinetta', short: 'Spinetta', cost: 5, traits: ['pionero', 'guitarrista', 'voz'], img: null,
+               hp: 1000, ad: 80, as: 0.85, range: 3, armor: 35, mr: 35, startMana: 20, maxMana: 80,
+               ability: { name: 'Muchacha ojos de papel', type: 'aoe', center: 'target', radius: 2, dmg: [450, 700, 2500] } },
+    indio:   { name: 'Indio Solari', short: 'Indio', cost: 5, traits: ['ricotero', 'voz'], img: null,
+               hp: 1100, ad: 65, as: 0.8, range: 3, armor: 40, mr: 40, startMana: 30, maxMana: 90,
+               ability: { name: 'El pogo más grande del mundo', type: 'teamBuffAS', pct: [40, 60, 200], duration: 5 } },
+  },
+
+  // Enemigos de las rondas PvE de la etapa 1 (no están en el pool)
+  CREEPS: {
+    sonidista: { name: 'Sonidista', short: 'Sonidista', cost: 0, traits: [], icon: '🎚️',
+                 hp: 350, ad: 25, as: 0.6, range: 3, armor: 10, mr: 10, startMana: 0, maxMana: 0 },
+    patovica:  { name: 'Patovica', short: 'Patovica', cost: 0, traits: [], icon: '🕶️',
+                 hp: 550, ad: 35, as: 0.55, range: 1, armor: 25, mr: 20, startMana: 0, maxMana: 0 },
+  },
+  // Posiciones en coordenadas locales del "dueño" (r=0 es la fila del frente)
+  PVE: {
+    '1-1': { name: 'Prueba de sonido', units: [{ unitId: 'sonidista', star: 1, r: 1, c: 3 }] },
+    '1-2': { name: 'Los sonidistas', units: [{ unitId: 'sonidista', star: 1, r: 1, c: 2 }, { unitId: 'sonidista', star: 1, r: 1, c: 4 }] },
+    '1-3': { name: 'Patovicas del boliche', units: [{ unitId: 'patovica', star: 1, r: 0, c: 3 },
+             { unitId: 'sonidista', star: 1, r: 1, c: 2 }, { unitId: 'sonidista', star: 1, r: 1, c: 4 }] },
+  },
+};
+
+/* =====================================================================
+ * 2. SIM — lógica pura. Sin DOM, sin Math.random(), sin trigonometría
+ *    (solo + - * / round floor min max abs, que son idénticos en todo motor JS).
+ *    Todo el estado es JSON plano. Las funciones públicas que reciben un
+ *    `state` de partida NO lo mutan: devuelven uno nuevo.
+ *    (El estado de combate `cs` sí se muta en stepCombat, por rendimiento;
+ *     es efímero y también es JSON plano.)
+ *
+ *  ESTADO DE PARTIDA
+ *  { v, seed, rng, nextUid, poolPlayers, round:{stage,num}, phase:'planning'|'ended',
+ *    pool:{unitId:copias}, order:[pid], players:{pid: Player}, combats:[CombatRecord] }
+ *  Player = { id,name,isBot,alive,place,hp,gold,level,xp,streak,shop:[unitId|null],
+ *             shopLocked, bench:[Unit|null], board:[Unit|null] (idx=r*7+c), history:[...] }
+ *  Unit   = { uid, unitId, star }
+ * ===================================================================== */
+const SIM = (() => {
+  const C = DATA.CONFIG;
+  const TR = C.TICK_RATE;
+  const COLS = C.BOARD_COLS, ROWS = C.BOARD_ROWS, TROWS = ROWS * 2;
+  const UNIT_IDS = Object.keys(DATA.UNITS).sort();
+  const IDS_BY_COST = {};
+  for (const id of UNIT_IDS) (IDS_BY_COST[DATA.UNITS[id].cost] ||= []).push(id);
+
+  const def = id => DATA.UNITS[id] || DATA.CREEPS[id];
+  const clone = o => JSON.parse(JSON.stringify(o));
+  const copiesOf = star => (star === 1 ? 1 : star === 2 ? 3 : 9);
+  const byStage = (table, stage) => { // valor de la etapa, o el de la última etapa definida
+    const keys = Object.keys(table).map(Number).sort((a, b) => a - b);
+    let k = keys[0];
+    for (const x of keys) if (x <= stage) k = x;
+    return table[k];
+  };
+
+  // ---------- RNG (mulberry32). El estado vive en obj.rng (uint32) ----------
+  function rngNext(obj) {
+    let t = (obj.rng = (obj.rng + 0x6D2B79F5) >>> 0);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+  const rngInt = (obj, n) => Math.floor(rngNext(obj) * n);
+  const rngSeed = obj => (rngNext(obj) * 4294967296) >>> 0;
+  function fnv(h, str) { // hash FNV-1a incremental
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    return h >>> 0;
+  }
+  const seedFrom = x => fnv(2166136261, String(x));
+
+  // ---------- Hex (filas "odd-r", hexágonos con punta arriba) ----------
+  const N_EVEN = [[-1, -1], [-1, 0], [0, -1], [0, 1], [1, -1], [1, 0]];
+  const N_ODD = [[-1, 0], [-1, 1], [0, -1], [0, 1], [1, 0], [1, 1]];
+  function neighbors(r, c, rows, cols) {
+    const out = [];
+    for (const [dr, dc] of (r & 1 ? N_ODD : N_EVEN)) {
+      const nr = r + dr, nc = c + dc;
+      if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) out.push([nr, nc]);
+    }
+    return out;
+  }
+  function hexDist(r1, c1, r2, c2) {
+    const x1 = c1 - (r1 - (r1 & 1)) / 2, x2 = c2 - (r2 - (r2 & 1)) / 2;
+    const dx = x1 - x2, dz = r1 - r2, dy = -dx - dz;
+    return Math.max(Math.abs(dx), Math.abs(dy), Math.abs(dz));
+  }
+  const udist = (a, b) => hexDist(a.r, a.c, b.r, b.c);
+
+  // ---------- Jugadores, banco y tablero ----------
+  function makePlayer(id, name, isBot) {
+    return {
+      id, name, isBot: !!isBot, alive: true, place: null,
+      hp: C.START_HP, gold: C.START_GOLD, level: C.START_LEVEL, xp: 0, streak: 0,
+      shop: Array(C.SHOP_SIZE).fill(null), shopLocked: false,
+      bench: Array(C.BENCH_SIZE).fill(null),
+      board: Array(ROWS * COLS).fill(null),   // índice = r*COLS + c, r=0 fila del frente
+      lastIncome: null, history: [],
+    };
+  }
+  const validIdx = (i, n) => Number.isInteger(i) && i >= 0 && i < n;
+  const validLoc = l => !!l && ((l.zone === 'bench' && validIdx(l.idx, C.BENCH_SIZE)) || (l.zone === 'board' && validIdx(l.idx, ROWS * COLS)));
+  const getAt = (p, l) => (l.zone === 'bench' ? p.bench : p.board)[l.idx];
+  const setAt = (p, l, u) => { (l.zone === 'bench' ? p.bench : p.board)[l.idx] = u; };
+  const boardCount = p => p.board.reduce((n, u) => n + (u ? 1 : 0), 0);
+  const benchFree = p => p.bench.reduce((n, u) => n + (u ? 0 : 1), 0);
+  function owned(p) { // tablero primero, después banco (orden determinista)
+    const out = [];
+    p.board.forEach((u, i) => u && out.push({ u, loc: { zone: 'board', idx: i } }));
+    p.bench.forEach((u, i) => u && out.push({ u, loc: { zone: 'bench', idx: i } }));
+    return out;
+  }
+  function countCopies(p, unitId, star) {
+    return owned(p).filter(o => o.u.unitId === unitId && (star == null || o.u.star === star)).length;
+  }
+  const xpNeeded = p => DATA.XP_TO_LEVEL[p.level] || 0;
+  function addXp(p, n) {
+    if (p.level >= C.MAX_LEVEL) return;
+    p.xp += n;
+    while (p.level < C.MAX_LEVEL && p.xp >= xpNeeded(p)) { p.xp -= xpNeeded(p); p.level++; }
+    if (p.level >= C.MAX_LEVEL) p.xp = 0;
+  }
+  // 3 iguales -> 1 de estrella superior. Se queda la primera (prioridad tablero).
+  function combineUnits(p) {
+    for (let changed = true; changed;) {
+      changed = false;
+      const groups = {};
+      for (const o of owned(p)) {
+        if (o.u.star >= 3) continue;
+        const k = o.u.unitId + '|' + o.u.star;
+        (groups[k] ||= []).push(o);
+        if (groups[k].length === 3) {
+          const [keep, a, b] = groups[k];
+          setAt(p, a.loc, null); setAt(p, b.loc, null);
+          keep.u.star++;
+          changed = true;
+          break;
+        }
+      }
+    }
+  }
+
+  // ---------- Pool y tienda ----------
+  const poolSize = (cost, players) => Math.max(1, Math.round(DATA.POOL_SIZE_8P[cost] * players / 8));
+  function rollCost(rngObj, level) {
+    const odds = DATA.SHOP_ODDS[level];
+    const roll = rngNext(rngObj) * 100;
+    let cost = 1, acc = 0;
+    for (let k = 0; k < 5; k++) { acc += odds[k]; if (odds[k] > 0) cost = k + 1; if (roll < acc) break; }
+    return cost;
+  }
+  function pickFromPool(s, cost) {
+    const ids = IDS_BY_COST[cost] || [];
+    const total = ids.reduce((n, id) => n + s.pool[id], 0);
+    if (total <= 0) return null;
+    let r = rngInt(s, total);
+    for (const id of ids) { r -= s.pool[id]; if (r < 0) return id; }
+    return null;
+  }
+  // Las unidades en tienda salen del pool; al rerollear las no compradas vuelven.
+  function rollShop(s, p) {
+    for (let i = 0; i < p.shop.length; i++) if (p.shop[i]) { s.pool[p.shop[i]]++; p.shop[i] = null; }
+    for (let i = 0; i < C.SHOP_SIZE; i++) {
+      const cost = rollCost(s, p.level);
+      let id = pickFromPool(s, cost);
+      for (let c2 = cost - 1; !id && c2 >= 1; c2--) id = pickFromPool(s, c2);
+      for (let c2 = cost + 1; !id && c2 <= 5; c2++) id = pickFromPool(s, c2);
+      p.shop[i] = id;
+      if (id) s.pool[id]--;
+    }
+  }
+  function returnUnitsToPool(s, p) {
+    for (const o of owned(p)) if (DATA.UNITS[o.u.unitId]) s.pool[o.u.unitId] += copiesOf(o.u.star);
+    for (const id of p.shop) if (id) s.pool[id]++;
+    p.board.fill(null); p.bench.fill(null); p.shop.fill(null);
+  }
+  const sellValue = u => def(u.unitId).cost * copiesOf(u.star);
+
+  // ---------- Acciones del jugador: applyAction(state, pid, action) -> state ----------
+  // {type:'BUY',slot} {type:'SELL',loc} {type:'MOVE',from,to} {type:'REROLL'} {type:'BUY_XP'} {type:'LOCK',value?}
+  // loc = {zone:'bench'|'board', idx}
+  function validateAction(s, pid, a) {
+    const p = s.players[pid];
+    if (!p) return 'Jugador inexistente';
+    if (!p.alive) return 'Estás eliminado';
+    if (s.phase !== 'planning') return 'No es fase de planificación';
+    if (!a || typeof a.type !== 'string') return 'Acción inválida';
+    switch (a.type) {
+      case 'BUY': {
+        if (!validIdx(a.slot, C.SHOP_SIZE)) return 'Slot inválido';
+        const id = p.shop[a.slot];
+        if (!id) return 'Ese lugar está vacío';
+        if (p.gold < DATA.UNITS[id].cost) return 'No te alcanza el oro';
+        if (benchFree(p) === 0 && countCopies(p, id, 1) < 2) return 'Banco lleno';
+        return null;
+      }
+      case 'SELL':
+        if (!validLoc(a.loc)) return 'Ubicación inválida';
+        if (!getAt(p, a.loc)) return 'No hay unidad ahí';
+        return null;
+      case 'MOVE': {
+        if (!validLoc(a.from) || !validLoc(a.to)) return 'Ubicación inválida';
+        if (!getAt(p, a.from)) return 'No hay unidad ahí';
+        if (a.from.zone === a.to.zone && a.from.idx === a.to.idx) return 'Mismo lugar';
+        if (a.from.zone === 'bench' && a.to.zone === 'board' && !getAt(p, a.to) && boardCount(p) >= p.level)
+          return `Nivel ${p.level}: máximo ${p.level} unidades en el tablero`;
+        return null;
+      }
+      case 'REROLL': return p.gold >= C.REROLL_COST ? null : 'No te alcanza el oro';
+      case 'BUY_XP':
+        if (p.level >= C.MAX_LEVEL) return 'Ya estás en nivel máximo';
+        return p.gold >= C.XP_COST ? null : 'No te alcanza el oro';
+      case 'LOCK': return null;
+      default: return 'Acción desconocida';
+    }
+  }
+  function applyAction(state, pid, a) {
+    if (validateAction(state, pid, a)) return state; // inválida: mismo objeto, sin cambios
+    const s = clone(state);
+    const p = s.players[pid];
+    switch (a.type) {
+      case 'BUY': {
+        const id = p.shop[a.slot];
+        p.gold -= DATA.UNITS[id].cost;
+        p.shop[a.slot] = null;
+        const u = { uid: s.nextUid++, unitId: id, star: 1 };
+        const free = p.bench.indexOf(null);
+        if (free >= 0) p.bench[free] = u; else p.bench.push(u); // slot temporal; se combina al toque
+        combineUnits(p);
+        p.bench.length = C.BENCH_SIZE;
+        break;
+      }
+      case 'SELL': {
+        const u = getAt(p, a.loc);
+        p.gold += sellValue(u);
+        if (DATA.UNITS[u.unitId]) s.pool[u.unitId] += copiesOf(u.star);
+        setAt(p, a.loc, null);
+        break;
+      }
+      case 'MOVE': {
+        const u = getAt(p, a.from), v = getAt(p, a.to) || null;
+        setAt(p, a.to, u); setAt(p, a.from, v);
+        break;
+      }
+      case 'REROLL': p.gold -= C.REROLL_COST; rollShop(s, p); break;
+      case 'BUY_XP': p.gold -= C.XP_COST; addXp(p, C.XP_AMOUNT); break;
+      case 'LOCK': p.shopLocked = typeof a.value === 'boolean' ? a.value : !p.shopLocked; break;
+    }
+    return s;
+  }
+
+  // ---------- Rasgos ----------
+  function computeTraits(snap) { // cuenta campeones DISTINTOS
+    const seen = {}, counts = {};
+    for (const e of snap) {
+      if (seen[e.unitId]) continue;
+      seen[e.unitId] = true;
+      for (const t of def(e.unitId).traits) counts[t] = (counts[t] || 0) + 1;
+    }
+    const res = {};
+    for (const t of Object.keys(counts).sort()) {
+      const bp = DATA.TRAITS[t].breakpoints;
+      let level = -1;
+      bp.forEach((b, i) => { if (counts[t] >= b) level = i; });
+      const next = bp[level + 1] ?? null;
+      res[t] = { count: counts[t], level, next, missing: next ? next - counts[t] : 0 };
+    }
+    return res;
+  }
+  function boardSnapshot(p) {
+    const out = [];
+    p.board.forEach((u, i) => u && out.push({ unitId: u.unitId, star: u.star, r: Math.floor(i / COLS), c: i % COLS }));
+    return out;
+  }
+
+  // ---------- Rival generado (Etapa 1) ----------
+  // Usa el RNG de `rngObj` (normalmente el state). No toca el pool.
+  function generateOpponentBoard(rngObj, round) {
+    const O = DATA.OPPONENT;
+    const levels = byStage(O.LEVEL, round.stage);
+    const level = Math.min(C.MAX_LEVEL, levels[Math.min(round.num, levels.length) - 1]);
+    const p2 = byStage(O.STAR2, round.stage), p3 = byStage(O.STAR3, round.stage);
+    const taken = {}, units = [];
+    for (let i = 0; i < level; i++) {
+      const ids = IDS_BY_COST[rollCost(rngObj, level)];
+      const unitId = ids[rngInt(rngObj, ids.length)];
+      const roll = rngNext(rngObj);
+      const star = roll < p3 ? 3 : roll < p3 + p2 ? 2 : 1;
+      const rows = def(unitId).range <= 1 ? [0, 1, 2, 3] : [3, 2, 1, 0];
+      for (const r of rows) {
+        const free = [];
+        for (let c = 0; c < COLS; c++) if (!taken[r * COLS + c]) free.push(c);
+        if (!free.length) continue;
+        const c = free[rngInt(rngObj, free.length)];
+        taken[r * COLS + c] = true;
+        units.push({ unitId, star, r, c });
+        break;
+      }
+    }
+    return { name: O.NAMES[rngInt(rngObj, O.NAMES.length)], units };
+  }
+
+  // ---------- Combate (ticks fijos, determinista) ----------
+  // El lado A ocupa filas 4..7 (su fila 0 = fila 4), el lado B filas 0..3 rotado 180°.
+  function makeCombatUnit(cid, side, e, maxTicks) {
+    const d = def(e.unitId), m = C.STAR_MULT[e.star - 1];
+    const R = side === 0 ? ROWS + e.r : ROWS - 1 - e.r;
+    const Cc = side === 0 ? e.c : COLS - 1 - e.c;
+    return {
+      cid, side, unitId: e.unitId, star: e.star,
+      r: R, c: Cc, fromR: R, fromC: Cc, moveStart: 0, moveEnd: 0,
+      maxHp: d.hp * m, hp: 0, ad: d.ad * m, as: d.as, range: d.range, armor: d.armor, mr: d.mr,
+      mana: d.startMana || 0, maxMana: d.ability ? d.maxMana : 0, ap: 0,
+      shield: 0, shieldUntil: 0, lifesteal: 0, manaRegen: 0,
+      critChance: C.CRIT_CHANCE, critMult: C.CRIT_MULT, asBuffs: [],
+      stunUntil: 0, busyUntil: 0, manaLockUntil: 0, nextAttack: 0, target: -1, alive: true, dmgDealt: 0,
+      _maxTicks: maxTicks,
+    };
+  }
+  function applyMods(u, mods) {
+    for (const k of Object.keys(mods).sort()) {
+      const v = mods[k];
+      if (k === 'hp') u.maxHp += v;
+      else if (k === 'adPct') u.ad *= 1 + v / 100;
+      else if (k === 'asPct') u.as *= 1 + v / 100;
+      else if (k === 'shield') { u.shield += v; u.shieldUntil = u._maxTicks + 1; }
+      else u[k] += v; // armor, mr, ap, lifesteal, manaRegen
+    }
+  }
+  function addSide(cs, snap, side) {
+    const ordered = snap.slice().sort((a, b) => a.r - b.r || a.c - b.c);
+    const mine = ordered.map(e => {
+      const u = makeCombatUnit(cs.units.length, side, e, cs.maxTicks);
+      cs.units.push(u);
+      return u;
+    });
+    const traits = computeTraits(snap);
+    for (const t of Object.keys(traits)) {
+      const { level } = traits[t];
+      if (level < 0) continue;
+      const T = DATA.TRAITS[t];
+      const targets = T.scope === 'team' ? mine : mine.filter(u => def(u.unitId).traits.includes(t));
+      for (const u of targets) applyMods(u, T.levels[level]);
+    }
+    for (const u of mine) { u.hp = u.maxHp; u.nextAttack = Math.round(TR / u.as / 2); }
+  }
+  function createCombat(snapA, snapB, seed) {
+    const cs = { tick: 0, rng: seed >>> 0, hash: 2166136261, maxTicks: C.COMBAT_SECONDS * TR, units: [], events: [], done: false, winner: null };
+    addSide(cs, snapA, 0);
+    addSide(cs, snapB, 1);
+    return cs;
+  }
+  const attackSpeed = u => Math.min(5, u.as * (1 + u.asBuffs.reduce((n, b) => n + b.pct, 0) / 100));
+  function gainMana(u, amt, T) {
+    if (u.maxMana <= 0 || T < u.manaLockUntil) return;
+    u.mana = Math.min(u.maxMana, u.mana + amt);
+  }
+  function closestEnemy(cs, u) {
+    let best = null, bd = 1e9;
+    for (const e of cs.units) {
+      if (!e.alive || e.side === u.side) continue;
+      const d = udist(u, e);
+      if (d < bd) { bd = d; best = e; }
+    }
+    return best;
+  }
+  function occupancy(cs) {
+    const occ = new Uint8Array(TROWS * COLS);
+    for (const x of cs.units) if (x.alive) occ[x.r * COLS + x.c] = 1;
+    return occ;
+  }
+  function nextStep(cs, u, tgt) { // BFS hasta una celda libre a rango del objetivo
+    const occ = occupancy(cs);
+    const prev = new Int16Array(TROWS * COLS).fill(-1);
+    const start = u.r * COLS + u.c;
+    prev[start] = start;
+    const q = [start];
+    for (let head = 0; head < q.length; head++) {
+      const cur = q[head], r = (cur / COLS) | 0, c = cur % COLS;
+      if (cur !== start && hexDist(r, c, tgt.r, tgt.c) <= u.range) {
+        let k = cur;
+        while (prev[k] !== start) k = prev[k];
+        return [(k / COLS) | 0, k % COLS];
+      }
+      for (const [nr, nc] of neighbors(r, c, TROWS, COLS)) {
+        const ni = nr * COLS + nc;
+        if (prev[ni] !== -1 || occ[ni]) continue;
+        prev[ni] = cur;
+        q.push(ni);
+      }
+    }
+    return null;
+  }
+  function dealDamage(cs, src, tgt, raw, kind, T, crit) {
+    if (!tgt.alive) return 0;
+    const res = Math.max(0, kind === 'phys' ? tgt.armor : tgt.mr);
+    let dmg = raw * 100 / (100 + res);
+    const total = dmg;
+    if (tgt.shield > 0) { const ab = Math.min(tgt.shield, dmg); tgt.shield -= ab; dmg -= ab; }
+    tgt.hp -= dmg;
+    gainMana(tgt, Math.min(C.MANA_ON_HIT_CAP, raw * 0.01 + total * 0.03), T);
+    src.dmgDealt += total;
+    cs.events.push({ t: 'dmg', s: src.cid, d: tgt.cid, a: Math.round(total), k: kind, c: crit ? 1 : 0 });
+    if (tgt.hp <= 0) { tgt.hp = 0; tgt.alive = false; cs.events.push({ t: 'die', d: tgt.cid }); }
+    return total;
+  }
+  function healUnit(cs, u, amt) {
+    if (!u.alive || amt <= 0) return;
+    const before = u.hp;
+    u.hp = Math.min(u.maxHp, u.hp + amt);
+    if (u.hp - before >= 1) cs.events.push({ t: 'heal', d: u.cid, a: Math.round(u.hp - before) });
+  }
+  function addShield(u, amt, until) { u.shield += amt; u.shieldUntil = Math.max(u.shieldUntil, until); }
+  function stunUnit(cs, u, sec, T) {
+    if (!u.alive) return;
+    u.stunUntil = Math.max(u.stunUntil, T + Math.round(sec * TR));
+    cs.events.push({ t: 'stun', d: u.cid });
+  }
+  // Empuja a `e` hasta `n` hexes alejándolo de `src` (solo a celdas libres)
+  function pushUnit(cs, src, e, n, T) {
+    if (!e.alive) return;
+    const fromR = e.r, fromC = e.c;
+    for (let k = 0; k < n; k++) {
+      const occ = occupancy(cs);
+      let best = null, bd = udist(src, e);
+      for (const [nr, nc] of neighbors(e.r, e.c, TROWS, COLS)) {
+        if (occ[nr * COLS + nc]) continue;
+        const d = hexDist(src.r, src.c, nr, nc);
+        if (d > bd) { bd = d; best = [nr, nc]; }
+      }
+      if (!best) break;
+      e.r = best[0]; e.c = best[1];
+    }
+    if (e.r !== fromR || e.c !== fromC) {
+      e.fromR = fromR; e.fromC = fromC; e.moveStart = T; e.moveEnd = T + 6;
+      e.busyUntil = Math.max(e.busyUntil, e.moveEnd);
+      cs.events.push({ t: 'push', d: e.cid });
+    }
+  }
+  function basicAttack(cs, u, tgt, T) {
+    let dmg = u.ad, crit = false;
+    if (rngNext(cs) < u.critChance) { dmg *= u.critMult; crit = true; }
+    cs.events.push({ t: 'atk', s: u.cid, d: tgt.cid });
+    const dealt = dealDamage(cs, u, tgt, dmg, 'phys', T, crit);
+    if (u.lifesteal > 0) healUnit(cs, u, dealt * u.lifesteal / 100);
+    gainMana(u, C.MANA_PER_ATTACK, T);
+  }
+  function castAbility(cs, u, tgt, T) {
+    const ab = def(u.unitId).ability;
+    const si = u.star - 1, val = v => (Array.isArray(v) ? v[si] : v), amp = 1 + u.ap / 100;
+    const dur = sec => T + Math.round(val(sec) * TR);
+    u.mana = 0; u.manaLockUntil = T + C.MANA_LOCK_TICKS; u.busyUntil = T + C.CAST_TICKS;
+    cs.events.push({ t: 'cast', s: u.cid, n: ab.name });
+    const enemies = cs.units.filter(x => x.alive && x.side !== u.side);
+    const allies = cs.units.filter(x => x.alive && x.side === u.side);
+    const hit = e => {
+      if (!e.alive) return;
+      dealDamage(cs, u, e, val(ab.dmg) * amp, 'magic', T, false);
+      if (ab.stun) stunUnit(cs, e, val(ab.stun), T);
+    };
+    switch (ab.type) {
+      case 'nuke': hit(tgt); break;
+      case 'aoe': { const center = ab.center === 'self' ? u : tgt; enemies.filter(e => udist(center, e) <= (ab.radius || 1)).forEach(hit); break; }
+      case 'multi': { const pool = enemies.slice(); for (let k = 0; k < ab.count && pool.length; k++) hit(pool.splice(rngInt(cs, pool.length), 1)[0]); break; }
+      case 'all': enemies.forEach(hit); break;
+      case 'push': hit(tgt); pushUnit(cs, u, tgt, ab.distance || 1, T); break;
+      case 'shield': addShield(u, val(ab.amount) * amp, dur(ab.duration)); break;
+      case 'teamShield': allies.forEach(a => addShield(a, val(ab.amount) * amp, dur(ab.duration))); break;
+      case 'heal': allies.slice().sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp || a.cid - b.cid)
+        .slice(0, ab.count || 1).forEach(a => healUnit(cs, a, val(ab.amount) * amp)); break;
+      case 'healAll': allies.forEach(a => healUnit(cs, a, val(ab.amount) * amp)); break;
+      case 'buffAS': u.asBuffs.push({ pct: val(ab.pct), until: dur(ab.duration) }); break;
+      case 'teamBuffAS': allies.forEach(a => a.asBuffs.push({ pct: val(ab.pct), until: dur(ab.duration) })); break;
+    }
+  }
+  function stepCombat(cs) {
+    if (cs.done) return cs;
+    cs.events = [];
+    const T = ++cs.tick;
+    for (const u of cs.units) {
+      if (!u.alive) continue;
+      if (u.shield > 0 && T >= u.shieldUntil) u.shield = 0;
+      if (u.asBuffs.length) u.asBuffs = u.asBuffs.filter(b => b.until > T);
+      if (u.manaRegen > 0) gainMana(u, u.manaRegen / TR, T);
+      if (u.stunUntil > T || u.busyUntil > T) continue;
+      let tgt = u.target >= 0 ? cs.units[u.target] : null;
+      if (!tgt || !tgt.alive || udist(u, tgt) > u.range) tgt = closestEnemy(cs, u) || null;
+      if (!tgt) continue;
+      u.target = tgt.cid;
+      if (udist(u, tgt) <= u.range) {
+        if (u.maxMana > 0 && u.mana >= u.maxMana) { castAbility(cs, u, tgt, T); continue; }
+        if (T >= u.nextAttack) {
+          basicAttack(cs, u, tgt, T);
+          u.nextAttack = T + Math.max(1, Math.round(TR / attackSpeed(u)));
+        }
+      } else {
+        const step = nextStep(cs, u, tgt);
+        if (step) {
+          u.fromR = u.r; u.fromC = u.c; u.r = step[0]; u.c = step[1];
+          u.moveStart = T; u.moveEnd = T + C.MOVE_TICKS; u.busyUntil = u.moveEnd;
+          cs.events.push({ t: 'move', s: u.cid, r: u.r, c: u.c });
+        }
+      }
+    }
+    if (cs.events.length) cs.hash = fnv(cs.hash, T + JSON.stringify(cs.events));
+    let a = 0, b = 0;
+    for (const u of cs.units) if (u.alive) { if (u.side === 0) a++; else b++; }
+    if (a === 0 || b === 0) { cs.done = true; cs.winner = a > 0 ? 'A' : b > 0 ? 'B' : 'draw'; }
+    else if (T >= cs.maxTicks) { cs.done = true; cs.winner = 'draw'; }
+    if (cs.done) cs.hash = fnv(cs.hash, cs.winner + JSON.stringify(cs.units.map(u => [u.hp, u.r, u.c, u.mana])));
+    return cs;
+  }
+  function survivors(cs, side) {
+    return cs.units.filter(u => u.alive && u.side === side).map(u => ({ unitId: u.unitId, star: u.star }));
+  }
+  function simulateCombat(snapA, snapB, seed) {
+    const cs = createCombat(snapA, snapB, seed);
+    while (!cs.done) stepCombat(cs);
+    return { winner: cs.winner, ticks: cs.tick, hash: cs.hash, survivorsA: survivors(cs, 0), survivorsB: survivors(cs, 1) };
+  }
+  // Chequeo de determinismo: mismo combate 2 veces (con copias independientes) -> mismo hash.
+  function checkDeterminism(snapA, snapB, seed) {
+    const r1 = simulateCombat(clone(snapA), clone(snapB), seed);
+    const r2 = simulateCombat(clone(snapA), clone(snapB), seed);
+    return { ok: r1.hash === r2.hash && JSON.stringify(r1) === JSON.stringify(r2), r1, r2 };
+  }
+  // Lote: N combates entre tableros generados al azar (con semilla) de etapas 2..7.
+  function selfTest(n = 20, seed = 'selftest') {
+    const g = { rng: seedFrom(seed) };
+    let fails = 0;
+    for (let i = 0; i < n; i++) {
+      const round = { stage: 2 + (i % 6), num: 1 + (i % 6) };
+      const a = generateOpponentBoard(g, round).units, b = generateOpponentBoard(g, round).units;
+      if (!checkDeterminism(a, b, rngSeed(g)).ok) fails++;
+    }
+    return { ok: fails === 0, combats: n, fails };
+  }
+
+  // ---------- Flujo de partida (lo corre el host) ----------
+  const roundsInStage = st => C.ROUNDS_PER_STAGE[st] || C.ROUNDS_PER_STAGE.default;
+  const roundLabel = r => `${r.stage}-${r.num}`;
+  const alivePlayers = s => s.order.filter(id => s.players[id].alive);
+  function streakBonus(n) { for (const [min, g] of C.STREAK_BONUS) if (n >= min) return g; return 0; }
+  function incomePreview(p) {
+    const interest = Math.min(C.INTEREST_MAX, Math.floor(p.gold / C.INTEREST_PER));
+    const streak = streakBonus(Math.abs(p.streak));
+    return { base: C.BASE_INCOME, interest, streak, total: C.BASE_INCOME + interest + streak };
+  }
+  function playerDamage(stage, surv) {
+    if (!surv.length) return 0;
+    return byStage(C.STAGE_DAMAGE, stage) + surv.reduce((n, u) => n + u.star, 0);
+  }
+
+  function createGame({ seed, players, poolPlayers = 8 }) {
+    const s = {
+      v: 2, seed: seedFrom(seed), rng: seedFrom(seed), nextUid: 1, poolPlayers,
+      round: { stage: 1, num: 1 }, phase: 'planning',
+      pool: {}, players: {}, order: [], combats: [],
+    };
+    for (const id of UNIT_IDS) s.pool[id] = poolSize(DATA.UNITS[id].cost, poolPlayers);
+    for (const pl of players) { s.players[pl.id] = makePlayer(pl.id, pl.name, pl.isBot); s.order.push(pl.id); }
+    startPlanning(s, true);
+    return s;
+  }
+  function startPlanning(s, first) {
+    for (const id of alivePlayers(s)) {
+      const p = s.players[id];
+      const inc = first ? { base: C.BASE_INCOME, interest: 0, streak: 0, total: C.BASE_INCOME } : incomePreview(p);
+      p.gold += inc.total;
+      p.lastIncome = inc;
+      if (!first) addXp(p, C.PASSIVE_XP);
+      if (first || !p.shopLocked) rollShop(s, p);
+    }
+    s.phase = 'planning';
+  }
+  function eliminate(s) {
+    const alive = alivePlayers(s);
+    const dead = alive.filter(id => s.players[id].hp <= 0)
+      .sort((a, b) => s.players[a].hp - s.players[b].hp || (a < b ? -1 : 1));
+    const remaining = alive.length - dead.length;
+    dead.forEach((id, k) => {
+      const p = s.players[id];
+      p.alive = false; p.place = remaining + dead.length - k;
+      returnUnitsToPool(s, p);
+    });
+    if (remaining === 0 || (s.order.length > 1 && remaining <= 1)) {
+      for (const id of alivePlayers(s)) s.players[id].place = 1;
+      s.phase = 'ended';
+    }
+  }
+  // Resuelve todas las peleas de la ronda y arranca la siguiente planificación.
+  // Etapa 1: cada jugador vivo pelea contra creeps (etapa 1) o contra un tablero generado.
+  // (En la Etapa 2 acá se agregan los emparejamientos entre jugadores.)
+  function resolveRound(state) {
+    if (state.phase !== 'planning') return state;
+    const s = clone(state);
+    const label = roundLabel(s.round);
+    const pve = DATA.PVE[label];
+    s.combats = [];
+    for (const id of alivePlayers(s)) {
+      const p = s.players[id], seed = rngSeed(s);
+      const opp = pve ? { name: pve.name, units: clone(pve.units) } : generateOpponentBoard(s, s.round);
+      const snapA = boardSnapshot(p);
+      const res = simulateCombat(snapA, opp.units, seed);
+      const won = res.winner === 'A';
+      let dmg = 0;
+      if (pve) {
+        if (won) p.gold += C.PVE_WIN_GOLD;
+        else dmg = res.survivorsB.reduce((n, u) => n + u.star, 0);
+      } else {
+        if (!won) dmg = playerDamage(s.round.stage, res.survivorsB);
+        p.streak = won ? (p.streak > 0 ? p.streak + 1 : 1) : (p.streak < 0 ? p.streak - 1 : -1);
+      }
+      p.hp -= dmg;
+      p.history.unshift({ round: label, vs: opp.name, result: res.winner === 'draw' ? 'draw' : won ? 'win' : 'loss', dmg });
+      p.history.length = Math.min(p.history.length, 40);
+      s.combats.push({ kind: pve ? 'pve' : 'gen', a: id, name: opp.name, snapA, snapB: opp.units, seed, winner: res.winner, hash: res.hash });
+    }
+    eliminate(s);
+    if (s.phase !== 'ended') {
+      s.round.num++;
+      if (s.round.num > roundsInStage(s.round.stage)) { s.round.stage++; s.round.num = 1; }
+      startPlanning(s, false);
+    }
+    return s;
+  }
+
+  return {
+    // partida
+    createGame, resolveRound, applyAction, validateAction,
+    // combate
+    createCombat, stepCombat, simulateCombat, checkDeterminism, selfTest, generateOpponentBoard,
+    // helpers de lectura (sin efectos)
+    computeTraits, boardSnapshot, incomePreview, sellValue, countCopies, boardCount, benchFree,
+    roundLabel, roundsInStage, xpNeeded, hexDist, def, clone, seedFrom,
+  };
+})();
+
+if (typeof module !== 'undefined') module.exports = { DATA, SIM };
