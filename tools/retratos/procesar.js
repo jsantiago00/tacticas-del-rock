@@ -30,6 +30,7 @@ function recorte(W, H, e) { // misma cuenta que elegir.html
 }
 let ultimo = 0;
 async function bajar(id, e) {
+  if (e.fuente === 'manual' || !/^https?:/.test(e.url)) return fs.readFileSync(path.join(DIR, e.url)); // foto propia (manuales.js)
   fs.mkdirSync(ORIG, { recursive: true });
   const nombre = e.archivo.replace(/^(File|Archivo):/, '');
   const dest = path.join(ORIG, `${id}--${nombre.replace(/[^\w.-]+/g, '_')}`);
@@ -73,7 +74,7 @@ async function exportar(id, imgSharp) {
         const meta = await sharp(rot).metadata();
         await exportar(id, sharp(rot).extract(recorte(meta.width, meta.height, e)));
         creditos[id] = { nombre: u.name, tipo: 'foto', archivo: e.archivo, original: e.pagina, autor: e.autor, credito: e.credito || '',
-          licencia: e.licencia, licenciaUrl: e.licenciaUrl, compartirIgual: e.tipo === 'by-sa', cambios: 'Recortada y con filtro duotono' };
+          licencia: e.licencia, licenciaUrl: e.licenciaUrl, compartirIgual: e.tipo === 'by-sa', propia: e.tipo === 'manual', cambios: 'Recortada y con filtro duotono' };
         estado[id] = 'foto elegida';
       } else if (hayPlanb) {
         const x = (i % COLS) * CELDA, y = Math.floor(i / COLS) * CELDA;

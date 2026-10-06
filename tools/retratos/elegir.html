@@ -81,12 +81,16 @@ main{overflow:auto;padding:14px 18px}
 </main>
 <script src="candidatas.js"></script>
 <script src="duotono.js"></script>
+<script src="manuales.js" onerror="window.MANUALES = {}"></script>
 <script>
 'use strict';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 if (!window.CANDIDATAS) { document.body.innerHTML = '<p style="padding:20px">Falta <b>candidatas.js</b>: corré primero <code>node buscar.js</code>.</p>'; throw new Error('sin candidatas'); }
 const M = CANDIDATAS.musicos, IDS = Object.keys(M);
+// fotos propias (manuales.js): van primeras entre las candidatas
+for (const [id, f] of Object.entries(window.MANUALES || {})) if (M[id] && !M[id].candidatas.some(c => c.archivo === f.archivo))
+  M[id].candidatas.unshift({ ...f, fuente: 'manual', url: f.archivo, vista: f.archivo, pagina: '', fecha: '' });
 const KEY = 'retratos_elegidas_v1';
 let E = {}; try { E = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(E)); } catch (e) {} };
@@ -116,8 +120,8 @@ function render() {
     ${m.nota ? `<div class="nota">${esc(m.nota)}</div>` : ''}${!m.candidatas.length ? '<div class="nota">No hay candidatas con licencia libre: va con el plan B (el muñeco).</div>' : ''}`;
   $('#cands').innerHTML = m.candidatas.map((c, i) => `<div class="c${e && e.archivo === c.archivo ? ' on' : ''}" data-i="${i}">
       <img loading="lazy" src="${esc(thumb(c.vista, 330))}" alt="">
-      <div><span class="tag">${c.fuente === 'P18' ? 'principal' : 'commons'}</span><span class="tag${c.tipo === 'by-sa' ? ' sa' : ''}">${esc(c.licencia)}</span>${c.ancho}×${c.alto}${c.fecha ? ' · ' + esc(c.fecha) : ''}<br>
-      <b>${esc(c.autor)}</b><br><a href="${esc(c.pagina)}" target="_blank" onclick="event.stopPropagation()">ver en Commons</a></div></div>`).join('');
+      <div><span class="tag">${{ P18: 'principal', manual: 'tuya' }[c.fuente] || 'commons'}</span><span class="tag${c.tipo === 'by-sa' ? ' sa' : ''}">${esc(c.licencia)}</span>${c.ancho}×${c.alto}${c.fecha ? ' · ' + esc(c.fecha) : ''}<br>
+      <b>${esc(c.autor)}</b>${c.pagina ? `<br><a href="${esc(c.pagina)}" target="_blank" onclick="event.stopPropagation()">ver en Commons</a>` : ''}</div></div>`).join('');
   renderEditor();
   renderList();
 }
@@ -129,7 +133,7 @@ function renderEditor() {
   const big = $('#big');
   if (big.dataset.src !== e.vista) { imgOk = false; big.dataset.src = e.vista; big.src = e.vista; $('#pvMsg').textContent = 'Cargando…'; }
   $('#lado').value = Math.round(e.lado * 100); $('#ladoTxt').textContent = Math.round(e.lado * 100) + '% del lado corto';
-  $('#lic').innerHTML = `${esc(e.autor)} · ${esc(e.licencia)}${e.tipo === 'by-sa' ? ' · <b>el recorte queda CC BY-SA</b>' : ''}`;
+  $('#lic').innerHTML = `${esc(e.autor)} · ${esc(e.licencia)}${e.tipo === 'by-sa' ? ' · <b>el recorte queda CC BY-SA</b>' : e.tipo === 'manual' ? ' · <b>sin licencia libre: solo para el juego privado</b>' : ''}`;
   drawOverlay(); preview();
 }
 function drawOverlay() {
@@ -166,7 +170,7 @@ $('#lado').addEventListener('input', () => { const e = E[cur]; if (!e) return; e
 $('#cands').addEventListener('click', ev => {
   const card = ev.target.closest('[data-i]'); if (!card) return;
   const c = M[cur].candidatas[+card.dataset.i], prev = E[cur];
-  E[cur] = { estado: 'foto', archivo: c.archivo, url: c.url, vista: c.vista, pagina: c.pagina, autor: c.autor, credito: c.credito || '', licencia: c.licencia, tipo: c.tipo, licenciaUrl: c.licenciaUrl,
+  E[cur] = { estado: 'foto', fuente: c.fuente, archivo: c.archivo, url: c.url, vista: c.vista, pagina: c.pagina, autor: c.autor, credito: c.credito || '', licencia: c.licencia, tipo: c.tipo, licenciaUrl: c.licenciaUrl,
     cx: prev && prev.archivo === c.archivo ? prev.cx : 0.5, cy: prev && prev.archivo === c.archivo ? prev.cy : 0.33, lado: prev && prev.archivo === c.archivo ? prev.lado : 0.6 };
   save(); render(); $('#editor').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 });

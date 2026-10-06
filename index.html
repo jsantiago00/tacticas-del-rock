@@ -1113,7 +1113,7 @@ button{font-family:inherit}
     const link = (u, t) => (u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a>` : esc(t));
     $('#credList').innerHTML = fotos.map(id => { const c = R[id];
       return `<div class="cr"><img src="${foto(id, true)}" alt=""><div><b>${esc(c.nombre)}</b><br>Foto: ${esc(c.autor)}${c.credito && c.credito !== c.autor ? ` · fuente: ${/^https?:/.test(c.credito) ? link(c.credito, c.credito.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]) : esc(c.credito)}` : ''}
-        · ${link(c.licenciaUrl, c.licencia)} · ${link(c.original, 'original en Wikimedia Commons')}<br><span style="color:var(--muted)">${esc(c.cambios)}${c.compartirIgual ? '. Este retrato se distribuye bajo ' + link(c.licenciaUrl, c.licencia) : ''}.</span></div></div>`; }).join('')
+        · ${link(c.licenciaUrl, c.licencia)}${c.original ? ' · ' + link(c.original, 'original en Wikimedia Commons') : ''}<br><span style="color:var(--muted)">${esc(c.cambios)}${c.compartirIgual ? '. Este retrato se distribuye bajo ' + link(c.licenciaUrl, c.licencia) : ''}.</span></div></div>`; }).join('')
       + (muñecos.length ? `<div class="help">Sin foto libre (retrato hecho con el muñeco del juego): ${muñecos.map(id => esc(R[id].nombre)).join(', ')}.</div>` : '')
       + '<div class="help">Motor 3D: three.js (MIT). Tipografías: Google Fonts (OFL).</div>';
     $('#credits').style.display = 'grid';
