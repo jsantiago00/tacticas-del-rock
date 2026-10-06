@@ -1,5 +1,11 @@
 # Configurar Firebase (modo online)
 
+> **Ya está configurado** en el proyecto `tacticas-del-rock` (plan Spark, Realtime Database
+> en us-central1, Auth anónima, reglas cargadas, dominio `santiagososa.com.ar` autorizado).
+> Consola: <https://console.firebase.google.com/project/tacticas-del-rock>.
+> Los pasos de abajo quedan como referencia por si hay que rehacerlo en otro proyecto.
+> Para volver a publicar las reglas después de cambiarlas: `npx firebase deploy --only database`.
+
 Sin esto el juego funciona igual en modo **Solo vs bots**. El modo online necesita un
 proyecto de Firebase (plan gratuito Spark) con Auth anónima y Realtime Database.
 
