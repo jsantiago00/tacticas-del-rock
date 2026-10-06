@@ -90,10 +90,10 @@ const DATA = {
     chiquitos:   { name: 'Chiquitos', kind: 'origen', icon: '🐭', color: '#7ad66a', scope: 'trait', breakpoints: [2, 4, 6],
                    desc: 'Diminutivos y bichitos. Los Chiquitos esquivan ataques básicos.',
                    levels: [{ dodge: 15 }, { dodge: 30 }, { dodge: 50 }] },
-    fauna:       { name: 'Fauna', kind: 'origen', icon: '🐾', color: '#c98b3a', scope: 'trait', breakpoints: [3, 5, 7],
+    fauna:       { name: 'Fauna', kind: 'origen', icon: '🐾', color: '#c98b3a', scope: 'trait', breakpoints: [2, 4, 6],
                    desc: 'Animales de todo tipo. La manada gana daño y velocidad de ataque.',
                    levels: [{ adPct: 15, asPct: 10 }, { adPct: 30, asPct: 20 }, { adPct: 55, asPct: 35 }] },
-    almacen:     { name: 'Almacén', kind: 'origen', icon: '🛒', color: '#e0a03c', scope: 'trait', breakpoints: [3, 5, 7],
+    almacen:     { name: 'Almacén', kind: 'origen', icon: '🛒', color: '#e0a03c', scope: 'trait', breakpoints: [2, 4, 6],
                    desc: 'Algo para comer o tomar. Los del Almacén regeneran vida por segundo.',
                    levels: [{ regen: 1.5 }, { regen: 3 }, { regen: 5 }] },
     arcoiris:    { name: 'Arco iris', kind: 'origen', icon: '🌈', color: '#e04fa0', scope: 'team', breakpoints: [2, 4],
@@ -104,7 +104,7 @@ const DATA = {
                    levels: [{ armor: 25, mr: 25 }, { armor: 60, mr: 60 }] },
     familia:     { name: 'Familia', kind: 'origen', icon: '👵', color: '#d48cff', scope: 'trait', breakpoints: [2, 4],
                    desc: 'La familia se cuida: cuando muere uno, el resto de la Familia se cura.',
-                   levels: [{ fx: [{ type: 'deathHealTrait', trait: 'familia', pct: 25 }] }, { fx: [{ type: 'deathHealTrait', trait: 'familia', pct: 50 }] }] },
+                   levels: [{ fx: [{ type: 'deathHealTrait', trait: 'familia', pct: 40 }] }, { fx: [{ type: 'deathHealTrait', trait: 'familia', pct: 80 }] }] },
     averiados:   { name: 'Averiados', kind: 'origen', icon: '🤕', color: '#ff7a3c', scope: 'trait', breakpoints: [2, 4],
                    desc: 'Locas, rabiosos, paranoicos y rengos. Más daño cuanta menos vida les queda.',
                    levels: [{ berserk: 50 }, { berserk: 110 }] },
@@ -148,7 +148,7 @@ const DATA = {
                    levels: [{ hp: 250 }, { hp: 600, armor: 20 }, { hp: 1000, armor: 40 }] },
     agitador:    { name: 'Agitador', kind: 'clase', icon: '📣', color: '#ff7a3c', scope: 'trait', breakpoints: [2, 4, 6],
                    desc: 'Frontman que pone el cuerpo. Luchadores de primera fila: ganan daño y vida.',
-                   levels: [{ adPct: 15, hp: 150 }, { adPct: 35, hp: 350 }, { adPct: 60, hp: 600 }] },
+                   levels: [{ adPct: 10, hp: 100 }, { adPct: 25, hp: 250 }, { adPct: 40, hp: 400 }] },
     gyv:         { name: 'Guitarra y Voz', kind: 'clase', icon: '🎸', color: '#ffb03c', scope: 'trait', breakpoints: [2, 4, 6],
                    desc: 'Cantan y tocan. Segunda fila: ganan velocidad de ataque.',
                    levels: [{ asPct: 15 }, { asPct: 35 }, { asPct: 60 }] },
@@ -157,16 +157,16 @@ const DATA = {
                    levels: [{ critChance: 15, critDmg: 20 }, { critChance: 30, critDmg: 40 }, { critChance: 50, critDmg: 70 }] },
     voz:         { name: 'Voz', kind: 'clase', icon: '🎤', color: '#ffd23c', scope: 'trait', breakpoints: [2, 4, 6],
                    desc: 'Lanzadores de fondo: ganan poder de habilidad.',
-                   levels: [{ ap: 20 }, { ap: 45 }, { ap: 80 }] },
+                   levels: [{ ap: 30 }, { ap: 60 }, { ap: 100 }] },
     poeta:       { name: 'Poeta', kind: 'clase', icon: '📜', color: '#c9a0ff', scope: 'trait', breakpoints: [2, 4, 6],
                    desc: 'Cantautores. Soporte de fondo: regeneran maná por segundo.',
-                   levels: [{ manaRegen: 2 }, { manaRegen: 4 }, { manaRegen: 7 }] },
+                   levels: [{ manaRegen: 3 }, { manaRegen: 6 }, { manaRegen: 10 }] },
     teclados:    { name: 'Teclados', kind: 'clase', icon: '🎹', color: '#3cd6d6', scope: 'team', breakpoints: [2, 4],
                    desc: 'TODO tu equipo arranca el combate con un escudo.',
                    levels: [{ shield: 150 }, { shield: 350 }] },
     productor:   { name: 'Productor', kind: 'clase', icon: '🎛️', color: '#b05ae0', scope: 'team', breakpoints: [2, 4, 6],
                    desc: 'DJs y estudio. TODO tu equipo gana poder de habilidad.',
-                   levels: [{ ap: 10 }, { ap: 20 }, { ap: 35 }] },
+                   levels: [{ ap: 15 }, { ap: 30 }, { ap: 50 }] },
     // --- únicas (un solo músico; siempre activas si está en el tablero) ---
     saynomore:   { name: 'Say No More', kind: 'unica', icon: '🕶️', color: '#f5c542', scope: 'trait', breakpoints: [1],
                    desc: 'Charly García: su habilidad silencia a los enemigos cercanos (no pueden lanzar la suya).', levels: [{}] },
@@ -174,7 +174,7 @@ const DATA = {
                    desc: 'Freddie Mercury: la primera vez que muere, vuelve con la mitad de la vida.', levels: [{ revive: 50 }] },
     graciastotales:{ name: 'Gracias Totales', kind: 'unica', icon: '🙏', color: '#f5c542', scope: 'trait', breakpoints: [1],
                    desc: 'Gustavo Cerati: al morir, les deja un escudo y más daño a todos sus aliados.',
-                   levels: [{ fx: [{ type: 'deathTeam', shield: 350, adPct: 20 }] }] },
+                   levels: [{ fx: [{ type: 'deathTeam', shield: 250, adPct: 20 }] }] },
     misaricotera:{ name: 'Misa Ricotera', kind: 'unica', icon: '🌀', color: '#f5c542', scope: 'trait', breakpoints: [1],
                    desc: 'Indio Solari: arma un pogo que empuja a los enemigos cercanos y le da velocidad de ataque a sus aliados mientras dura.', levels: [{}] },
     elflaco:     { name: 'El Flaco', kind: 'unica', icon: '🍃', color: '#f5c542', scope: 'trait', breakpoints: [1],
@@ -325,7 +325,7 @@ const DATA = {
     ng:            { name: 'Jonathon NG', short: 'EDEN', cost: 5, origins: ['celestial', 'solistas'], classes: ['productor'], unique: 'vertigo', bands: ['EDEN', 'Solistas de afuera'],
                      ability: { name: 'Vertigo', type: 'aoe', center: 'target', radius: 2, pow: 0.6, confuse: [2, 2.5, 4] } },
     lisandro:      { name: 'Lisandro Aristimuño', short: 'Lisandro', cost: 5, origins: ['solistas'], classes: ['poeta'], unique: 'vientopatagonico', bands: ['Solistas de los 2000'],
-                     ability: { name: 'Viento Patagónico', type: 'frontRow', pow: 0.7, push: 2, stun: 0.5 } },
+                     ability: { name: 'Viento Patagónico', type: 'frontRow', pow: 0.9, push: 2, stun: 0.5 } },
     spinetta:      { name: 'Luis Alberto Spinetta', short: 'Spinetta', cost: 5, origins: ['fauna', 'almacen', 'averiados'], classes: ['guitarhero'], unique: 'elflaco', bands: ['Almendra', 'Pescado Rabioso', 'Invisible', 'Spinetta Jade'],
                      ability: { name: 'Artaud', type: 'aoe', center: 'target', radius: 2, pow: 1.0 } },
     aznar:         { name: 'Pedro Aznar', short: 'Aznar', cost: 5, origins: ['matematica', 'solistas'], classes: ['base', 'teclados'], unique: 'hombreorquesta', bands: ['Serú Girán', 'Tango 4', 'Solista'],
@@ -359,7 +359,7 @@ const DATA = {
                      commitBonus: 5, commitStage: 2 },
       ahorrador:   { name: 'Ahorrador', levels: { 1: 1, 2: 5, 3: 6, 4: 8, 5: 9, 6: 10 }, econ: 50, levelReserve: 50,
                      rollAbove: 60, rollFromStage: 3, maxRolls: 6, aggroHp: 30, focus: 2, loyalty: 0.5, buyThreshold: 7 },
-      reroll:      { name: 'Reroll', levels: { 1: 1, 2: 4, 3: 5, 4: 6, 5: 7, 6: 8, 7: 9 }, econ: 20, levelReserve: 20,
+      reroll:      { name: 'Reroll', levels: { 1: 1, 2: 4, 3: 5, 4: 6, 5: 8, 6: 9, 7: 10 }, econ: 20, levelReserve: 20,
                      rollAbove: 20, rollFromStage: 3, maxRolls: 15, aggroHp: 40, focus: 2, loyalty: 0.6, buyThreshold: 6, cheapMax: 2 },
       fiel:        { name: 'Fiel a la banda', levels: { 1: 1, 2: 4, 3: 5, 4: 7, 5: 8, 6: 9, 7: 10 }, econ: 30, levelReserve: 10,
                      rollAbove: 50, rollFromStage: 2, maxRolls: 10, aggroHp: 40, focus: 1, loyalty: 1, buyThreshold: 6, originOnly: true },
@@ -1132,17 +1132,19 @@ const SIM = (() => {
     return Object.keys(seen).length;
   };
 
-  function botTargets(p, P, fav) {
+  function botTargets(p, P, fav, stage = 1) {
     if (fav) return [fav];
-    const score = {}, seen = {};
+    const score = {}, seen = {}, maxCost = {};
     for (const o of owned(p)) {
       if (seen[o.u.unitId]) continue;
       seen[o.u.unitId] = true;
-      for (const t of def(o.u.unitId).traits) if (BUILD_TRAITS(t)) score[t] = (score[t] || 0) + 2 + (o.u.star - 1);
+      for (const t of def(o.u.unitId).traits) if (BUILD_TRAITS(t)) { score[t] = (score[t] || 0) + 2 + (o.u.star - 1); maxCost[t] = Math.max(maxCost[t] || 0, def(o.u.unitId).cost); }
     }
     for (const id of p.shop) if (id) for (const t of DATA.UNITS[id].traits) if (BUILD_TRAITS(t)) score[t] = (score[t] || 0) + 0.5;
     const active = computeTraits(boardSnapshot(p)); // lealtad: lo que ya está activo pesa más
     for (const t of Object.keys(active)) if (active[t].level >= 0 && score[t] != null) score[t] += 2 * P.loyalty;
+    // desde la etapa 4, un rasgo armado solo con unidades de coste 1 no sirve como apuesta
+    if (stage >= 4) for (const t of Object.keys(score)) if ((maxCost[t] || 0) <= 1) score[t] *= 0.3;
     return Object.keys(score).sort((a, b) => score[b] - score[a] || (a < b ? -1 : 1)).slice(0, P.focus);
   }
   function unitScore(p, unitId, star, targets, P, focus) {
@@ -1174,7 +1176,7 @@ const SIM = (() => {
     const aggressive = p().hp <= P.aggroHp;
     const fav = P.originOnly ? favoriteOrigin(s, id) : null;
     const reserve = () => (aggressive || stage <= 1 ? 0 : Math.round(P.econ * Math.min(1, (stage - 1) / 2)));
-    let targets = botTargets(p(), P, fav);
+    let targets = botTargets(p(), P, fav, stage);
     // Compromiso: Fiel apuesta a su origen fijo; otros (commitBonus) a su rasgo principal desde commitStage.
     const focusOf = () => (fav ? { trait: fav, bonus: 6 }
       : P.commitBonus && stage >= (P.commitStage || 2) && targets[0] ? { trait: targets[0], bonus: P.commitBonus } : null);
@@ -1199,7 +1201,7 @@ const SIM = (() => {
     }
     // 2) compras
     const buyPass = () => {
-      targets = botTargets(p(), P, fav);
+      targets = botTargets(p(), P, fav, stage);
       for (let i = 0; i < C.SHOP_SIZE; i++) {
         const unitId = p().shop[i];
         if (!unitId) continue;

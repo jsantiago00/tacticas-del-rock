@@ -142,7 +142,7 @@ for (const seed of ['inv-1', 'inv-2']) {
     const cs = SIM.createCombat([E('cerati', 0, 3), E('fito', 3, 3)], [E('slash', 0, 3, 3), E('mollo', 0, 2, 3), E('pappo', 0, 4, 3)], 3);
     const ce = unit(cs, 'cerati'), fi = unit(cs, 'fito'), ad0 = fi.ad;
     const ev = run(cs, c => c.events.find(e => e.t === 'legacy' && e.s === ce.cid));
-    check(!!ev && fi.ad > ad0 && (fi.shield > 0 || !fi.alive), `Gracias Totales: al morir Cerati, Fito gana daño (${Math.round(ad0)} -> ${Math.round(fi.ad)}) y escudo`);
+    check(!!ev && fi.ad > ad0 && fi.shieldUntil > cs.maxTicks, `Gracias Totales: al morir Cerati, Fito gana daño (${Math.round(ad0)} -> ${Math.round(fi.ad)}) y escudo`);
   }
   // Pogo con empuje y aura (Misa Ricotera)
   {
