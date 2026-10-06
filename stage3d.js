@@ -587,6 +587,29 @@ const STAGE3D = (() => {
       if (t.kind === 'bench') benchSlots[t.idx].material = HM.hover;
     }
 
+    // ---------- retrato del muñeco (plan B de tools/retratos: músicos sin foto libre) ----------
+    let pr = null;
+    function portrait(unitId, size = 512, bg = '#5a6070') {
+      if (!pr) {
+        const cv = document.createElement('canvas');
+        const r = new T.WebGLRenderer({ canvas: cv, antialias: true, preserveDrawingBuffer: true });
+        r.outputEncoding = T.sRGBEncoding;
+        const sc = new T.Scene();
+        sc.add(new T.HemisphereLight(0xffffff, 0x404050, 0.45));
+        const key = new T.DirectionalLight(0xffffff, 0.6); key.position.set(1.5, 2.5, 4); sc.add(key);
+        pr = { cv, r, sc, cam: new T.PerspectiveCamera(26, 1, 0.1, 50) };
+      }
+      pr.r.setSize(size, size, false); pr.sc.background = new T.Color(bg);
+      const f = buildFigure(LOOKS.of(unitId, SIM.def(unitId)));
+      pr.sc.add(f.root); f.root.updateMatrixWorld(true);
+      const h = f.head.getWorldPosition(new T.Vector3());
+      pr.cam.position.set(h.x + 0.35, h.y + 0.2, h.z + 2.9); pr.cam.lookAt(h.x, h.y - 0.02, h.z);
+      pr.r.render(pr.sc, pr.cam);
+      const url = pr.cv.toDataURL('image/png');
+      pr.sc.remove(f.root);
+      return url;
+    }
+
     // ---------- cámara ----------
     function resize() {
       const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -756,7 +779,7 @@ const STAGE3D = (() => {
 
     return {
       setPlanning, startCombat, combatEvents, setAlpha, celebrate, stopCombat, traitPulse,
-      pick, dropTarget, dragTo, dragEnd, highlight, setQuality, focusUnits, panBy, zoomBy, resetView,
+      pick, dropTarget, dragTo, dragEnd, highlight, setQuality, focusUnits, panBy, zoomBy, resetView, portrait,
       get viewChanged() { return view.zoom !== 1 || view.x !== 0 || view.z !== 0; },
       get fps() { return lastFps; }, get quality() { return qLevel; },
       get gpu() { try { const gl = renderer.getContext(), ext = gl.getExtension('WEBGL_debug_renderer_info'); return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER); } catch (e) { return ''; } },

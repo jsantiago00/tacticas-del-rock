@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Elegir retratos</title>
+<style>
+:root{--bg:#0d1526;--panel:#16233a;--line:#263a5e;--ink:#e8ecf4;--muted:#aeb8cc;--gold:#f2a541;--ok:#7ee08f;--b:#7fb3ff;--bad:#ff7a63}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,sans-serif;display:grid;grid-template-columns:250px 1fr;grid-template-rows:auto 1fr;height:100vh}
+header{grid-column:1/3;display:flex;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{font-size:18px;margin:0 10px 0 0}
+#prog{color:var(--muted);margin-right:auto}
+button,.btn{background:#2c3f63;color:var(--ink);border:0;border-radius:8px;padding:8px 12px;font:inherit;cursor:pointer}
+button:hover,.btn:hover{background:#3a527e}
+button.gold{background:var(--gold);color:#1b2233}
+button.bad{background:#5a2a2a}
+nav{overflow:auto;border-right:1px solid var(--line);padding:6px}
+nav label{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:13px;padding:4px 6px}
+.mu{display:flex;gap:8px;align-items:center;width:100%;text-align:left;background:none;padding:5px 8px;border-radius:6px}
+.mu.on{background:#24365a}
+.mu .st{width:22px;text-align:center;flex:none}
+.mu small{color:var(--muted);margin-left:auto}
+main{overflow:auto;padding:14px 18px}
+.head h2{margin:0;font-size:26px}
+.head .d{color:var(--muted)}
+.head a{color:var(--b)}
+.nota{background:#3a2f12;border:1px solid var(--gold);border-radius:8px;padding:6px 10px;margin:8px 0}
+#cands{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin:12px 0}
+.c{background:var(--panel);border:2px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column}
+.c.on{border-color:var(--gold)}
+.c img{width:100%;height:190px;object-fit:cover;background:#0a1020;display:block}
+.c div{padding:6px 8px;font-size:12px;color:var(--muted)}
+.c b{color:var(--ink)}
+.c .tag{display:inline-block;background:#24365a;border-radius:4px;padding:0 5px;margin-right:4px;color:var(--ink)}
+.c .tag.sa{background:#4a3a14}
+.c a{color:var(--b)}
+#editor{display:none;gap:18px;align-items:flex-start;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+#stage{position:relative;max-width:560px;width:100%;cursor:crosshair;line-height:0}
+#stage img{width:100%;display:block;user-select:none}
+#sq{position:absolute;border:2px solid var(--gold);box-shadow:0 0 0 9999px rgba(0,0,0,.45);pointer-events:none}
+#dotc{position:absolute;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:var(--gold);pointer-events:none}
+.side{display:flex;flex-direction:column;gap:10px;min-width:280px}
+.side canvas{border-radius:10px;background:#0a1020}
+.side .row{display:flex;gap:10px;align-items:flex-end}
+.help{color:var(--muted);font-size:13px}
+.err{color:var(--bad)}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+</style>
+</head>
+<body>
+<header>
+  <h1>Retratos</h1><span id="prog"></span>
+  <button id="dl" class="gold">Descargar elegidas.json</button>
+  <label class="btn">Cargar elegidas.json<input type="file" id="up" accept=".json" hidden></label>
+</header>
+<nav>
+  <label><input type="checkbox" id="soloPend"> Solo pendientes</label>
+  <div id="list"></div>
+</nav>
+<main>
+  <div class="head" id="head"></div>
+  <div class="acts">
+    <button id="prev">← Anterior</button>
+    <button id="next">Siguiente pendiente →</button>
+    <button id="none" class="bad">Ninguna sirve (plan B)</button>
+    <button id="clear">Volver a pendiente</button>
+  </div>
+  <div id="editor">
+    <div id="stage"><img id="big" alt="" crossorigin="anonymous"><div id="sq"></div><div id="dotc"></div></div>
+    <div class="side">
+      <div class="help">Hacé clic en la cara para centrar el recorte.</div>
+      <label>Tamaño del recorte: <b id="ladoTxt"></b><br><input type="range" id="lado" min="15" max="100" step="1" style="width:260px"></label>
+      <div class="row"><canvas id="pv" width="256" height="256"></canvas><canvas id="pv2" width="128" height="128" style="width:64px;height:64px"></canvas></div>
+      <div id="pvMsg" class="help"></div>
+      <div id="lic" class="help"></div>
+    </div>
+  </div>
+  <div id="cands"></div>
+</main>
+<script src="candidatas.js"></script>
+<script src="duotono.js"></script>
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+if (!window.CANDIDATAS) { document.body.innerHTML = '<p style="padding:20px">Falta <b>candidatas.js</b>: corré primero <code>node buscar.js</code>.</p>'; throw new Error('sin candidatas'); }
+const M = CANDIDATAS.musicos, IDS = Object.keys(M);
+const KEY = 'retratos_elegidas_v1';
+let E = {}; try { E = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(E)); } catch (e) {} };
+let cur = IDS.find(id => !E[id]) || IDS[0];
+
+const estado = id => E[id] ? E[id].estado : (M[id].candidatas.length ? 'pendiente' : 'sin');
+const ICON = { foto: '✅', planb: '🅱️', pendiente: '·', sin: '✗' };
+// misma cuenta que procesar.js: cuadrado de lado (fracción del lado corto), centro sin salirse de la foto
+function recorte(W, H, e) {
+  const s = Math.round(Math.min(W, H) * e.lado), h = s / 2;
+  const cx = Math.max(h, Math.min(W - h, e.cx * W)), cy = Math.max(h, Math.min(H - h, e.cy * H));
+  return { x: Math.round(cx - h), y: Math.round(cy - h), s };
+}
+const thumb = (url, w) => (url.includes('/thumb/') ? url.replace(/\/\d+px-([^/]+)$/, `/${w}px-$1`) : url);
+
+function renderList() {
+  const solo = $('#soloPend').checked;
+  $('#list').innerHTML = IDS.filter(id => !solo || estado(id) === 'pendiente' || id === cur).map(id =>
+    `<button class="mu${id === cur ? ' on' : ''}" data-id="${id}"><span class="st">${ICON[estado(id)]}</span>${esc(M[id].corto)}<small>${M[id].candidatas.length}</small></button>`).join('');
+  const n = k => IDS.filter(id => estado(id) === k).length;
+  $('#prog').textContent = `${n('foto')} con foto · ${n('planb')} plan B · ${n('pendiente')} pendientes · ${n('sin')} sin candidatas (van a plan B)`;
+}
+function render() {
+  const m = M[cur], e = E[cur];
+  $('#head').innerHTML = `<h2>${esc(m.nombre)}</h2><div class="d">${m.qid ? `<a href="https://www.wikidata.org/wiki/${m.qid}" target="_blank">${esc(m.wikidata)} (${m.qid})</a> · ${esc(m.descripcion)}` : 'Sin Wikidata'}
+    · estado: <b>${{ foto: 'foto elegida', planb: 'plan B', pendiente: 'pendiente', sin: 'sin candidatas' }[estado(cur)]}</b></div>
+    ${m.nota ? `<div class="nota">${esc(m.nota)}</div>` : ''}${!m.candidatas.length ? '<div class="nota">No hay candidatas con licencia libre: va con el plan B (el muñeco).</div>' : ''}`;
+  $('#cands').innerHTML = m.candidatas.map((c, i) => `<div class="c${e && e.archivo === c.archivo ? ' on' : ''}" data-i="${i}">
+      <img loading="lazy" src="${esc(thumb(c.vista, 330))}" alt="">
+      <div><span class="tag">${c.fuente === 'P18' ? 'principal' : 'commons'}</span><span class="tag${c.tipo === 'by-sa' ? ' sa' : ''}">${esc(c.licencia)}</span>${c.ancho}×${c.alto}${c.fecha ? ' · ' + esc(c.fecha) : ''}<br>
+      <b>${esc(c.autor)}</b><br><a href="${esc(c.pagina)}" target="_blank" onclick="event.stopPropagation()">ver en Commons</a></div></div>`).join('');
+  renderEditor();
+  renderList();
+}
+let imgOk = false;
+function renderEditor() {
+  const e = E[cur];
+  if (!e || e.estado !== 'foto') { $('#editor').style.display = 'none'; return; }
+  $('#editor').style.display = 'flex';
+  const big = $('#big');
+  if (big.dataset.src !== e.vista) { imgOk = false; big.dataset.src = e.vista; big.src = e.vista; $('#pvMsg').textContent = 'Cargando…'; }
+  $('#lado').value = Math.round(e.lado * 100); $('#ladoTxt').textContent = Math.round(e.lado * 100) + '% del lado corto';
+  $('#lic').innerHTML = `${esc(e.autor)} · ${esc(e.licencia)}${e.tipo === 'by-sa' ? ' · <b>el recorte queda CC BY-SA</b>' : ''}`;
+  drawOverlay(); preview();
+}
+function drawOverlay() {
+  const e = E[cur], big = $('#big');
+  if (!imgOk || !e) return;
+  const W = big.clientWidth, H = big.clientHeight, r = recorte(W, H, e);
+  Object.assign($('#sq').style, { left: r.x + 'px', top: r.y + 'px', width: r.s + 'px', height: r.s + 'px' });
+  Object.assign($('#dotc').style, { left: e.cx * W + 'px', top: e.cy * H + 'px' });
+}
+function preview() {
+  const e = E[cur], big = $('#big');
+  if (!imgOk || !e) return;
+  const W = big.naturalWidth, H = big.naturalHeight, r = recorte(W, H, e);
+  for (const [cv, n] of [[$('#pv'), 256], [$('#pv2'), 128]]) {
+    const g = cv.getContext('2d');
+    g.drawImage(big, r.x, r.y, r.s, r.s, 0, 0, n, n);
+    try {
+      const d = g.getImageData(0, 0, n, n);
+      DUOTONO.aplicar(d.data, n, n, 4, DUOTONO.semillaDe(cur));
+      g.putImageData(d, 0, 0);
+      $('#pvMsg').textContent = 'Vista previa con el filtro (256 y 128 px).';
+    } catch (err) { $('#pvMsg').innerHTML = '<span class="err">El navegador no deja leer esta imagen para el filtro; el recorte igual sirve.</span>'; }
+  }
+}
+$('#big').addEventListener('load', () => { imgOk = true; drawOverlay(); preview(); });
+$('#big').addEventListener('error', () => { $('#pvMsg').innerHTML = '<span class="err">No cargó la imagen.</span>'; });
+$('#stage').addEventListener('click', ev => {
+  const e = E[cur]; if (!e || !imgOk) return;
+  const r = $('#big').getBoundingClientRect();
+  e.cx = Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)); e.cy = Math.max(0, Math.min(1, (ev.clientY - r.top) / r.height));
+  save(); drawOverlay(); preview();
+});
+$('#lado').addEventListener('input', () => { const e = E[cur]; if (!e) return; e.lado = $('#lado').value / 100; $('#ladoTxt').textContent = $('#lado').value + '% del lado corto'; save(); drawOverlay(); preview(); });
+$('#cands').addEventListener('click', ev => {
+  const card = ev.target.closest('[data-i]'); if (!card) return;
+  const c = M[cur].candidatas[+card.dataset.i], prev = E[cur];
+  E[cur] = { estado: 'foto', archivo: c.archivo, url: c.url, vista: c.vista, pagina: c.pagina, autor: c.autor, credito: c.credito || '', licencia: c.licencia, tipo: c.tipo, licenciaUrl: c.licenciaUrl,
+    cx: prev && prev.archivo === c.archivo ? prev.cx : 0.5, cy: prev && prev.archivo === c.archivo ? prev.cy : 0.33, lado: prev && prev.archivo === c.archivo ? prev.lado : 0.6 };
+  save(); render(); $('#editor').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+});
+$('#none').addEventListener('click', () => { E[cur] = { estado: 'planb' }; save(); go(nextPend()); });
+$('#clear').addEventListener('click', () => { delete E[cur]; save(); render(); });
+const nextPend = () => { const i = IDS.indexOf(cur); return IDS.slice(i + 1).concat(IDS.slice(0, i)).find(id => estado(id) === 'pendiente') || cur; };
+function go(id) { cur = id; render(); window.scrollTo(0, 0); $('main').scrollTop = 0; }
+$('#next').addEventListener('click', () => go(nextPend()));
+$('#prev').addEventListener('click', () => go(IDS[(IDS.indexOf(cur) - 1 + IDS.length) % IDS.length]));
+$('#list').addEventListener('click', ev => { const b = ev.target.closest('[data-id]'); if (b) go(b.dataset.id); });
+$('#soloPend').addEventListener('change', renderList);
+document.addEventListener('keydown', ev => {
+  if (ev.key === 'ArrowRight') go(IDS[(IDS.indexOf(cur) + 1) % IDS.length]);
+  if (ev.key === 'ArrowLeft') go(IDS[(IDS.indexOf(cur) - 1 + IDS.length) % IDS.length]);
+});
+window.addEventListener('resize', drawOverlay);
+$('#dl').addEventListener('click', () => {
+  const out = { generado: new Date().toISOString(), elegidas: {} };
+  for (const id of IDS) if (E[id]) { const { vista, ...rest } = E[id]; out.elegidas[id] = rest; }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(out, null, 1)], { type: 'application/json' }));
+  a.download = 'elegidas.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+$('#up').addEventListener('change', async ev => {
+  const f = ev.target.files[0]; if (!f) return;
+  try {
+    const j = JSON.parse(await f.text());
+    for (const [id, e] of Object.entries(j.elegidas || {})) {
+      if (!M[id]) continue;
+      const c = e.archivo && M[id].candidatas.find(x => x.archivo === e.archivo);
+      E[id] = e.estado === 'foto' ? { ...e, vista: c ? c.vista : e.url } : e;
+    }
+    save(); render();
+  } catch (err) { alert('No se pudo leer: ' + err.message); }
+});
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "tacticas-retratos",
+  "private": true,
+  "description": "Herramienta aparte para armar los retratos de los músicos (Wikimedia Commons + duotono)",
+  "scripts": {
+    "buscar": "node buscar.js",
+    "procesar": "node procesar.js"
+  },
+  "dependencies": {
+    "sharp": "^0.33.5"
+  }
+}

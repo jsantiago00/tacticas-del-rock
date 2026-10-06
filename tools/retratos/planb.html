@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Retratos plan B</title>
+<style>
+body{margin:0;background:#0d1526;color:#e8ecf4;font:15px/1.4 system-ui,sans-serif;padding:14px}
+h1{font-size:20px;margin:0 0 6px}
+p{color:#aeb8cc;margin:0 0 10px;max-width:760px}
+button{background:#f2a541;color:#1b2233;border:0;border-radius:8px;padding:10px 14px;font:inherit;font-weight:700;cursor:pointer}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-top:12px}
+#grid figure{margin:0;text-align:center;font-size:12px;color:#aeb8cc}
+#grid img{width:100%;border-radius:8px;display:block}
+#hidden{position:fixed;left:-10000px;top:0;width:64px;height:64px}
+</style>
+</head>
+<body>
+<h1>Retratos plan B: la cabeza de cada muñeco</h1>
+<p>Dibuja los 65 muñecos con la misma cámara y los junta en una sola imagen (<b>planb.png</b>, 9 columnas de 512 px en el orden del plantel).
+  Guardala en <code>tools/retratos/</code>: <code>procesar.js</code> recorta de ahí los que no tienen foto y les aplica el mismo filtro.</p>
+<button id="dl" disabled>Generando…</button>
+<div id="grid"></div>
+<div id="hidden"><canvas id="c"></canvas><div id="ov"></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="../../sim.js"></script>
+<script src="../../looks.js"></script>
+<script src="../../stage3d.js"></script>
+<script>
+'use strict';
+const CELDA = 512, COLS = 9, ids = Object.keys(DATA.UNITS);
+const stage = STAGE3D.create({ canvas: document.getElementById('c'), overlay: document.getElementById('ov') });
+const hoja = document.createElement('canvas');
+hoja.width = CELDA * COLS; hoja.height = CELDA * Math.ceil(ids.length / COLS);
+const g = hoja.getContext('2d');
+(async () => {
+  for (let i = 0; i < ids.length; i++) {
+    const url = stage.portrait(ids[i], CELDA);
+    const img = new Image(); img.src = url; await img.decode();
+    g.drawImage(img, (i % COLS) * CELDA, Math.floor(i / COLS) * CELDA);
+    document.getElementById('grid').insertAdjacentHTML('beforeend', `<figure><img src="${url}" alt=""><figcaption>${DATA.UNITS[ids[i]].short}</figcaption></figure>`);
+  }
+  const b = document.getElementById('dl');
+  b.disabled = false; b.textContent = `Descargar planb.png (${ids.length} músicos)`;
+  b.onclick = () => hoja.toBlob(bl => { const a = document.createElement('a'); a.href = URL.createObjectURL(bl); a.download = 'planb.png'; a.click(); });
+})();
+</script>
+</body>
+</html>
