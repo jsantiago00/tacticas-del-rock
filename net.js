@@ -32,6 +32,10 @@ const NET = (() => {
   const S = typeof SIM !== 'undefined' ? SIM : require('./sim.js').SIM;
   const D = typeof DATA !== 'undefined' ? DATA : require('./sim.js').DATA;
 
+  // Mensaje para cuando la sala es de otra versión del juego.
+  const VERSION_MSG = v => (v > D.VERSION) // sin versión (salas de antes) = vieja
+    ? 'Esta sala usa una versión más nueva del juego: recargá la página (Ctrl+F5).'
+    : 'Esta sala es de una versión vieja del juego: creá una nueva.';
   const CFG = {
     COMBAT_EXTRA_MS: 2500,        // margen después de la pelea más larga (cartel de resultado)
     MIGRATE_AFTER_MS: 10000,      // host desconectado más de esto -> se migra
@@ -270,6 +274,8 @@ const NET = (() => {
       get hash() { return viewHash; },
       get desyncs() { return desyncs; },
       get phase() { return room && room.meta && room.meta.phase; },
+      get versionMismatch() { return !!(room && room.meta && room.meta.dataVersion !== D.VERSION); },
+      get versionMessage() { return room && room.meta ? VERSION_MSG(room.meta.dataVersion) : ''; },
       // Devuelve un error (string) o null si la acción salió a la cola.
       send(action) {
         if (!view || !room || !room.meta) return 'Sin conexión con la sala';
@@ -310,6 +316,7 @@ const NET = (() => {
     async function tick() {
       const m = client.meta;
       if (!m) return;
+      if (m.dataVersion !== D.VERSION) return; // otra versión: no tocar nada
       if (m.hostId === T.uid && m.status === 'playing') {
         if (!host || !host.active) { host = createHost({ transport: T, code, getRoom: () => client.room }); await host.resume(); }
         await host.tick();
@@ -359,7 +366,7 @@ const NET = (() => {
       const code = fixed || randomCode(rnd);
       const now = T.now();
       const r = await T.transaction(`rooms/${code}/meta`, cur => (cur ? undefined : {
-        hostId: T.uid, status: 'lobby', createdAt: now, lastActivity: now, seed: seed || code + '-' + now,
+        hostId: T.uid, status: 'lobby', dataVersion: D.VERSION, createdAt: now, lastActivity: now, seed: seed || code + '-' + now,
         settings: { bots: 7, difficulty: 0.3, botTakeover: true, planningSeconds: D.CONFIG.PLANNING_SECONDS, ...(settings || {}) },
         phase: { name: 'lobby', endsAt: 0, key: 'lobby' },
       }));
@@ -375,6 +382,7 @@ const NET = (() => {
     code = String(code || '').toUpperCase().trim();
     const meta = await T.get(`rooms/${code}/meta`);
     if (!meta) return { error: 'No existe esa sala' };
+    if (meta.dataVersion !== D.VERSION) return { error: VERSION_MSG(meta.dataVersion), version: true };
     const member = await T.get(`rooms/${code}/members/${T.uid}`);
     if (meta.status !== 'lobby' && !member) return { error: 'La partida ya empezó' };
     if (!member) {
@@ -496,7 +504,7 @@ const NET = (() => {
   return {
     CFG, splitState, joinState, partsHash, stateHashCanon,
     createHost, createClient, createSession,
-    createRoom, joinRoom, leaveRoom, updateSettings, cleanupOldRooms,
+    createRoom, joinRoom, leaveRoom, updateSettings, cleanupOldRooms, VERSION_MSG,
     createLocalServer,
   };
 })();

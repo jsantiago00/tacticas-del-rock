@@ -112,6 +112,149 @@ for (const seed of ['inv-1', 'inv-2']) {
   check(s4.poolPlayers === 4 && poolOk(s4), 'Partida de 4 jugadores escala el pool (coste 1: 15 copias por campeón)');
 }
 
+// 6b. Mecánicas del plantel (únicas, dúos, orígenes con efectos). Combates armados a mano.
+{
+  const E = (unitId, r, c, star = 1, extra = {}) => ({ unitId, star, r, c, ...extra });
+  const run = (cs, until, max = 900) => { for (let i = 0; i < max && !cs.done; i++) { SIM.stepCombat(cs); const r = until(cs); if (r) return r; } return null; };
+  const unit = (cs, id, team = 0) => cs.units.find(u => u.unitId === id && u.team === team);
+  const castBy = (cs, u) => cs.events.some(e => e.t === 'cast' && e.s === u.cid);
+
+  // Silencio (Say No More): los silenciados no lanzan aunque tengan el maná lleno
+  {
+    const cs = SIM.createCombat([E('charly', 0, 3)], [E('dargelos', 0, 3), E('plant', 0, 4)], 1);
+    const ch = unit(cs, 'charly'); ch.mana = ch.maxMana;
+    run(cs, c => castBy(c, ch));
+    const vic = cs.units.filter(u => u.team === 1 && u.silencedUntil > cs.tick);
+    vic.forEach(v => (v.mana = v.maxMana));
+    let castWhileSilenced = false;
+    run(cs, c => { if (c.events.some(e => e.t === 'cast' && vic.some(v => v.cid === e.s && v.silencedUntil > c.tick))) castWhileSilenced = true; return vic.every(v => v.silencedUntil <= c.tick); }, 200);
+    check(vic.length > 0 && !castWhileSilenced, `Silencio: Charly silencia a ${vic.length} y no lanzan mientras dura`);
+  }
+  // Revivir una vez (The Show Must Go On)
+  {
+    const cs = SIM.createCombat([E('freddie', 3, 3)], [E('slash', 3, 2, 3), E('mollo', 3, 3, 3), E('pappo', 3, 4, 3)], 2);
+    const fr = unit(cs, 'freddie'); let revives = 0;
+    run(cs, c => { revives += c.events.filter(e => e.t === 'revive' && e.d === fr.cid).length; return false; });
+    check(revives === 1 && !fr.alive, `Revivir: Freddie vuelve exactamente 1 vez (${revives}) y después muere`);
+  }
+  // Efecto al morir (Gracias Totales): escudo y daño para los aliados
+  {
+    const cs = SIM.createCombat([E('cerati', 0, 3), E('fito', 3, 3)], [E('slash', 0, 3, 3), E('mollo', 0, 2, 3), E('pappo', 0, 4, 3)], 3);
+    const ce = unit(cs, 'cerati'), fi = unit(cs, 'fito'), ad0 = fi.ad;
+    const ev = run(cs, c => c.events.find(e => e.t === 'legacy' && e.s === ce.cid));
+    check(!!ev && fi.ad > ad0 && (fi.shield > 0 || !fi.alive), `Gracias Totales: al morir Cerati, Fito gana daño (${Math.round(ad0)} -> ${Math.round(fi.ad)}) y escudo`);
+  }
+  // Pogo con empuje y aura (Misa Ricotera)
+  {
+    const cs = SIM.createCombat([E('indio', 0, 3), E('slash', 3, 3)], [E('catriel', 0, 3), E('grohl', 0, 2), E('marciano', 0, 4)], 4);
+    const ind = unit(cs, 'indio'), sl = unit(cs, 'slash'); ind.mana = ind.maxMana;
+    run(cs, c => castBy(c, ind));
+    const pushes = cs.events.filter(e => e.t === 'push').length;
+    check(pushes > 0 && sl.asBuffs.some(b => b.pct === 40), `Misa Ricotera: empuja ${pushes} enemigos y acelera a los aliados (+40%)`);
+  }
+  // Doble clase (Hombre Orquesta)
+  {
+    const tr = SIM.computeTraits([E('aznar', 0, 3), E('fito', 3, 3)]);
+    check(tr.base.count === 1 && tr.teclados.count === 2 && tr.teclados.level === 0, 'Hombre Orquesta: Aznar cuenta como Base Rítmica y Teclados (activa Teclados con Fito)');
+  }
+  // Control mental (OK Computer): el enemigo más fuerte pelea para nosotros y después vuelve
+  {
+    const cs = SIM.createCombat([E('thom', 3, 3), E('aznar', 0, 3)], [E('freddie', 0, 3), E('catriel', 0, 2), E('grohl', 0, 4)], 5);
+    const th = unit(cs, 'thom'); th.mana = th.maxMana;
+    const fr = unit(cs, 'freddie', 1);
+    run(cs, c => castBy(c, th));
+    const switched = fr.side === 0 && fr.team === 1;
+    const back = run(cs, c => c.events.some(e => e.t === 'free' && e.d === fr.cid) || !fr.alive, 400);
+    check(switched && !!back && (fr.side === 1 || !fr.alive), 'OK Computer: controla a Freddie (el más fuerte) y después lo suelta');
+  }
+  // Carga y estallido (Drop)
+  {
+    const cs = SIM.createCombat([E('skrillex', 3, 3), E('aznar', 0, 3)], [E('catriel', 0, 3), E('grohl', 0, 2)], 6);
+    const sk = unit(cs, 'skrillex');
+    let chargeBefore = 0;
+    run(cs, c => { if (sk.mana >= sk.maxMana - 1) chargeBefore = sk.charge; return castBy(c, sk); });
+    check(chargeBefore > 0 && sk.charge === 0, `Drop: acumula carga (${Math.round(chargeBefore)}) y la suelta al lanzar`);
+  }
+  // Confusión (Vértigo): los mareados atacan a cualquiera, incluso a sus aliados
+  {
+    const cs = SIM.createCombat([E('ng', 3, 3), E('aznar', 0, 3)], [E('catriel', 0, 3), E('grohl', 0, 2), E('marciano', 0, 4), E('mccartney', 1, 3)], 7);
+    const ng = unit(cs, 'ng'); ng.mana = ng.maxMana;
+    let confused = 0, friendly = 0;
+    run(cs, c => {
+      confused += c.events.filter(e => e.t === 'confuse').length;
+      for (const e of c.events) if (e.t === 'atk' && cs.units[e.s].team === cs.units[e.d].team) friendly++;
+      return false;
+    }, 400);
+    check(confused > 0 && friendly > 0, `Vértigo: ${confused} confundidos, ${friendly} ataques a su propio equipo`);
+  }
+  // Empuje en fila (Viento Patagónico)
+  {
+    const cs = SIM.createCombat([E('lisandro', 1, 3)], [E('catriel', 0, 2), E('grohl', 0, 3), E('marciano', 0, 4), E('fito', 3, 3)], 8);
+    const li = unit(cs, 'lisandro'); li.mana = li.maxMana;
+    run(cs, c => castBy(c, li));
+    const hitIds = new Set(cs.events.filter(e => e.t === 'dmg' && e.s === li.cid).map(e => e.d));
+    const pushes = cs.events.filter(e => e.t === 'push').length;
+    check(hitIds.size === 3 && pushes >= 1, `Viento Patagónico: pega a toda la fila de adelante (${hitIds.size}) y la empuja (${pushes})`);
+  }
+  // Compartir maná (BFF) y contagio (Transmisión)
+  {
+    const cs = SIM.createCombat([E('thom', 3, 3), E('greenwood', 3, 2), E('aznar', 0, 3)], [E('catriel', 0, 3)], 9);
+    const th = unit(cs, 'thom'), gw = unit(cs, 'greenwood'); th.mana = th.maxMana; gw.mana = 0;
+    run(cs, c => castBy(c, th));
+    check(gw.mana >= 35, `BFF + Transmisión: cuando Thom lanza, Greenwood gana maná (${Math.round(gw.mana)})`);
+  }
+  // Ralentizar (Frío)
+  {
+    const cs = SIM.createCombat([E('turner', 2, 3), E('chrismartin', 3, 3)], [E('catriel', 0, 3)], 10);
+    const tu = unit(cs, 'turner'), ca = unit(cs, 'catriel', 1);
+    run(cs, c => c.events.some(e => e.t === 'atk' && e.s === tu.cid));
+    check(ca.asBuffs.some(b => b.slow && b.pct < 0), 'Frío: el golpe de Turner baja la velocidad de ataque del enemigo');
+  }
+  // Orígenes con efecto: esquive (Chiquitos), regeneración (Almacén), arranque (Motor), Familia al morir
+  {
+    const cs = SIM.createCombat([E('slash', 3, 3, 3)], [E('marciano', 0, 3), E('lennon', 2, 3), E('mccartney', 0, 2), E('ciromartinez', 0, 4)], 11);
+    let miss = 0; run(cs, c => { miss += c.events.filter(e => e.t === 'miss').length; return false; }, 600);
+    check(miss > 0, `Chiquitos (4): esquivan ataques (${miss} esquives)`);
+    const cs2 = SIM.createCombat([E('vicentico', 0, 3), E('plant', 3, 3)], [E('catriel', 0, 3)], 12);
+    check(unit(cs2, 'vicentico').asBuffs.some(b => b.pct === 40), 'Motor (2): arrancan con +40% de velocidad de ataque');
+    const cs3 = SIM.createCombat([E('corgan', 0, 3), E('zeta', 0, 2), E('lebon', 3, 3)], [E('catriel', 0, 3)], 13);
+    check(unit(cs3, 'zeta').regen === 1.5, 'Almacén (3): regeneran vida');
+    const cs4 = SIM.createCombat([E('pityfernandez', 0, 3), E('calamaro', 3, 3)], [E('slash', 0, 3, 3), E('mollo', 0, 2, 3)], 14);
+    const ca = unit(cs4, 'calamaro'); ca.hp = ca.maxHp / 2; let healed = false;
+    run(cs4, c => { if (c.events.some(e => e.t === 'die' && e.d === unit(cs4, 'pityfernandez').cid) && c.events.some(e => e.t === 'heal' && e.d === ca.cid)) healed = true; return healed || !ca.alive; });
+    check(healed, 'Familia (2): cuando muere uno, el otro se cura');
+  }
+  // Solistas: rinden más cuantos menos haya
+  {
+    const solo1 = SIM.createCombat([E('fito', 3, 3)], [E('catriel', 0, 3)], 1);
+    const solo3 = SIM.createCombat([E('fito', 3, 3), E('gieco', 3, 2), E('drexler', 3, 4)], [E('catriel', 0, 3)], 1);
+    const h1 = unit(solo1, 'fito').maxHp, h3 = unit(solo3, 'fito').maxHp, base = SIM.def('fito').hp;
+    check(Math.round(h1) === Math.round(base * 1.5) && Math.round(h3) === Math.round(base * 1.15), `Solistas: Fito solo +50% vida (${Math.round(h1)}), con 3 Solistas +15% (${Math.round(h3)})`);
+  }
+  // El Flaco: elegir origen, se suma otro cada 3 peleas, y elección automática
+  {
+    let s = SIM.createGame({ seed: 'flaco', players: [{ id: 'p0', name: 'T' }] });
+    s = SIM.clone(s); const p = s.players.p0;
+    p.gold = 50; p.shop[0] = 'spinetta'; s.pool.spinetta--;
+    s = SIM.applyAction(s, 'p0', { type: 'BUY', slot: 0 });
+    const loc = { zone: 'bench', idx: s.players.p0.bench.findIndex(u => u && u.unitId === 'spinetta') };
+    const u0 = s.players.p0.bench[loc.idx];
+    check(!!u0.flaco && SIM.flacoPending(u0), 'El Flaco: al comprarlo queda pendiente elegir un origen');
+    s = SIM.applyAction(s, 'p0', { type: 'FLACO', loc, origin: 'fauna' });
+    const second = SIM.validateAction(s, 'p0', { type: 'FLACO', loc, origin: 'almacen' });
+    s = SIM.applyAction(s, 'p0', { type: 'MOVE', from: loc, to: { zone: 'board', idx: 24 } });
+    const tr = SIM.computeTraits(SIM.boardSnapshot(s.players.p0));
+    check(!!second && tr.fauna && !tr.almacen && !tr.averiados, 'El Flaco: cuenta solo para el origen elegido y no puede sumar otro todavía');
+    for (let i = 0; i < 3; i++) s = SIM.resolveRound(s);
+    const u3 = s.players.p0.board[24];
+    check(u3 && u3.flaco.fights === 3 && SIM.flacoSlots(u3) === 2 && SIM.flacoPending(u3), 'El Flaco: después de 3 peleas habilita un segundo origen');
+    s = SIM.resolveRound(s); // no eligió: el host elige por él
+    check(s.players.p0.board[24].flaco.chosen.length === 2, `El Flaco: si no elige a tiempo, se elige solo (${s.players.p0.board[24].flaco.chosen.join(', ')})`);
+  }
+  // Online: la versión de datos queda guardada en el estado
+  check(SIM.createGame({ seed: 'v', players: [{ id: 'p0', name: 'T' }] }).v === DATA.VERSION, `Versión de datos en el estado: ${DATA.VERSION}`);
+}
+
 // 7. Multijugador con LocalTransport (host autoritativo + clientes, sin Firebase).
 const { NET } = require('./net.js');
 const quiet = { log() {}, error(...a) { console.error(...a); } };
@@ -210,6 +353,16 @@ async function playOnline({ seed, crashAt = null, idleFrom = null, dropU3 = null
   check(drop.ended && drop.log.mismatches === 0 && drop.desyncs === 0, 'Reconexión: u3 se va 2 rondas, vuelve y queda sincronizado');
 
   const tk = await playOnline({ seed: 'net-4', dropU3: [5, 9], botTakeover: true });
+  // Versión de datos: no se puede entrar a una sala de otra versión
+  {
+    const srv = NET.createLocalServer({ time: 1e9 });
+    const t1 = srv.connect('u1'), t2 = srv.connect('u2'), t3 = srv.connect('u3');
+    const code = await NET.createRoom(t1, { name: 'Ana', code: 'VERS' });
+    const ok = await NET.joinRoom(t2, { code, name: 'Beto' });
+    await t1.set('rooms/VERS/meta/dataVersion', DATA.VERSION - 1);
+    const old = await NET.joinRoom(t3, { code, name: 'Caro' });
+    check(!ok.error && old.error && old.version, `Versión: se entra a una sala de la misma versión; a una vieja no ("${old.error}")`);
+  }
   check(tk.log.takenOver && tk.log.restored, 'Toma por bot: u3 desconectado 2 rondas lo maneja un bot y al volver recupera su lugar');
 
   console.log(failed ? `\n${failed} test(s) fallaron` : '\nTodo OK');

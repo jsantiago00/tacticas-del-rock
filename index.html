@@ -72,6 +72,8 @@ button:disabled{opacity:.45;cursor:default}
 .cost1{--cc:var(--c1)} .cost2{--cc:var(--c2)} .cost3{--cc:var(--c3)} .cost4{--cc:var(--c4)} .cost5{--cc:var(--c5)} .cost0{--cc:#555}
 
 /* bench */
+#flacoBar{display:none;gap:6px;align-items:center;flex-wrap:wrap;padding:6px 10px;border-radius:10px;background:#1e2a1a;border:1px solid #7ad66a;font-size:13px}
+#flacoBar button{padding:4px 10px;font-size:12px}
 #bench{display:flex;gap:6px;padding:8px;border-radius:12px;background:var(--panel);border:1px solid var(--line)}
 .slot{width:62px;height:62px;border-radius:10px;background:#0004;border:1px dashed var(--line);position:relative}
 .slot.drop-hover{border-color:var(--gold);background:#5b4a2a55}
@@ -207,6 +209,7 @@ button.primary{border-color:var(--accent);background:#3a1a16}
         </div>
         <div id="capBadge"></div>
       </div>
+      <div id="flacoBar"></div>
       <div id="bench"></div>
     </section>
     <aside>
@@ -282,10 +285,10 @@ button.primary{border-color:var(--accent);background:#3a1a16}
   <div class="row"><button id="btnLeave">Salir</button><button id="btnLobbyStart" class="primary">Empezar</button></div>
 </div></div>
 
-<script src="sim.js"></script>
-<script src="net.js"></script>
-<script src="firebase-config.js"></script>
-<script src="firebase-transport.js"></script>
+<script src="sim.js?v=5"></script>
+<script src="net.js?v=5"></script>
+<script src="firebase-config.js?v=5"></script>
+<script src="firebase-transport.js?v=5"></script>
 <script>
 'use strict';
 /* =====================================================================
@@ -299,11 +302,10 @@ button.primary{border-color:var(--accent);background:#3a1a16}
   const HW = 66, HH = Math.round(HW * 1.1547), VS = HH * 0.75, PAD = 18;
   const ARENA_W = COLS * HW + HW / 2, ARENA_H = (TROWS - 1) * VS + HH + PAD * 2;
   const TOKEN_R = 26;
-  const LOCAL_KEY = 'tacticas_rock_local_v4', ONLINE_KEY = 'tacticas_rock_online', PREF_KEY = 'tacticas_rock_prefs';
+  const LOCAL_KEY = 'tacticas_rock_local_v5', ONLINE_KEY = 'tacticas_rock_online', PREF_KEY = 'tacticas_rock_prefs';
   const $ = s => document.querySelector(s);
   const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const CLASS_ICON = { guitarrista: '🎸', voz: '🎤', bajista: '🪕', baterista: '🥁', tecladista: '🎹' };
   const COST_COLOR = ['#555', '#8f949c', '#3fb15f', '#3a86e0', '#b05ae0', '#f0b02a'];
 
   // Conexión: en local hay un servidor en memoria (host y cliente en esta pestaña);
@@ -324,8 +326,9 @@ button.primary{border-color:var(--accent);background:#3a1a16}
   const viewed = () => state.players[spyId] || me();
   const pname = id => (state.players[id] ? state.players[id].name : id);
   const cellCenter = (R, Cc) => ({ x: Cc * HW + (R & 1) * HW / 2 + HW / 2, y: PAD + R * VS + HH / 2 });
-  const unitIcon = d => d.icon || CLASS_ICON[d.traits.find(t => CLASS_ICON[t])] || '🎵';
-  const originColor = d => { const o = d.traits.find(t => DATA.TRAITS[t].kind === 'origen'); return o ? DATA.TRAITS[o].color : '#666'; };
+  const unitIcon = d => d.icon || (d.classes && d.classes[0] ? DATA.TRAITS[d.classes[0]].icon : '🎵');
+  const originColor = d => { const os = d.origins || []; const o = os.find(t => t !== 'solistas') || os[0]; return o ? DATA.TRAITS[o].color : '#666'; };
+  const traitTag = t => `${DATA.TRAITS[t].icon} ${DATA.TRAITS[t].name}`;
   const stars = n => '★'.repeat(n);
   const persName = p => (p.takenOver ? 'Bot (reemplazo)' : p.bot ? (DATA.BOTS.PERSONALITIES[p.bot.personality] || {}).name || p.bot.personality : 'Humano');
   const phase = () => (client && client.phase) || { name: 'lobby' };
@@ -415,6 +418,7 @@ button.primary{border-color:var(--accent);background:#3a1a16}
   function onRoom(c) {
     const meta = c.meta;
     if (!meta) { if (online) { toast('La sala ya no existe', 3000); leave().then(openModal); } return; }
+    if (c.versionMismatch) { const msg = c.versionMessage; leave().then(() => { openModal('online'); toast(msg, 8000); }); return; }
     if (meta.status === 'lobby') { mode = 'lobby'; renderLobby(); return; }
     $('#lobby').style.display = 'none';
     if (!c.state) return;
@@ -550,7 +554,7 @@ button.primary{border-color:var(--accent);background:#3a1a16}
   }
   function render() {
     if (!state || !me()) return;
-    renderTop(); renderTraits(); renderPlayers(); renderRoundPanel(); renderInfo(); renderHud(); renderShop(); renderBench();
+    renderTop(); renderTraits(); renderFlaco(); renderPlayers(); renderRoundPanel(); renderInfo(); renderHud(); renderShop(); renderBench();
     $('#combatCtrls').style.display = mode === 'combat' ? 'flex' : 'none';
     const v = viewed(), n = SIM.boardCount(v), cap = $('#capBadge');
     cap.style.display = mode === 'combat' ? 'none' : '';
@@ -579,18 +583,26 @@ button.primary{border-color:var(--accent);background:#3a1a16}
     $('#roundInfo').innerHTML = `Ronda ${label}<small>${kind} · ${alive} vivos</small>`;
   }
   function traitLevelsText(T) {
-    const names = { hp: 'Vida', armor: 'Armadura', mr: 'Res. mágica', ap: '% Poder hab.', adPct: '% Daño', asPct: '% Vel. ataque', lifesteal: '% Robo de vida', manaRegen: 'Maná/s', shield: 'Escudo' };
-    return T.levels.map((lv, i) => `(${T.breakpoints[i]}) ` + Object.entries(lv).map(([k, v]) => `+${v} ${names[k] || k}`).join(', ')).join('\n');
+    if (T.solo) return T.solo.map((b, i) => `(${i + 1} Solista${i ? 's' : ''}) +${b}% vida, daño y poder`).join('\n') + `\n(${T.solo.length + 1} o más) nada`;
+    const names = { hp: 'Vida', armor: 'Armadura', mr: 'Res. mágica', ap: '% Poder hab.', adPct: '% Daño', asPct: '% Vel. ataque', lifesteal: '% Robo de vida', manaRegen: 'Maná/s', shield: 'Escudo',
+      startMana: 'Maná inicial', critChance: '% Prob. crítico', critDmg: '% Daño crítico', dodge: '% Esquive', regen: '% Vida/s', nthMult: 'x daño cada 3er ataque',
+      shred: 'armadura que quita por golpe', confuseChance: '% Confundir al golpear', slowOnHit: '% Ralentiza al golpear', castStackAS: '% Vel. ataque por habilidad',
+      berserk: '% Daño con poca vida', startAS: '% Vel. ataque al arrancar', revive: '% Vida al revivir', chargePerAttack: 'Carga por ataque', chargeTakenPct: '% del daño recibido como carga' };
+    const fxText = f => f.type === 'castShare' ? `+${f.mana} maná al lanzar` : f.type === 'deathHealTrait' ? `cura ${f.pct}% al morir uno` : f.type === 'deathTeam' ? `al morir: escudo ${f.shield} y +${f.adPct}% daño` : f.type;
+    return T.levels.map((lv, i) => `(${T.breakpoints[i]}) ` + Object.entries(lv).map(([k, v]) => (k === 'fx' ? v.map(fxText).join(', ') : `+${v} ${names[k] || k}`)).join(', ')).join('\n');
   }
   function renderTraits() {
     const tr = SIM.computeTraits(SIM.boardSnapshot(viewed()));
     const box = $('#traitsPanel'); box.innerHTML = `<h3>Rasgos${spyId ? ' · ' + esc(pname(spyId)) : ''}</h3>`;
-    const keys = Object.keys(tr).sort((a, b) => (tr[b].level >= 0) - (tr[a].level >= 0) || tr[a].missing - tr[b].missing || tr[b].count - tr[a].count);
+    const kindRank = t => ({ unica: 0, origen: 1, clase: 2 }[DATA.TRAITS[t].kind]);
+    const keys = Object.keys(tr).sort((a, b) => (tr[b].level >= 0) - (tr[a].level >= 0) || kindRank(a) - kindRank(b) || tr[a].missing - tr[b].missing || tr[b].count - tr[a].count);
     if (!keys.length) box.appendChild(el('div', 'small', 'Poné unidades en el tablero para activar rasgos.'));
     for (const k of keys) {
       const T = DATA.TRAITS[k], { count, level, next, missing } = tr[k];
-      const bp = T.breakpoints.map((b, i) => (i <= level ? `<b>${b}</b>` : b)).join(' › ');
-      const nextTxt = next ? `falta${missing > 1 ? 'n' : ''} ${missing} para ${next}` : 'máximo';
+      let bp = T.breakpoints.map((b, i) => (i <= level ? `<b>${b}</b>` : b)).join(' › ');
+      let nextTxt = next ? `falta${missing > 1 ? 'n' : ''} ${missing} para ${next}` : 'máximo';
+      if (T.solo) { bp = T.solo.map((b, i) => (i + 1 === count ? `<b>${b}%</b>` : b + '%')).join(' › '); nextTxt = tr[k].bonus ? `+${tr[k].bonus}% cada uno (menos es más)` : 'demasiados: sin bonus'; }
+      if (T.kind === 'unica') { bp = 'única'; nextTxt = 'siempre activa'; }
       const row = el('div', 'trait' + (level >= 0 ? ' on' : ''),
         `<div class="tbadge">${T.icon}</div><div><div class="tname">${T.name}</div><div class="tbp">${bp}</div><div class="tnext">${nextTxt}</div></div><div class="tcount">${count}</div>`);
       row.style.setProperty('--tc', T.color);
@@ -644,22 +656,29 @@ button.primary{border-color:var(--accent);background:#3a1a16}
     }
     box.innerHTML = html;
   }
-  function abilityText(ab, star) {
+  function abilityText(unitId, star) {
+    const ab = SIM.def(unitId).ability;
     if (!ab) return 'Sin habilidad.';
     const v = arr => (Array.isArray(arr) ? arr.map((x, i) => (i === star - 1 ? `<span class="cur">${x}</span>` : x)).join('/') : arr);
-    const stun = ab.stun ? ` y aturde ${v(ab.stun)}s` : '';
+    const dmg = v([1, 2, 3].map(s => SIM.abilityValue(unitId, 'dmg', s))), amt = v([1, 2, 3].map(s => SIM.abilityValue(unitId, 'amount', s)));
+    const extra = [ab.stun && `aturde ${v(ab.stun)}s`, ab.silence && `silencia ${v(ab.silence)}s`, ab.confuse && `confunde ${v(ab.confuse)}s`, ab.push && `empuja ${ab.push} hex`].filter(Boolean);
+    const plus = extra.length ? ' y ' + extra.join(', ') : '';
     switch (ab.type) {
-      case 'nuke': return `Golpea a su objetivo por <b>${v(ab.dmg)}</b> de daño mágico${stun}.`;
-      case 'aoe': return `<b>${v(ab.dmg)}</b> de daño mágico a los enemigos a ${ab.radius || 1} hex de ${ab.center === 'self' ? 'sí mismo' : 'su objetivo'}${stun}.`;
-      case 'multi': return `Golpea a ${ab.count} enemigos al azar por <b>${v(ab.dmg)}</b> de daño mágico${stun}.`;
-      case 'all': return `Golpea a TODOS los enemigos por <b>${v(ab.dmg)}</b> de daño mágico${stun}.`;
-      case 'push': return `Golpea a su objetivo por <b>${v(ab.dmg)}</b> y lo empuja ${ab.distance || 1} hex${stun}.`;
-      case 'shield': return `Se pone un escudo de <b>${v(ab.amount)}</b> durante ${ab.duration}s.`;
-      case 'teamShield': return `Escudo de <b>${v(ab.amount)}</b> a todo el equipo durante ${ab.duration}s.`;
-      case 'heal': return `Cura <b>${v(ab.amount)}</b> a ${ab.count > 1 ? `los ${ab.count} aliados más heridos` : 'el aliado más herido'}.`;
-      case 'healAll': return `Cura <b>${v(ab.amount)}</b> a todo el equipo.`;
+      case 'nuke': return `Golpea a su objetivo por <b>${dmg}</b> de daño mágico${plus}.`;
+      case 'aoe': return `<b>${dmg}</b> de daño mágico a los enemigos a ${ab.radius || 1} hex de ${ab.center === 'self' ? 'sí mismo' : 'su objetivo'}${plus}.`;
+      case 'multi': return `Golpea a ${ab.count} enemigos al azar por <b>${dmg}</b> de daño mágico${plus}.`;
+      case 'all': return `Golpea a TODOS los enemigos por <b>${dmg}</b> de daño mágico${plus}.`;
+      case 'push': return `Golpea a su objetivo por <b>${dmg}</b> y lo empuja ${ab.distance || 1} hex${ab.stun ? `; aturde ${v(ab.stun)}s` : ''}.`;
+      case 'shield': return `Se pone un escudo de <b>${amt}</b> durante ${ab.duration}s.`;
+      case 'teamShield': return `Escudo de <b>${amt}</b> a todo el equipo durante ${ab.duration}s.`;
+      case 'heal': return `Cura <b>${amt}</b> a ${ab.count > 1 ? `los ${ab.count} aliados más heridos` : 'el aliado más herido'}.`;
+      case 'healAll': return `Cura <b>${amt}</b> a todo el equipo.`;
       case 'buffAS': return `Gana <b>+${v(ab.pct)}%</b> de velocidad de ataque durante ${ab.duration}s.`;
       case 'teamBuffAS': return `Todo el equipo gana <b>+${v(ab.pct)}%</b> de velocidad de ataque durante ${ab.duration}s.`;
+      case 'pogo': return `Arma un pogo: <b>${dmg}</b> de daño a los enemigos a ${ab.radius} hex y los empuja; todo su equipo gana <b>+${v(ab.pct)}%</b> de velocidad de ataque durante ${ab.duration}s.`;
+      case 'frontRow': return `Ráfaga contra toda la fila de adelante enemiga: <b>${dmg}</b> de daño mágico${plus}.`;
+      case 'mindControl': return `Hackea al enemigo más fuerte: <b>${dmg}</b> de daño y lo pone a pelear para su equipo durante ${v(ab.duration)}s.`;
+      case 'drop': return `Suelta toda la carga acumulada: <b>${dmg}</b> + la carga como daño mágico a los enemigos a ${ab.radius} hex de su objetivo.`;
     }
     return '';
   }
@@ -667,16 +686,17 @@ button.primary{border-color:var(--accent);background:#3a1a16}
     const box = $('#infoPanel');
     if (!selected) { box.innerHTML = '<h3>Info</h3><div class="small">Hacé click en una unidad o pasá el mouse por la tienda.</div>'; return; }
     const d = SIM.def(selected.unitId), s = selected.star, m = C.STAR_MULT[s - 1];
-    const traits = d.traits.map(t => DATA.TRAITS[t].icon + ' ' + DATA.TRAITS[t].name).join(' · ');
+    const traits = d.traits.map(traitTag).join(' · ');
+    const uniq = d.unique ? `<div class="ability" style="margin-bottom:6px"><b>${traitTag(d.unique)}</b><br>${esc(DATA.TRAITS[d.unique].desc)}</div>` : '';
     box.innerHTML = `<div class="info-title">${d.name} <span style="color:var(--gold)">${stars(s)}</span></div>
-      <div class="info-sub">${d.cost ? `Coste ${d.cost}` : 'PvE'} · ${traits || '—'}</div>
+      <div class="info-sub">${d.cost ? `Coste ${d.cost}` : 'PvE'} · ${traits || '—'}${d.bands ? `<br>🎶 ${esc(d.bands.join(', '))}` : ''}</div>
       <div class="stats">
         <div><span>Vida</span> ${Math.round(d.hp * m)}</div><div><span>Daño</span> ${Math.round(d.ad * m)}</div>
         <div><span>Vel. ataque</span> ${d.as}</div><div><span>Rango</span> ${d.range}</div>
         <div><span>Armadura</span> ${d.armor}</div><div><span>Res. mág.</span> ${d.mr}</div>
         ${d.ability ? `<div><span>Maná</span> ${d.startMana}/${d.maxMana}</div>` : ''}
       </div>
-      ${d.ability ? `<div class="ability"><b>${d.ability.name}</b><br>${abilityText(d.ability, s)}</div>` : ''}`;
+      ${uniq}${d.ability ? `<div class="ability"><b>${d.ability.name}</b><br>${abilityText(selected.unitId, s)}</div>` : ''}`;
   }
   function renderHud() {
     const p = me();
@@ -707,13 +727,32 @@ button.primary{border-color:var(--accent);background:#3a1a16}
       const have = SIM.countCopies(p, id, 1);
       const card = el('div', `card cost${d.cost}` + (have >= 2 ? ' owned2' : have === 1 ? ' owned' : '') + (p.gold < d.cost ? ' poor' : ''),
         `<div class="ci">${unitIcon(d)}</div><div class="cn">${d.short}</div>
-         <div class="ct">${d.traits.map(t => DATA.TRAITS[t].icon + ' ' + DATA.TRAITS[t].name).join('<br>')}</div>
+         <div class="ct">${d.origins.map(traitTag).join(' · ')}<br>${d.classes.map(traitTag).join(' · ')}${d.unique ? `<br>★ ${DATA.TRAITS[d.unique].name}` : ''}</div>
          <div class="cc">🪙${d.cost}</div>`);
       card.style.setProperty('--ub', originColor(d) + '66');
       card.addEventListener('click', () => act({ type: 'BUY', slot: i }));
       card.addEventListener('pointerenter', () => { selected = { unitId: id, star: 1 }; renderInfo(); });
       box.appendChild(card);
     });
+  }
+  // El Flaco: si tiene un origen para elegir, se pregunta acá.
+  function renderFlaco() {
+    const bar = $('#flacoBar');
+    const mine = me(), pend = [];
+    if (!spyId && canAct()) {
+      mine.board.forEach((u, i) => u && SIM.flacoPending(u) && pend.push({ u, loc: { zone: 'board', idx: i } }));
+      mine.bench.forEach((u, i) => u && SIM.flacoPending(u) && pend.push({ u, loc: { zone: 'bench', idx: i } }));
+    }
+    if (!pend.length) { bar.style.display = 'none'; return; }
+    const { u, loc } = pend[0], d = SIM.def(u.unitId);
+    const options = d.origins.filter(o => !u.flaco.chosen.includes(o));
+    bar.style.display = 'flex';
+    bar.innerHTML = `<span>🍃 <b>El Flaco</b> ${u.flaco.chosen.length ? `(ya es ${u.flaco.chosen.map(o => DATA.TRAITS[o].name).join(', ')}) suma` : 'elegí'} un origen:</span>`;
+    for (const o of options) {
+      const b = el('button', '', traitTag(o));
+      b.addEventListener('click', () => act({ type: 'FLACO', loc, origin: o }));
+      bar.appendChild(b);
+    }
   }
   function renderBench() {
     const v = viewed(), box = $('#bench'); box.innerHTML = '';
@@ -887,6 +926,14 @@ button.primary{border-color:var(--accent);background:#3a1a16}
       else if (ev.t === 'cast') addFloater(ev.s, ev.n, '#f5c542', 18, now);
       else if (ev.t === 'stun') addFloater(ev.d, '💫', '#fff', 16, now);
       else if (ev.t === 'push') addFloater(ev.d, '¡POGO!', '#ff7a3c', 15, now);
+      else if (ev.t === 'miss' && !many) addFloater(ev.d, 'esquiva', '#7ad66a', 12, now);
+      else if (ev.t === 'silence') addFloater(ev.d, '🔇', '#fff', 16, now);
+      else if (ev.t === 'confuse') addFloater(ev.d, '😵', '#fff', 16, now);
+      else if (ev.t === 'slow' && !many) addFloater(ev.d, '❄', '#7fe0ff', 15, now);
+      else if (ev.t === 'control') addFloater(ev.d, '💻 HACKEADO', '#3cd6d6', 16, now);
+      else if (ev.t === 'free') addFloater(ev.d, 'libre', '#ccc', 12, now);
+      else if (ev.t === 'revive') addFloater(ev.d, '¡VUELVE!', '#f5c542', 18, now);
+      else if (ev.t === 'legacy') addFloater(ev.s, 'GRACIAS TOTALES', '#f5c542', 18, now);
       else if (ev.t === 'die') fx(ev.d).died = now;
     }
   }
@@ -1102,8 +1149,11 @@ button.primary{border-color:var(--accent);background:#3a1a16}
         const st = SIM.balanceStats(summaries);
         console.log(`%c${M} partidas en ${((performance.now() - t0) / 1000).toFixed(1)}s · ${st.rondasProm} rondas en promedio`, 'font-weight:bold');
         console.log('Personalidades'); console.table(st.personalidades);
-        console.log('Rasgos activos al final'); console.table(st.rasgos);
-        console.log('Unidades en tableros ganadores'); console.table(st.unidadesGanadoras.slice(0, 15));
+        console.log('Orígenes'); console.table(st.origenes);
+        console.log('Clases'); console.table(st.clases);
+        console.log('Únicas'); console.table(st.unicas);
+        console.log('Casi nunca activos'); console.table(st.casiNunca);
+        console.log('Unidades en tableros ganadores'); console.table(st.unidadesGanadoras.slice(0, 10));
         resolve(st);
       };
       step();
@@ -1111,7 +1161,7 @@ button.primary{border-color:var(--accent);background:#3a1a16}
   };
 
   // ---------- arranque ----------
-  window.GAME = { SIM, NET, DATA, get state() { return state; }, get client() { return client; }, get session() { return session; } };
+  window.GAME = { SIM, NET, DATA, get state() { return state; }, get client() { return client; }, get session() { return session; }, get transport() { return T; } }; // para depurar desde la consola
   (async () => {
     const saved = loadJSON(ONLINE_KEY);
     const sala = new URLSearchParams(location.search).get('sala');
@@ -1126,7 +1176,7 @@ button.primary{border-color:var(--accent);background:#3a1a16}
       if (sala) { openModal('online'); requestAnimationFrame(frame); return; }
     }
     const tree = loadJSON(LOCAL_KEY);
-    if (tree && tree.rooms && tree.rooms.LOCAL && tree.rooms.LOCAL.state) resumeLocal(tree);
+    if (tree && tree.rooms && tree.rooms.LOCAL && tree.rooms.LOCAL.state && tree.rooms.LOCAL.meta.dataVersion === DATA.VERSION) resumeLocal(tree);
     else openModal();
     requestAnimationFrame(frame);
   })();
