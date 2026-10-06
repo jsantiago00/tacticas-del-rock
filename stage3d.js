@@ -387,6 +387,24 @@ const STAGE3D = (() => {
       if (!b) return;
       b.m.material = burstMat(color); b.m.position.set(pos.x, 0.3, pos.z); b.t = 0; b.size = size; b.dur = dur; b.m.visible = true;
     }
+    // haces de luz y íconos que suben (cuando un músico activa una sinergia)
+    const beamGeo = new T.CylinderGeometry(0.55, 0.75, 7, 20, 1, true);
+    const beams = [];
+    for (let i = 0; i < 12; i++) { const m = new T.Mesh(beamGeo, burstMat(0xffffff)); m.visible = false; scene.add(m); beams.push({ m, t: 1, doll: null }); }
+    const floatIcons = [];
+    for (let i = 0; i < 12; i++) { const sp = new T.Sprite(starMats[0]); sp.scale.set(0.7, 0.7, 1); sp.visible = false; scene.add(sp); floatIcons.push({ sp, t: 1, doll: null }); }
+    const emojiMats = {};
+    const emojiMat = ch => emojiMats[ch] || (emojiMats[ch] = new T.SpriteMaterial({ depthWrite: false, map: textTex('em' + ch, (g, w, h) => { g.font = '48px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.shadowColor = '#000'; g.shadowBlur = 6; g.fillText(ch, w / 2, h / 2 + 2); }, 64, 64) }));
+    function traitPulse(uids, color, emoji) {
+      for (const uid of uids) {
+        const d = dolls.get('u' + uid); if (!d || !d.grp.visible) continue;
+        const b = beams.find(x => x.t >= 1), f = floatIcons.find(x => x.t >= 1);
+        if (b) { b.m.material = burstMat(color); b.doll = d; b.t = 0; b.m.visible = true; }
+        if (f && emoji) { f.sp.material = emojiMat(emoji); f.doll = d; f.t = 0; f.sp.visible = true; }
+        burst(d.home, color, 1.5, 0.6); // en su lugar de destino (puede estar todavía en camino)
+        d.cast = 0; // un saltito de festejo
+      }
+    }
     // números de daño: divs reciclados sobre el canvas
     const nums = [];
     for (let i = 0; i < 40; i++) { const el = document.createElement('div'); el.className = 'dmg'; el.style.display = 'none'; overlay.appendChild(el); nums.push({ el, t: 1, doll: null, off: 0 }); }
@@ -415,8 +433,8 @@ const STAGE3D = (() => {
         d.inBench = inBench;
         const p = inBench ? benchWorld(e.idx) : cellWorld(ROWS + Math.floor(e.idx / COLS), e.idx % COLS);
         d.home.set(p.x, 0, p.z);
-        if (fresh) { d.grp.position.copy(d.home); d.grp.position.y = 3; d.moving = 1; }
-        else if (d.grp.position.distanceTo(d.home) > 0.05 && dragKey !== key) d.moving = 1;
+        if (fresh) { d.grp.position.copy(d.home); d.grp.position.y = 3; d.moving = 1; d.landing = true; }
+        else if (d.grp.position.distanceTo(d.home) > 0.05 && dragKey !== key) { d.moving = 1; d.landing = true; }
         setStar(d, e.star, true);
         d.scale = STAR_SCALE[e.star - 1] * (inBench ? 0.85 : 1);
         d.grp.scale.setScalar(d.scale);
@@ -631,7 +649,7 @@ const STAGE3D = (() => {
         if (d.celeb > 0) { d.celeb -= dt; y += Math.abs(Math.sin(t * 7 + d.phase)) * 0.5; d.f.armR.rotation.set(-2.8, 0, 0.3); d.f.armL.rotation.set(-2.8, 0, -0.3); }
         if (d.moving && !u) {
           V.subVectors(d.home, d.grp.position); const dist = V.length();
-          if (dist < 0.05) { d.grp.position.copy(d.home); d.moving = 0; }
+          if (dist < 0.05) { d.grp.position.copy(d.home); d.moving = 0; if (d.landing) { d.landing = false; burst(d.home, 0xd9b98a, 0.9, 0.35); } }
           else { d.grp.position.addScaledVector(V, Math.min(1, dt * 8)); y += Math.min(0.45, dist * 0.35); }
         } else if (u && d.moving) y += Math.abs(Math.sin(t * 12 + d.phase)) * 0.18;
         if (d.lunge > 0) { d.lunge = Math.max(0, d.lunge - dt * 4); d.f.body.position.z = Math.sin(d.lunge * Math.PI) * 0.35; } else d.f.body.position.z = 0;
@@ -667,6 +685,21 @@ const STAGE3D = (() => {
         b.m.scale.set(s, s, s); b.m.material.opacity = 0.8 * (1 - b.t);
         if (b.t >= 1) b.m.visible = false;
       }
+      for (const b of beams) {
+        if (b.t >= 1) continue;
+        b.t += dt / 1.1;
+        if (b.doll) b.m.position.set(b.doll.grp.position.x, 3.5, b.doll.grp.position.z);
+        b.m.material.opacity = 0.55 * Math.sin(Math.min(1, b.t) * Math.PI);
+        b.m.scale.set(1 + b.t * 0.3, 1, 1 + b.t * 0.3);
+        if (b.t >= 1) { b.m.visible = false; b.doll = null; }
+      }
+      for (const f of floatIcons) {
+        if (f.t >= 1) continue;
+        f.t += dt / 1.4;
+        if (f.doll) f.sp.position.set(f.doll.grp.position.x, 2.6 + f.t * 1.6, f.doll.grp.position.z);
+        f.sp.material.opacity = 1 - f.t * f.t;
+        if (f.t >= 1) { f.sp.visible = false; f.doll = null; f.sp.material.opacity = 1; }
+      }
       for (const n of nums) {
         if (n.t >= 1) continue;
         n.t += dt / 0.8;
@@ -685,7 +718,7 @@ const STAGE3D = (() => {
     requestAnimationFrame(loop);
 
     return {
-      setPlanning, startCombat, combatEvents, setAlpha, celebrate, stopCombat,
+      setPlanning, startCombat, combatEvents, setAlpha, celebrate, stopCombat, traitPulse,
       pick, dropTarget, dragTo, dragEnd, highlight, setQuality,
       get fps() { return lastFps; }, get quality() { return qLevel; },
       get gpu() { try { const gl = renderer.getContext(), ext = gl.getExtension('WEBGL_debug_renderer_info'); return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER); } catch (e) { return ''; } },

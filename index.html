@@ -141,6 +141,38 @@ button{font-family:inherit}
 
 #toast{position:absolute;left:50%;top:calc(92px + env(safe-area-inset-top,0px));transform:translate(-50%,-8px);background:var(--panel);border:1px solid var(--gold);border-radius:10px;padding:8px 14px;font-size:16px;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;max-width:min(520px,80vw);text-align:center;z-index:20}
 #toast.on{opacity:1;transform:translate(-50%,0)}
+#toast.err{border-color:#ff7a63;color:#ffd0c8;animation:shake .35s}
+@keyframes shake{0%,100%{margin-left:0}20%{margin-left:-10px}40%{margin-left:9px}60%{margin-left:-6px}80%{margin-left:4px}}
+/* cartel de sinergia / convocatoria / estrella */
+#pop{position:absolute;left:50%;top:30%;transform:translate(-50%,-50%) scale(.6);opacity:0;pointer-events:none;text-align:center;z-index:6;
+  font-family:"Big Shoulders Display",Impact,sans-serif;font-size:56px;line-height:.95;letter-spacing:1px;text-shadow:0 4px 18px #000,0 0 30px var(--pc,#f2a541);color:var(--pc,#f2a541);white-space:nowrap}
+#pop small{display:block;font-family:"Barlow Semi Condensed",sans-serif;font-weight:700;font-size:20px;color:var(--ink);text-shadow:0 2px 8px #000;margin-top:6px;letter-spacing:0;white-space:normal;max-width:min(560px,90vw)}
+#pop.on{animation:pop 2.1s ease-out forwards}
+@keyframes pop{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}12%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}22%{transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-62%) scale(1)}}
+/* setlist: fila que sube de umbral, que baja, y vista previa */
+.trait.pop{animation:tpop 1.6s ease-out}
+@keyframes tpop{0%{background:#fff3c4;transform:scale(1)}15%{background:#ffd76a;transform:scale(1.06)}100%{background:transparent;transform:scale(1)}}
+.trait.pop .dot{box-shadow:0 0 0 4px rgba(242,165,65,.5)}
+.trait.down{animation:tdown .5s}
+@keyframes tdown{0%,100%{margin-left:0}30%{margin-left:-6px}60%{margin-left:5px}}
+.trait.prev{opacity:1!important;background:#eef4ff;outline:2px dashed #7fb3ff;outline-offset:-2px}
+.trait .plus{font-family:"Big Shoulders Display",Impact,sans-serif;color:#2a6fdb;margin-left:4px}
+.trait .act{font-size:11px;font-weight:700;color:#fff;background:#2a6fdb;border-radius:4px;padding:0 4px;margin-left:4px}
+.pass small.up{font-size:12px;font-weight:700;color:#2a6fdb;line-height:1.1}
+/* guita que entra y sale */
+#goldFx{position:absolute;right:20px;bottom:150px;pointer-events:none;z-index:4}
+.gfx{position:absolute;right:0;font-family:"Big Shoulders Display",Impact,sans-serif;font-size:30px;animation:gfx 1.2s ease-out forwards;white-space:nowrap}
+.gfx.plus{color:#7ee08f} .gfx.minus{color:#ff7a63}
+@keyframes gfx{0%{opacity:0;transform:translateY(10px)}15%{opacity:1}100%{opacity:0;transform:translateY(-50px)}}
+#gold.bump{animation:bump .35s}
+@keyframes bump{50%{transform:scale(1.18)}}
+#xpWrap.flash{box-shadow:0 0 0 3px #7fb3ff,0 0 16px #7fb3ff}
+#tbar.hurry{animation:hurry .5s infinite alternate}
+@keyframes hurry{to{opacity:.55}}
+#soundBtn{min-height:34px;font-size:16px;padding:0 10px}
+#menu input[type=range]{width:100%}
+@media (prefers-reduced-motion:reduce){ #pop.on,.trait.pop,.trait.down,.gfx,#gold.bump,#toast.err{animation-duration:.01s} }
+@media (max-width:820px), (max-height:520px){ #pop{font-size:36px} #pop small{font-size:15px} #goldFx{bottom:100px;right:10px} }
 #banner{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);font-family:"Big Shoulders Display",Impact,sans-serif;font-size:72px;letter-spacing:2px;pointer-events:none;text-shadow:0 4px 24px #000;display:none;text-align:center;line-height:.95;z-index:4;white-space:nowrap}
 #banner small{display:block;font-size:28px;color:var(--ink)}
 
@@ -247,6 +279,7 @@ button{font-family:inherit}
       <div class="chip" style="display:flex;align-items:center;gap:8px">
         <span><span id="fps" class="big">-- fps</span><span id="gpu"></span></span>
         <button class="btn" id="qual" style="min-height:34px;font-size:14px">Calidad: auto</button>
+        <button class="btn" id="soundBtn" aria-label="Sonido">🔊</button>
         <button class="btn" id="menuBtn" style="min-height:34px;font-size:18px" aria-label="Menú">☰</button>
       </div>
     </div>
@@ -256,6 +289,7 @@ button{font-family:inherit}
     <button class="btn" id="btnNew">Nueva partida</button>
     <button class="btn" id="btnDet">🔬 Chequeo de determinismo</button>
     <button class="btn" id="qual2">Calidad: auto</button>
+    <label>🔊 Volumen <input type="range" id="volume" min="0" max="100" step="5"></label>
     <label id="timerOpt"><input type="checkbox" id="chkTimer"> Timer de 30 s (partida local)</label>
     <div class="help" style="margin:0">Teclas: <b>D</b> cambiar la grilla · <b>F</b> convocatoria · <b>E</b> vender · <b>Espacio</b> listo</div>
   </div>
@@ -268,6 +302,8 @@ button{font-family:inherit}
   <div id="items" aria-label="Equipo"><span class="lbl">Equipo</span><div id="inv" style="display:flex;gap:6px;flex-wrap:wrap"></div><button class="btn" id="recipesBtn">Recetas</button></div>
   <div id="carousel" aria-label="Firma de autógrafos"><h3>Firma de autógrafos</h3><div class="turn" id="carTurn"></div><div id="offers"></div><div id="pickOrder"></div></div>
   <div id="banner"></div>
+  <div id="pop" role="status" aria-live="polite"></div>
+  <div id="goldFx"></div>
 
   <div id="bottom">
     <div id="lvlBox">
@@ -354,6 +390,7 @@ button{font-family:inherit}
 <script src="net.js?v=7"></script>
 <script src="looks.js?v=7"></script>
 <script src="stage3d.js?v=7"></script>
+<script src="sfx.js?v=7"></script>
 <script src="firebase-config.js?v=7"></script>
 <script src="firebase-transport.js?v=7"></script>
 <script>
@@ -379,7 +416,8 @@ button{font-family:inherit}
   let ficha = null;             // {uid?, owner?, unitId, star, cid?}
   let selectedUid = null;       // músico propio elegido para mover
   let spyId = null, replay = null, drag = null, hoverUid = null, selItem = null, itemDrag = null;
-  let prefs = { timer: false, speed: 1, name: 'Vos', quality: 'auto' };
+  let prefs = { timer: false, speed: 1, name: 'Vos', quality: 'auto', volume: 0.5, muted: false };
+  let prevMine = null, justUp = {}, justDown = {}, previewUnit = null, lastTick = -1;
   let shownCombatKey = null, beforeCombat = null, endShownFor = null, phaseStart = { key: null, at: 0 };
 
   const me = () => state.players[localPlayerId];
@@ -400,12 +438,14 @@ button{font-family:inherit}
 
   try { Object.assign(prefs, JSON.parse(localStorage.getItem(PREF_KEY)) || {}); } catch (e) {}
   const savePrefs = () => { try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); } catch (e) {} };
+  SFX.setVolume(prefs.volume ?? 0.5); SFX.setMuted(!!prefs.muted);
   const loadJSON = k => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
   const saveJSON = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
   let toastTimer = null;
-  function toast(msg, ms = 2600) {
+  function toast(msg, ms = 2600, err = false) {
     const t = $('#toast'); t.textContent = msg; t.classList.add('on');
+    t.classList.remove('err'); if (err) { void t.offsetWidth; t.classList.add('err'); }
     clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), ms);
   }
 
@@ -426,7 +466,7 @@ button{font-family:inherit}
   function teardown() {
     if (replay && stage) stage.stopCombat();
     if (session) session.destroy();
-    session = client = null; state = null; replay = null; spyId = null; ficha = null; selectedUid = null;
+    session = client = null; state = null; replay = null; spyId = null; ficha = null; selectedUid = null; prevMine = null; previewUnit = null;
     shownCombatKey = beforeCombat = endShownFor = null;
     if (srv) srv.onChange = null;
     srv = null; T = null; online = false;
@@ -512,7 +552,7 @@ button{font-family:inherit}
       beforeCombat = state;
       if (mode !== 'combat') mode = 'planning';
     } else if (ph.name === 'carousel') {
-      if (mode !== 'combat') mode = 'carousel';
+      if (mode !== 'combat') { if (mode !== 'carousel') SFX.play('carousel'); mode = 'carousel'; }
     } else if (ph.name === 'combat' && ph.key !== shownCombatKey && !replay) {
       shownCombatKey = ph.key;
       startCombatView();
@@ -525,10 +565,12 @@ button{font-family:inherit}
   }
 
   // ---------- acciones ----------
+  const ACT_SFX = { BUY: 'buy', SELL: 'sell', REROLL: 'reroll', BUY_XP: 'xp', MOVE: 'place', LOCK: 'click', EQUIP: 'equip' };
   function act(action) {
     if (!canAct()) return false;
     const err = client.send(action);
-    if (err) { toast(err); return false; }
+    if (err) { toast(err, 2600, true); SFX.play('error'); return false; }
+    SFX.play(ACT_SFX[action.type]);
     nudge();
     return true;
   }
@@ -582,6 +624,7 @@ button{font-family:inherit}
   // ---------- render ----------
   function render() {
     if (!state || !me()) return;
+    feedback();
     renderTop(); renderSetlist(); renderPlayers(); renderBottom(); renderFlaco(); renderFicha(); renderItems(); renderCarousel();
     const spyBar = $('#spyBar');
     spyBar.style.display = spyId && mode !== 'combat' ? 'block' : 'none';
@@ -591,6 +634,70 @@ button{font-family:inherit}
       const list = arr => arr.map((u, idx) => u && { uid: u.uid, unitId: u.unitId, star: u.star, idx, items: u.items || [] }).filter(Boolean);
       stage.setPlanning({ board: list(v.board), bench: list(v.bench), selected: spyId ? null : selectedUid, spy: !!spyId });
     }
+  }
+  // ---------- feedback: comparar con lo anterior y festejar lo que cambió ----------
+  function tierText(T, lvl) {
+    if (T.solo) return `Cada Solista +${T.solo[lvl] ?? 0}% vida, daño y poder`;
+    return (traitLevelsText(T).split('\n')[lvl] || '').replace(/^\(\d+\) /, '');
+  }
+  function bigPop(title, sub, color) {
+    const p = $('#pop');
+    p.style.setProperty('--pc', color || '#f2a541');
+    p.innerHTML = esc(title) + (sub ? `<small>${esc(sub)}</small>` : '');
+    p.classList.remove('on'); void p.offsetWidth; p.classList.add('on');
+  }
+  function goldFloat(diff) {
+    const e = el('div', 'gfx ' + (diff > 0 ? 'plus' : 'minus'), (diff > 0 ? '+$' : '−$') + Math.abs(diff));
+    $('#goldFx').appendChild(e); setTimeout(() => e.remove(), 1300);
+    const g = $('#gold'); g.classList.remove('bump'); void g.offsetWidth; g.classList.add('bump');
+  }
+  function feedback() {
+    const p = me();
+    const tr = SIM.computeTraits(SIM.boardSnapshot(p));
+    const cur = { id: localPlayerId, level: p.level, gold: p.gold, traits: {}, stars: {}, items: {} };
+    for (const t of Object.keys(tr)) cur.traits[t] = DATA.TRAITS[t].solo ? (tr[t].bonus ? 4 - DATA.TRAITS[t].solo.indexOf(tr[t].bonus) : -1) : tr[t].level;
+    for (const u of [...p.board, ...p.bench]) if (u) { cur.stars[u.uid] = u.star; cur.items[u.uid] = (u.items || []).join(','); }
+    const prev = prevMine;
+    prevMine = cur;
+    if (!prev || prev.id !== cur.id || mode === 'combat') return;
+    if (cur.gold !== prev.gold) goldFloat(cur.gold - prev.gold);
+    if (cur.level > prev.level) {
+      SFX.play('levelup');
+      bigPop(`¡CONVOCATORIA ${cur.level}!`, 'Un lugar más en el escenario', '#7fb3ff');
+      const x = $('#xpWrap'); x.classList.add('flash'); setTimeout(() => x.classList.remove('flash'), 900);
+    }
+    // estrellas
+    let starUp = null;
+    for (const uid of Object.keys(cur.stars)) if (prev.stars[uid] && cur.stars[uid] > prev.stars[uid] && (!starUp || cur.stars[uid] > starUp.star)) starUp = { uid: +uid, star: cur.stars[uid] };
+    if (starUp) {
+      const u = [...p.board, ...p.bench].find(x => x && x.uid === starUp.uid);
+      SFX.play('combine', starUp.star);
+      bigPop(`${'★'.repeat(starUp.star)} ${SIM.def(u.unitId).short.toUpperCase()}`, starUp.star === 3 ? '¡Tres estrellas! Leyenda viva' : 'Tres copias: subió de estrella', '#f0b429');
+    }
+    // fusiones de equipo
+    for (const uid of Object.keys(cur.items)) {
+      const a = (prev.items[uid] || '').split(',').filter(Boolean), b = cur.items[uid].split(',').filter(Boolean);
+      const fused = b.find(i => !SIM.isComponent(i) && !a.includes(i));
+      if (fused && prev.items[uid] !== undefined) { SFX.play('fusion'); toast(`${itemIcon(fused)} ¡${itemName(fused)}! ${itemDesc(fused)}`, 3500); }
+    }
+    // sinergias que suben o bajan
+    const ups = [], downs = [];
+    for (const t of new Set([...Object.keys(cur.traits), ...Object.keys(prev.traits)])) {
+      const a = prev.traits[t] ?? -1, b = cur.traits[t] ?? -1;
+      if (b > a) ups.push(t); else if (b < a && a >= 0) downs.push(t);
+    }
+    const now = performance.now();
+    for (const t of ups) justUp[t] = now;
+    for (const t of downs) justDown[t] = now;
+    if (ups.length) {
+      const rank = t => (DATA.TRAITS[t].kind === 'unica' ? 100 : 0) + (cur.traits[t] || 0) * 10 + (DATA.TRAITS[t].kind === 'origen' ? 1 : 0);
+      const best = ups.sort((a, b) => rank(b) - rank(a))[0], T = DATA.TRAITS[best], lvl = cur.traits[best];
+      const uidsWith = t => p.board.filter(u => u && SIM.traitsOfEntry({ unitId: u.unitId, origins: u.flaco ? u.flaco.chosen : undefined, items: u.items }).includes(t)).map(u => u.uid);
+      for (const t of ups) stage.traitPulse(uidsWith(t), new THREE.Color(DATA.TRAITS[t].color).getHex(), DATA.TRAITS[t].icon);
+      if (T.kind === 'unica') SFX.play('unique'); else SFX.play('trait', T.solo ? 1 : lvl);
+      const head = T.kind === 'unica' ? `${T.icon} ${T.name.toUpperCase()}` : T.solo ? `${T.icon} SOLISTAS` : `${T.icon} ${T.name.toUpperCase()} ${T.breakpoints[lvl]}`;
+      bigPop(head + (ups.length > 1 ? ` +${ups.length - 1}` : ''), T.kind === 'unica' ? T.desc : tierText(T, T.solo ? 4 - lvl : lvl), T.color === '#ffffff' ? '#e8ecf4' : T.color);
+    } else if (downs.length) SFX.play('traitDown');
   }
   function nextPairing() {
     if (!state.pairings) return null;
@@ -618,6 +725,7 @@ button{font-family:inherit}
     if (!ph.endsAt || (ph.name !== 'planning' && ph.name !== 'combat')) { $('#tsec').textContent = ph.name === 'planning' ? '∞' : ''; bar.style.width = '100%'; bar.classList.remove('hurry'); return; }
     const left = Math.max(0, (ph.endsAt - T.now()) / 1000), total = Math.max(1, (ph.endsAt - phaseStart.at) / 1000);
     $('#tsec').textContent = Math.ceil(left);
+    if (ph.name === 'planning' && left <= 5 && left > 0 && Math.ceil(left) !== lastTick && canAct() && !client.isReady()) { lastTick = Math.ceil(left); SFX.play('tick'); }
     bar.style.width = Math.min(100, left / total * 100) + '%';
     bar.classList.toggle('hurry', ph.name === 'planning' && left <= 5);
   }
@@ -630,8 +738,17 @@ button{font-family:inherit}
     const fxText = f => f.type === 'castShare' ? `+${f.mana} maná al lanzar` : f.type === 'deathHealTrait' ? `cura ${f.pct}% al morir uno` : f.type === 'deathTeam' ? `al morir: escudo ${f.shield} y +${f.adPct}% daño` : f.type;
     return T.levels.map((lv, i) => `(${T.breakpoints[i]}) ` + Object.entries(lv).map(([k, v]) => (k === 'fx' ? v.map(fxText).join(', ') : `+${v} ${names[k] || k}`)).join(', ')).join('\n');
   }
+  // Vista previa: qué cambiaría en el setlist si este músico sube al escenario.
+  function previewTraits(snap) {
+    if (!previewUnit || spyId) return null;
+    if (snap.some(e => e.unitId === previewUnit.unitId)) return {}; // ya está: no suma
+    return SIM.computeTraits(snap.concat([{ unitId: previewUnit.unitId, star: 1, r: 9, c: 9, origins: previewUnit.origins, items: previewUnit.items }]));
+  }
   function renderSetlist() {
-    const tr = SIM.computeTraits(SIM.boardSnapshot(viewed()));
+    const snap = SIM.boardSnapshot(viewed());
+    const tr = SIM.computeTraits(snap), pv = previewTraits(snap) || {};
+    for (const t of Object.keys(pv)) if (!tr[t]) tr[t] = { count: 0, level: -1, next: DATA.TRAITS[t].breakpoints[0], missing: DATA.TRAITS[t].breakpoints[0], phantom: true };
+    const now = performance.now();
     const kindRank = t => ({ unica: 0, origen: 1, clase: 2 }[DATA.TRAITS[t].kind]);
     const keys = Object.keys(tr).sort((a, b) => (tr[b].level >= 0) - (tr[a].level >= 0) || kindRank(a) - kindRank(b) || tr[a].missing - tr[b].missing || tr[b].count - tr[a].count);
     $('#setlist h3').textContent = spyId ? `Setlist · ${pname(spyId)}` : 'Setlist';
@@ -640,8 +757,11 @@ button{font-family:inherit}
       let sub = T.breakpoints.map((b, i) => (i <= r.level ? `<b>${b}</b>` : b)).join(' / ') + (r.next ? ` · faltan ${r.missing}` : '');
       let dot = 'dot';
       if (T.kind === 'unica') { sub = 'Única'; dot += ' uniq'; }
-      if (T.solo) { sub = r.bonus ? `+${r.bonus}% c/u · menos es más` : 'demasiados'; dot += ' solo'; }
-      return `<div class="trait${on ? '' : ' off'}" title="${esc(T.name + '\n' + T.desc + '\n' + traitLevelsText(T))}"><span class="${dot}">${T.kind === 'unica' ? '★' : r.count}</span><div><div class="tn">${T.icon} ${esc(T.name)}</div><div class="tt">${sub}</div></div></div>`;
+      const p2 = pv[k], plus = p2 && p2.count > r.count, act = plus && p2.level > r.level;
+      if (T.solo) { const b = (r.phantom && p2 ? p2 : r).bonus; sub = b ? `+${b}% c/u · menos es más` : 'demasiados'; dot += ' solo'; }
+      if (r.phantom && !T.solo && T.kind !== 'unica') sub = T.breakpoints.join(' / ') + ` · faltan ${T.breakpoints[0] - 1} más`;
+      const cls = (on ? '' : ' off') + (now - (justUp[k] || 0) < 1600 ? ' pop' : '') + (now - (justDown[k] || 0) < 600 ? ' down' : '') + (plus ? ' prev' : '');
+      return `<div class="trait${cls}" title="${esc(T.name + '\n' + T.desc + '\n' + traitLevelsText(T))}"><span class="${dot}">${T.kind === 'unica' ? '★' : r.count}</span><div><div class="tn">${T.icon} ${esc(T.name)}${plus ? '<span class="plus">+1</span>' : ''}${act ? '<span class="act">¡ACTIVA!</span>' : ''}</div><div class="tt">${sub}</div></div></div>`;
     }).join('') || '<div class="tt">Subí músicos al escenario.</div>';
   }
   function renderPlayers() {
@@ -682,8 +802,11 @@ button{font-family:inherit}
       if (!id) return '<div class="pass sold" aria-hidden="true"></div>';
       const d = DATA.UNITS[id], have = SIM.countCopies(p, id, 1);
       const traits = d.origins.map(t => DATA.TRAITS[t].name).concat(d.classes.map(t => DATA.TRAITS[t].name));
+      const snap = SIM.boardSnapshot(p), base = SIM.computeTraits(snap);
+      const withIt = snap.some(e => e.unitId === id) ? base : SIM.computeTraits(snap.concat([{ unitId: id, star: 1, r: 9, c: 9 }]));
+      const ups = Object.keys(withIt).filter(t => withIt[t].level > (base[t] ? base[t].level : -1) && DATA.TRAITS[t].kind !== 'unica');
       return `<button class="pass${have >= 2 ? ' match' : ''}${p.gold < d.cost ? ' poor' : ''}" data-buy="${i}" aria-label="Contratar a ${esc(d.name)} por $${d.cost}">
-        <i style="background:${COST_COLOR[d.cost]}"></i><div><b>${esc(d.short)}${d.unique ? ' ★' : ''}</b><span>${esc(traits.slice(0, 3).join(' · '))}</span><em>$${d.cost}</em></div></button>`;
+        <i style="background:${COST_COLOR[d.cost]}"></i><div><b>${esc(d.short)}${d.unique ? ' ★' : ''}</b><span>${esc(traits.slice(0, 3).join(' · '))}</span>${ups.length ? `<small class="up">▲ ${esc(ups.map(t => DATA.TRAITS[t].name).join(', '))}</small>` : ''}<em>$${d.cost}</em></div></button>`;
     }).join('');
   }
   function renderFlaco() {
@@ -793,7 +916,7 @@ button{font-family:inherit}
   function tap(x, y) {
     if (!state) return;
     const h = stage.pick(x, y);
-    if (!h) { selectedUid = null; closeFicha(); render(); return; }
+    if (!h) { selectedUid = null; previewUnit = null; closeFicha(); render(); return; }
     if (h.kind === 'cunit') {
       const u = replay && replay.cs.units[h.cid];
       if (u) openFicha({ unitId: u.unitId, star: u.star, cid: h.cid, items: u.items || [] });
@@ -805,10 +928,11 @@ button{font-family:inherit}
       if (selectedUid === h.uid) { selectedUid = null; closeFicha(); render(); return; }
       selectedUid = canAct() ? h.uid : null;
       openFicha(unitInfo(h.uid));
+      { const u = unitByUid(me(), h.uid), onBench = me().bench.some(x => x && x.uid === h.uid); previewUnit = u && onBench && canAct() ? { unitId: u.unitId, origins: u.flaco ? u.flaco.chosen : undefined, items: u.items } : null; }
       render();
       return;
     }
-    if (selectedUid && canAct()) { moveUnit(selectedUid, { zone: h.kind, idx: h.idx }); render(); }
+    if (selectedUid && canAct()) { moveUnit(selectedUid, { zone: h.kind, idx: h.idx }); previewUnit = null; render(); }
   }
   cv.addEventListener('contextmenu', e => { // click derecho = vender
     e.preventDefault();
@@ -822,8 +946,9 @@ button{font-family:inherit}
   });
   $('#passes').addEventListener('pointerover', e => { // en compu, pasar por un pase muestra la ficha
     const b = e.target.closest('[data-buy]');
-    if (b && e.pointerType === 'mouse') { const id = me().shop[+b.dataset.buy]; if (id) openFicha({ unitId: id, star: 1 }); }
+    if (b && e.pointerType === 'mouse') { const id = me().shop[+b.dataset.buy]; if (id) { openFicha({ unitId: id, star: 1 }); previewUnit = { unitId: id }; renderSetlist(); } }
   });
+  $('#passes').addEventListener('pointerleave', () => { if (previewUnit) { previewUnit = null; renderSetlist(); } });
   $('#players').addEventListener('click', e => { const r = e.target.closest('[data-pid]'); if (r && mode !== 'combat') setSpy(spyId === r.dataset.pid ? null : r.dataset.pid); });
   $('#spyBar').addEventListener('click', () => setSpy(null));
   $('#inv').addEventListener('pointerdown', e => {
@@ -847,7 +972,7 @@ button{font-family:inherit}
   $('#offers').addEventListener('click', e => {
     const b = e.target.closest('[data-offer]'); if (!b || b.disabled || !client) return;
     const err = client.send({ type: 'PICK', idx: +b.dataset.offer });
-    if (err) toast(err); else nudge();
+    if (err) { toast(err, 2600, true); SFX.play('error'); } else { SFX.play('pick'); nudge(); }
   });
   $('#recipesBtn').addEventListener('click', () => {
     const I = DATA.ITEMS;
@@ -870,6 +995,7 @@ button{font-family:inherit}
   // ---------- ronda y combate ----------
   function onReady() {
     if (!canAct()) return;
+    SFX.play('ready');
     client.ready();
     nudge();
     renderTop();
@@ -897,10 +1023,19 @@ button{font-family:inherit}
     rp.acc += dt * C.TICK_RATE * rp.speed;
     while (rp.acc >= 1 && !rp.cs.done) {
       SIM.stepCombat(rp.cs); stage.combatEvents(rp.cs.events); rp.acc -= 1;
+      combatSounds(rp.cs.events, rp.speed);
       if (rp.cs.events.some(e => e.t === 'overtime')) { toast('¡Tiempo extra! La pelea se acelera', 2500); renderTop(); }
     }
     stage.setAlpha(rp.cs.done ? 0 : rp.acc);
     if (rp.cs.done) endCombat();
+  }
+  const EV_SFX = { cast: 'cast', die: 'death', miss: 'miss', revive: 'revive', control: 'glitch', overtime: 'overtime', legacy: 'unique', secondwind: 'revive' };
+  function combatSounds(events, speed) {
+    for (const ev of events) {
+      if (ev.t === 'atk') { if (speed <= 2) SFX.play('hit'); }
+      else if (ev.t === 'dmg' && ev.c) SFX.play('crit');
+      else if (EV_SFX[ev.t]) SFX.play(EV_SFX[ev.t]);
+    }
   }
   function skipCombat() {
     const rp = replay;
@@ -916,6 +1051,7 @@ button{font-family:inherit}
     if (rp.cs.hash !== rp.entry.hash) console.error(`DESYNC ronda ${rp.entry.round}: host ${rp.entry.hash}, local ${rp.cs.hash}`);
     const myTeam = rp.mySide, won = rp.cs.winner === (myTeam === 0 ? 'A' : 'B');
     stage.celebrate(won ? myTeam : 1 - myTeam);
+    SFX.play(won ? 'win' : rp.cs.winner === 'draw' ? 'traitDown' : 'lose');
     const dmg = rp.hpBefore - me().hp;
     const b = $('#banner');
     b.style.display = 'block';
@@ -997,6 +1133,12 @@ button{font-family:inherit}
   $('#lock').addEventListener('click', () => { if (act({ type: 'LOCK' })) toast(me().shopLocked ? 'Grilla desbloqueada' : 'Grilla bloqueada para la próxima ronda'); });
   $('#ready').addEventListener('click', onReady);
   $('#menuBtn').addEventListener('click', () => $('#menu').classList.toggle('on'));
+  const soundIcon = () => { $('#soundBtn').textContent = prefs.muted || !prefs.volume ? '🔇' : '🔊'; };
+  $('#soundBtn').addEventListener('click', () => { prefs.muted = !prefs.muted; SFX.setMuted(prefs.muted); savePrefs(); soundIcon(); if (!prefs.muted) SFX.play('click'); });
+  $('#volume').value = Math.round((prefs.volume ?? 0.5) * 100);
+  $('#volume').addEventListener('input', e => { prefs.volume = +e.target.value / 100; SFX.setVolume(prefs.volume); if (prefs.muted && prefs.volume) { prefs.muted = false; SFX.setMuted(false); } savePrefs(); soundIcon(); });
+  $('#volume').addEventListener('change', () => SFX.play('buy'));
+  soundIcon();
   const cycleQuality = () => {
     const cycle = ['auto', 'alta', 'media', 'baja'];
     prefs.quality = cycle[(cycle.indexOf(prefs.quality || 'auto') + 1) % cycle.length]; savePrefs();
