@@ -54,7 +54,6 @@ button{font-family:inherit}
 
 /* izquierda: setlist */
 #setlist{position:absolute;left:12px;top:calc(84px + env(safe-area-inset-top,0px));width:220px;max-height:calc(100% - 340px);overflow:auto;background:var(--paper);color:var(--marker);padding:14px 14px 8px;transform:rotate(-1.2deg);box-shadow:0 6px 0 rgba(0,0,0,.3);z-index:2}
-#setlist h3{font-family:"Permanent Marker",cursive;font-weight:400;font-size:22px;margin:0 0 4px}
 .trait{display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid #dfe1e6}
 .trait.off{opacity:.45}
 .dot{width:30px;height:30px;border-radius:50%;background:#b8862b;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex:none;font-size:14px}
@@ -109,12 +108,36 @@ button{font-family:inherit}
 #money{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
 #gold{font-size:46px;line-height:1;color:var(--gold)}
 #interest{font-size:13px;color:var(--muted);text-align:right}
-#items{position:absolute;left:14px;bottom:205px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;max-width:min(520px,calc(100% - 260px));z-index:3}
-#items .lbl{font-size:13px;color:var(--muted);margin-right:2px}
-.it{width:40px;height:40px;border-radius:8px;background:#24365a;border:2px solid #4b6290;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:grab;padding:0;touch-action:none}
-.it.full{border-color:var(--gold)}
-.it.sel{outline:3px solid var(--gold);outline-offset:1px}
-#recipesBtn{min-height:34px;font-size:13px;padding:0 10px}
+/* setlist | objetos */
+.stabs{display:flex;align-items:baseline;gap:5px;margin:0 0 4px;white-space:nowrap}
+.stabs button{background:none;border:0;padding:0;cursor:pointer;font-family:"Permanent Marker",cursive;font-size:19px;white-space:nowrap;color:#9aa3b8;line-height:1.1}
+.stabs button.on{color:var(--marker);text-decoration:underline;text-decoration-thickness:3px;text-underline-offset:4px}
+.stabs .sep{color:#9aa3b8;font-size:20px}
+.stabs .cnt{display:inline-block;min-width:20px;height:20px;border-radius:10px;background:#b8862b;color:#fff;font:700 13px/20px "Barlow Semi Condensed",sans-serif;text-align:center;padding:0 5px;vertical-align:3px;margin-left:2px}
+.stabs .cnt.zero{background:#9aa3b8}
+#spyName{font-size:13px;color:#4b5672;margin:-2px 0 4px}
+#itemsPane{display:none}
+#setlist.items #itemsPane{display:block} #setlist.items #traits{display:none}
+.icount{font-size:13px;color:#4b5672;margin-bottom:4px}
+.irow{display:flex;align-items:center;gap:8px;padding:5px 2px;border-bottom:1px solid #dfe1e6;cursor:grab;touch-action:none;border-radius:6px}
+.irow:hover{background:#f3f5fa}
+.irow.sel{background:#fff3c4;outline:2px solid var(--gold)}
+.irow .it{width:34px;height:34px;border-radius:8px;background:#24365a;border:2px solid #4b6290;display:flex;align-items:center;justify-content:center;font-size:18px;flex:none}
+.irow.full .it{border-color:var(--gold)}
+.irow .in{min-width:0}
+.irow .in b{display:block;font-family:"Permanent Marker",cursive;font-weight:400;font-size:14px;line-height:1.1;color:var(--marker)}
+.irow .in span{display:block;font-size:12px;color:#4b5672;line-height:1.2}
+#recipesBtn{min-height:32px;font-size:13px;padding:0 10px;margin:8px 0 4px;width:100%}
+/* leyenda de la sinergia (al lado del setlist) */
+#legend{position:absolute;left:244px;top:100px;width:270px;background:var(--paper);color:#1b2233;padding:12px 14px;box-shadow:0 6px 0 rgba(0,0,0,.3);border-left:6px solid var(--lc,#b8862b);display:none;z-index:5;pointer-events:none;font-size:14px;line-height:1.3}
+#legend h4{margin:0;font-family:"Permanent Marker",cursive;font-weight:400;font-size:19px;color:var(--marker)}
+#legend .k{font-size:12px;color:#4b5672;margin-bottom:6px}
+#legend .d{margin:0 0 6px}
+#legend .lv{margin:2px 0;color:#6b7590} #legend .lv.on{color:#1b2233;font-weight:700} #legend .lv.on::before{content:"▶ ";color:var(--lc,#b8862b)}
+#legend .ul{margin-top:6px} #legend .ul b{font-size:12px;color:#4b5672;display:block;text-transform:uppercase;letter-spacing:.5px}
+#legend .u{display:inline-block;margin:2px 3px 0 0;padding:1px 6px;border-radius:5px;font-size:13px;border-left:4px solid var(--cc)}
+#legend .u.have{background:#e7f5e9;font-weight:700} #legend .u.bench{background:#eef1f7} #legend .u.miss{background:#f3f3f3;color:#6b7590}
+.trait.hov{background:#f3f5fa}
 #carousel{position:absolute;left:50%;top:calc(140px + env(safe-area-inset-top,0px));transform:translateX(-50%);width:min(760px,calc(100% - 500px));min-width:320px;background:#16233a;border:1px solid var(--gold);border-radius:14px;padding:12px 14px;display:none;z-index:4}
 #carousel h3{margin:0 0 4px;font-family:"Permanent Marker",cursive;font-weight:400;font-size:24px;color:var(--gold)}
 #carousel .turn{font-size:15px;color:var(--muted);margin-bottom:8px}
@@ -234,7 +257,6 @@ button{font-family:inherit}
   #timer{width:auto} #tsec{font-size:22px}
   #gpu,#fps{display:none}
   #setlist{width:128px;top:calc(76px + env(safe-area-inset-top,0px));padding:10px 8px 6px;max-height:calc(100% - 200px)}
-  #setlist h3{font-size:16px}
   .dot{width:22px;height:22px;font-size:12px}
   .tn{font-size:13px} .tt{display:none}
   #players{width:62px;top:calc(76px + env(safe-area-inset-top,0px));padding:4px}
@@ -255,7 +277,9 @@ button{font-family:inherit}
   #toast{top:calc(62px + env(safe-area-inset-top,0px));font-size:13px}
   #flacoBar{bottom:110px;font-size:13px}
   #banner{font-size:46px} #banner small{font-size:20px}
-  #items{left:8px;bottom:112px;max-width:calc(100% - 80px)} #items .lbl{display:none} .it{width:34px;height:34px;font-size:17px}
+  .stabs button{font-size:15px} .stabs .sep{font-size:14px} .stabs .cnt{min-width:16px;height:16px;font-size:11px;line-height:16px}
+  .irow .in span,.icount{display:none} .irow .in b{font-size:12px} .irow .it{width:28px;height:28px;font-size:15px}
+  #legend{left:146px;width:min(260px,calc(100% - 220px));font-size:12px;padding:8px 10px}
   #carousel{width:calc(100% - 90px);left:8px;transform:none;top:calc(76px + env(safe-area-inset-top,0px))} #offers{grid-template-columns:repeat(3,1fr)} .offer b{font-size:15px}
   #spyBar{top:calc(62px + env(safe-area-inset-top,0px));font-size:13px}
 }
@@ -289,17 +313,23 @@ button{font-family:inherit}
     <button class="btn" id="btnNew">Nueva partida</button>
     <button class="btn" id="btnDet">🔬 Chequeo de determinismo</button>
     <button class="btn" id="qual2">Calidad: auto</button>
+    <button class="btn" id="btnCam">🎥 Centrar la cámara</button>
     <label>🔊 Volumen <input type="range" id="volume" min="0" max="100" step="5"></label>
     <label id="timerOpt"><input type="checkbox" id="chkTimer"> Timer de 30 s (partida local)</label>
-    <div class="help" style="margin:0">Teclas: <b>D</b> cambiar la grilla · <b>F</b> convocatoria · <b>E</b> vender (con el mouse arriba del músico) · <b>Espacio</b> listo</div>
+    <div class="help" style="margin:0">Teclas: <b>D</b> cambiar la grilla · <b>F</b> convocatoria · <b>E</b> vender (con el mouse arriba del músico) · <b>Espacio</b> listo<br>Cámara: rueda del mouse o pellizco para el zoom; arrastrá el piso (o con el botón derecho) para moverla; doble clic la centra.</div>
   </div>
 
   <div id="toast" role="status" aria-live="polite"></div>
   <div id="spyBar"></div>
-  <aside id="setlist" aria-label="Sinergias activas"><h3>Setlist</h3><div id="traits"></div></aside>
+  <aside id="setlist" aria-label="Sinergias y objetos">
+    <div class="stabs" role="tablist"><button data-tab="traits" class="on" role="tab">Setlist</button><span class="sep">|</span><button data-tab="items" role="tab">Objetos <span class="cnt zero" id="itemCount">0</span></button></div>
+    <div id="spyName"></div>
+    <div id="traits"></div>
+    <div id="itemsPane"><div class="icount" id="icount"></div><div id="inv"></div><button class="btn" id="recipesBtn">Recetas</button></div>
+  </aside>
+  <div id="legend" aria-live="polite"></div>
   <aside id="players" aria-label="Público"></aside>
   <div id="flacoBar"></div>
-  <div id="items" aria-label="Equipo"><span class="lbl">Equipo</span><div id="inv" style="display:flex;gap:6px;flex-wrap:wrap"></div><button class="btn" id="recipesBtn">Recetas</button></div>
   <div id="carousel" aria-label="Firma de autógrafos"><h3>Firma de autógrafos</h3><div class="turn" id="carTurn"></div><div id="offers"></div><div id="pickOrder"></div></div>
   <div id="banner"></div>
   <div id="pop" role="status" aria-live="polite"></div>
@@ -386,13 +416,13 @@ button{font-family:inherit}
 </div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="sim.js?v=8"></script>
-<script src="net.js?v=8"></script>
-<script src="looks.js?v=8"></script>
-<script src="stage3d.js?v=8"></script>
-<script src="sfx.js?v=8"></script>
-<script src="firebase-config.js?v=8"></script>
-<script src="firebase-transport.js?v=8"></script>
+<script src="sim.js?v=8.1"></script>
+<script src="net.js?v=8.1"></script>
+<script src="looks.js?v=8.1"></script>
+<script src="stage3d.js?v=8.1"></script>
+<script src="sfx.js?v=8.1"></script>
+<script src="firebase-config.js?v=8.1"></script>
+<script src="firebase-transport.js?v=8.1"></script>
 <script>
 'use strict';
 /* =====================================================================
@@ -600,11 +630,15 @@ button{font-family:inherit}
     if (loc && act({ type: 'EQUIP', item: idx, loc })) toast(`${itemIcon(it)} ${itemName(it)} → ${SIM.def(unitByUid(me(), uid) ? unitByUid(me(), uid).unitId : 'luca').short}`);
     selItem = null; render();
   }
+  // Objetos (pestaña del setlist): ordenados, primero los componentes y después los terminados; iguales, juntos.
   function renderItems() {
-    const p = me(), inv = $('#inv');
-    $('#items').style.display = (p.items.length || canShop()) && !spyId ? 'flex' : 'none';
-    if (selItem != null && selItem >= p.items.length) selItem = null;
-    inv.innerHTML = p.items.map((id, i) => `<button class="it${SIM.isComponent(id) ? '' : ' full'}${selItem === i ? ' sel' : ''}" data-item="${i}" title="${esc(itemName(id) + ': ' + itemDesc(id))}">${itemIcon(id)}</button>`).join('') || '<span class="lbl">vacío</span>';
+    const p = me(), inv = $('#inv'), n = p.items.length;
+    $('#itemCount').textContent = n; $('#itemCount').classList.toggle('zero', !n);
+    $('#icount').textContent = `${n} de ${DATA.ITEMS.MAX_INVENTORY} · arrastralos a un músico (o tocá uno y después al músico)`;
+    if (selItem != null && selItem >= n) selItem = null;
+    const order = p.items.map((id, i) => ({ id, i })).sort((a, b) => (SIM.isComponent(b.id) - SIM.isComponent(a.id)) || itemName(a.id).localeCompare(itemName(b.id)) || a.i - b.i);
+    inv.innerHTML = order.map(({ id, i }) => `<div class="irow${SIM.isComponent(id) ? '' : ' full'}${selItem === i ? ' sel' : ''}" data-item="${i}" role="button"><span class="it">${itemIcon(id)}</span><span class="in"><b>${esc(itemName(id))}</b><span>${esc(itemDesc(id))}</span></span></div>`).join('')
+      || '<div class="tt" style="padding:6px 0">Sin objetos todavía: los dejan los creeps y la firma de autógrafos.</div>';
   }
   function renderCarousel() {
     const box = $('#carousel'), car = state.carousel;
@@ -756,19 +790,56 @@ button{font-family:inherit}
     const now = performance.now();
     const kindRank = t => ({ unica: 0, origen: 1, clase: 2 }[DATA.TRAITS[t].kind]);
     const keys = Object.keys(tr).sort((a, b) => (tr[b].level >= 0) - (tr[a].level >= 0) || kindRank(a) - kindRank(b) || tr[a].missing - tr[b].missing || tr[b].count - tr[a].count);
-    $('#setlist h3').textContent = spyId ? `Setlist · ${pname(spyId)}` : 'Setlist';
+    $('#spyName').textContent = spyId ? '👁 ' + pname(spyId) : '';
     $('#traits').innerHTML = keys.map(k => {
       const T = DATA.TRAITS[k], r = tr[k], on = r.level >= 0;
-      let sub = T.breakpoints.map((b, i) => (i <= r.level ? `<b>${b}</b>` : b)).join(' / ') + (r.next ? ` · faltan ${r.missing}` : '');
+      let sub = T.breakpoints.map((b, i) => (i <= r.level ? `<b>${b}</b>` : b)).join(' / ');
       let dot = 'dot';
       if (T.kind === 'unica') { sub = 'Única'; dot += ' uniq'; }
       const p2 = pv[k], plus = p2 && p2.count > r.count, act = plus && p2.level > r.level;
       if (T.solo) { const b = (r.phantom && p2 ? p2 : r).bonus; sub = b ? `+${b}% c/u · menos es más` : 'demasiados'; dot += ' solo'; }
-      if (r.phantom && !T.solo && T.kind !== 'unica') sub = T.breakpoints.join(' / ') + ` · faltan ${T.breakpoints[0] - 1} más`;
+      if (r.phantom && !T.solo && T.kind !== 'unica') sub = T.breakpoints.join(' / ');
       const cls = (on ? '' : ' off') + (now - (justUp[k] || 0) < 1600 ? ' pop' : '') + (now - (justDown[k] || 0) < 600 ? ' down' : '') + (plus ? ' prev' : '');
-      return `<div class="trait${cls}" title="${esc(T.name + '\n' + T.desc + '\n' + traitLevelsText(T))}"><span class="${dot}">${T.kind === 'unica' ? '★' : r.count}</span><div><div class="tn">${T.icon} ${esc(T.name)}${plus ? '<span class="plus">+1</span>' : ''}${act ? '<span class="act">¡ACTIVA!</span>' : ''}</div><div class="tt">${sub}</div></div></div>`;
+      return `<div class="trait${cls}${hoverTrait === k ? ' hov' : ''}" data-t="${k}"><span class="${dot}">${T.kind === 'unica' ? '★' : r.count}</span><div><div class="tn">${T.icon} ${esc(T.name)}${plus ? '<span class="plus">+1</span>' : ''}${act ? '<span class="act">¡ACTIVA!</span>' : ''}</div><div class="tt">${sub}</div></div></div>`;
     }).join('') || '<div class="tt">Subí músicos al escenario.</div>';
+    renderLegend();
   }
+  // ---------- leyenda de la sinergia: el detalle y quiénes la tienen / quiénes faltan ----------
+  let hoverTrait = null;
+  function unitTraits(u) { return SIM.traitsOfEntry({ unitId: u.unitId, origins: u.flaco ? u.flaco.chosen : undefined, items: u.items }); }
+  function renderLegend() {
+    const box = $('#legend'), t = hoverTrait, row = t && $('#traits').querySelector(`[data-t="${t}"]`);
+    if (!t || !row || $('#setlist').classList.contains('items') || !state) { box.style.display = 'none'; stage.focusUnits([]); return; }
+    const T = DATA.TRAITS[t], v = viewed(), tr = SIM.computeTraits(SIM.boardSnapshot(v))[t];
+    const lvl = tr ? (T.solo ? T.solo.indexOf(tr.bonus) : tr.level) : -1, count = tr ? tr.count : 0;
+    const onBoard = v.board.filter(u => u && unitTraits(u).includes(t)), onBench = v.bench.filter(u => u && unitTraits(u).includes(t));
+    const boardIds = new Set(onBoard.map(u => u.unitId)), benchIds = [...new Set(onBench.map(u => u.unitId))].filter(id => !boardIds.has(id));
+    const all = Object.keys(DATA.UNITS).filter(id => SIM.def(id).traits.includes(t)).sort((a, b) => DATA.UNITS[a].cost - DATA.UNITS[b].cost || DATA.UNITS[a].short.localeCompare(DATA.UNITS[b].short));
+    const missing = all.filter(id => !boardIds.has(id) && !benchIds.includes(id));
+    const chip = (id, cls) => `<span class="u ${cls}" style="--cc:${COST_COLOR[DATA.UNITS[id].cost]}">${esc(DATA.UNITS[id].short)}${cls === 'miss' ? ' · $' + DATA.UNITS[id].cost : ''}</span>`;
+    const levels = T.kind === 'unica' ? '' : traitLevelsText(T).split('\n').map((l, i) => `<div class="lv${i === lvl ? ' on' : ''}">${esc(l)}</div>`).join('');
+    box.style.setProperty('--lc', T.color === '#ffffff' ? '#b8862b' : T.color);
+    box.innerHTML = `<h4>${T.icon} ${esc(T.name)}</h4><div class="k">${{ origen: 'Origen', clase: 'Clase', unica: 'Única' }[T.kind] || ''}${T.kind !== 'unica' ? ` · tenés ${count} en el escenario` : ''}</div>
+      ${T.desc ? `<p class="d">${esc(T.desc)}</p>` : ''}${levels}
+      ${boardIds.size ? `<div class="ul"><b>En el escenario</b>${[...boardIds].map(id => chip(id, 'have')).join('')}</div>` : ''}
+      ${benchIds.length ? `<div class="ul"><b>En el backstage</b>${benchIds.map(id => chip(id, 'bench')).join('')}</div>` : ''}
+      ${missing.length ? `<div class="ul"><b>Te faltan</b>${missing.map(id => chip(id, 'miss')).join('')}</div>` : ''}`;
+    const r = row.getBoundingClientRect(), wr = $('#wrap').getBoundingClientRect(), sl = $('#setlist').getBoundingClientRect();
+    box.style.display = 'block';
+    box.style.left = (sl.right - wr.left + 10) + 'px';
+    box.style.top = Math.max(8, Math.min(r.top - wr.top - 10, wr.height - box.offsetHeight - 8)) + 'px';
+    stage.focusUnits(spyId ? [] : onBoard.map(u => u.uid), new THREE.Color(T.color).getHex());
+  }
+  $('#traits').addEventListener('pointerover', e => { const r = e.target.closest('[data-t]'); if (r && e.pointerType === 'mouse' && hoverTrait !== r.dataset.t) { hoverTrait = r.dataset.t; renderSetlist(); } });
+  $('#traits').addEventListener('pointerup', e => { const r = e.target.closest('[data-t]'); if (!r || e.pointerType === 'mouse') return; hoverTrait = hoverTrait === r.dataset.t ? null : r.dataset.t; renderSetlist(); }); // en el celu: tocar abre/cierra
+  $('#setlist').addEventListener('pointerleave', e => { if (e.pointerType === 'mouse' && hoverTrait) { hoverTrait = null; renderSetlist(); } });
+  // pestañas Setlist | Objetos
+  function showTab(t) {
+    $('#setlist').classList.toggle('items', t === 'items');
+    for (const b of document.querySelectorAll('.stabs [data-tab]')) b.classList.toggle('on', b.dataset.tab === t);
+    hoverTrait = null; renderLegend();
+  }
+  document.querySelector('.stabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) showTab(b.dataset.tab); });
   function renderPlayers() {
     const box = $('#players'), pr = nextPairing(), room = client && client.room;
     const lastDmg = {};
@@ -887,14 +958,35 @@ button{font-family:inherit}
   const cv = $('#c');
   const overPasses = (x, y) => { const r = $('#passes').getBoundingClientRect(); return x >= r.left - 8 && x <= r.right + 8 && y >= r.top - 8 && y <= r.bottom + 8; };
   function unitInfo(uid) { const p = viewed(), u = unitByUid(p, uid); return u ? { uid, owner: p.id, unitId: u.unitId, star: u.star, items: u.items || [] } : null; }
+  // Cámara: arrastrar el piso (o con el botón derecho/medio) la mueve; rueda o pellizco, zoom; doble clic la centra.
+  const touches = new Map();
+  let pan = null, pinch = null, gesture = false;
+  const pinchInfo = () => { const [a, b] = [...touches.values()]; return { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 }; };
   cv.addEventListener('pointerdown', e => {
+    touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (touches.size === 2) { // dos dedos: zoom y paneo; se cancela lo que hubiera
+      if (drag && drag.on) { stage.dragEnd(); stage.highlight(null); $('#passes').classList.remove('sell'); render(); }
+      drag = null; pan = null; pinch = pinchInfo(); gesture = true; return;
+    }
+    if (touches.size > 2) return;
+    if (e.button === 1 || e.button === 2) { pan = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, on: true }; cv.setPointerCapture(e.pointerId); return; }
     if (e.button !== 0 || !state) return;
     if (canShop()) {
       const h = stage.pick(e.clientX, e.clientY, { unitsOnly: true });
-      if (h && h.kind === 'unit' && canTouch(h.uid)) { drag = { uid: h.uid, sx: e.clientX, sy: e.clientY, on: false }; cv.setPointerCapture(e.pointerId); }
+      if (h && h.kind === 'unit' && canTouch(h.uid)) { drag = { uid: h.uid, sx: e.clientX, sy: e.clientY, on: false }; cv.setPointerCapture(e.pointerId); return; }
     }
+    pan = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, on: false }; cv.setPointerCapture(e.pointerId);
   });
   cv.addEventListener('pointermove', e => {
+    if (touches.has(e.pointerId)) touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinch && touches.size >= 2) {
+      const n = pinchInfo();
+      stage.zoomBy(n.d / pinch.d); stage.panBy(n.mx - pinch.mx, n.my - pinch.my); pinch = n; return;
+    }
+    if (pan) {
+      if (!pan.on && Math.hypot(e.clientX - pan.sx, e.clientY - pan.sy) < 8) return;
+      pan.on = true; stage.panBy(e.clientX - pan.x, e.clientY - pan.y); pan.x = e.clientX; pan.y = e.clientY; return;
+    }
     if (!drag) { // para la tecla E: qué músico propio está bajo el puntero
       if (canShop()) { const h = stage.pick(e.clientX, e.clientY, { unitsOnly: true }); hoverUid = h && h.kind === 'unit' && canTouch(h.uid) ? h.uid : null; }
       return;
@@ -906,7 +998,16 @@ button{font-family:inherit}
     $('#passes').classList.toggle('sell', sell);
     stage.highlight(sell ? null : stage.dropTarget(e.clientX, e.clientY));
   });
+  const endTouch = e => { touches.delete(e.pointerId); if (touches.size < 2) pinch = null; };
+  cv.addEventListener('pointercancel', e => { endTouch(e); if (!touches.size) gesture = false; pan = null; if (drag && drag.on) { stage.dragEnd(); stage.highlight(null); } drag = null; });
+  cv.addEventListener('wheel', e => { e.preventDefault(); stage.zoomBy(Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+  cv.addEventListener('dblclick', e => { if (!stage.pick(e.clientX, e.clientY, { unitsOnly: true })) stage.resetView(); });
+  $('#btnCam').addEventListener('click', () => { stage.resetView(); $('#menu').classList.remove('on'); });
   cv.addEventListener('pointerup', e => {
+    endTouch(e);
+    if (gesture) { if (!touches.size) gesture = false; pan = null; drag = null; return; } // fin de un pellizco: no es un toque
+    const pn = pan; pan = null;
+    if (pn) { if (!pn.on && e.button === 0) tap(e.clientX, e.clientY); return; }
     const d = drag; drag = null;
     if (d && d.on) {
       stage.dragEnd(); stage.highlight(null); $('#passes').classList.remove('sell');

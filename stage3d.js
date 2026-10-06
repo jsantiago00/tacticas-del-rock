@@ -305,6 +305,10 @@ const STAGE3D = (() => {
       iconMat[k] = new T.SpriteMaterial({ depthWrite: false, map: textTex('ic' + k, (g, w, h) => { g.font = '44px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(ch, w / 2, h / 2 + 2); }, 64, 64) });
     const barMat = { bg: new T.SpriteMaterial({ color: 0x0c1424 }), mine: new T.SpriteMaterial({ color: 0x7ee08f }), foe: new T.SpriteMaterial({ color: 0xff7a63 }),
       shield: new T.SpriteMaterial({ color: 0xe8e8e8 }), mana: new T.SpriteMaterial({ color: 0x4aa3ff }) };
+    // Las barras se dibujan siempre arriba de todo y en orden fijo (fondo → vida/maná → escudo): si no,
+    // al ser sprites a la misma distancia el fondo oscuro a veces tapaba la vida.
+    for (const m of Object.values(barMat)) { m.depthTest = false; m.depthWrite = false; m.transparent = true; }
+    const focusMat = new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 });
 
     // ---------- muñecos ----------
     const dolls = new Map(); // clave: 'u<uid>' (planificación) o 'c<cid>' (combate)
@@ -323,10 +327,12 @@ const STAGE3D = (() => {
       const icon = new T.Sprite(iconMat.stun); icon.scale.set(0.5, 0.5, 1); icon.position.y = 2.95; icon.visible = false;
       const gear = [0, 1, 2].map(i => { const g = new T.Sprite(iconMat.stun); g.scale.set(0.34, 0.34, 1); g.position.set((i - 1) * 0.36, 2.08, 0); g.visible = false; grp.add(g); return g; });
       for (const s of [hpBg, hpFg, shFg, mpBg, mpFg]) { s.visible = false; grp.add(s); }
+      hpBg.renderOrder = mpBg.renderOrder = 50; hpFg.renderOrder = mpFg.renderOrder = 51; shFg.renderOrder = 52;
+      const focus = new T.Mesh(G.selRing, focusMat); focus.rotation.x = Math.PI / 2; focus.position.y = 0.16; focus.scale.setScalar(1.12); focus.visible = false; grp.add(focus);
       grp.add(icon);
       const hit = new T.Mesh(G.hitBox, hitMat); hit.position.y = 1.05; hit.userData.key = key; grp.add(hit);
       scene.add(grp);
-      const doll = { key, unitId, star: 0, L, f, grp, base, ring, sel, stars, hpBg, hpFg, shFg, mpBg, mpFg, icon, hit, gear, items: '',
+      const doll = { key, unitId, star: 0, L, f, grp, base, ring, sel, focus, stars, hpBg, hpFg, shFg, mpBg, mpFg, icon, hit, gear, items: '',
         phase: (key.charCodeAt(1) * 7 + key.length * 13) % 60 / 10, atk: -1, cast: -1, hitT: 0, dead: 0, alive: true, celeb: 0,
         home: new T.Vector3(), moving: 0, lunge: 0, facing: null, cid: -1 };
       setStar(doll, star, false);
@@ -404,6 +410,15 @@ const STAGE3D = (() => {
         burst(d.home, color, 1.5, 0.6); // en su lugar de destino (puede estar todavía en camino)
         d.cast = 0; // un saltito de festejo
       }
+    }
+    // Resalta a los músicos propios indicados (pasar el mouse por una sinergia del setlist).
+    let focused = new Set();
+    function focusUnits(uids, color) {
+      const next = new Set((uids || []).map(u => 'u' + u));
+      for (const k of focused) if (!next.has(k)) { const d = dolls.get(k); if (d) d.focus.visible = false; }
+      if (color != null) focusMat.color.setHex(color);
+      for (const k of next) { const d = dolls.get(k); if (!d) continue; d.focus.visible = true; if (!focused.has(k)) d.cast = 0; }
+      focused = next;
     }
     // números de daño: divs reciclados sobre el canvas
     const nums = [];
@@ -579,11 +594,27 @@ const STAGE3D = (() => {
       // encuadre: escenario completo y el backstage por encima del HUD de abajo.
       // En pantallas angostas (celular vertical) la cámara es más cenital para usar la altura.
       const narrow = camera.aspect < 1.1, portrait = camera.aspect < 0.75;
-      if (portrait) { camera.fov = 58; camera.position.set(0, 30, 12.5); camera.lookAt(0, 0, 2.6); }
-      else if (narrow) { camera.fov = 52; camera.position.set(0, 22, 21); camera.lookAt(0, 0, 5.2); }
-      else { camera.fov = 38; camera.position.set(0, 18.5, 20.5); camera.lookAt(0, 0, 5.4); }
+      if (portrait) { camera.fov = 58; baseCam.pos.set(0, 30, 12.5); baseCam.look.set(0, 0, 2.6); }
+      else if (narrow) { camera.fov = 52; baseCam.pos.set(0, 22, 21); baseCam.look.set(0, 0, 5.2); }
+      else { camera.fov = 38; baseCam.pos.set(0, 18.5, 20.5); baseCam.look.set(0, 0, 5.4); }
       camera.updateProjectionMatrix();
+      applyView();
     }
+    // Vista del jugador: zoom (rueda / pellizco) y paneo (arrastrar el piso) sobre el encuadre base.
+    const baseCam = { pos: new T.Vector3(), look: new T.Vector3() }, view = { zoom: 1, x: 0, z: 0 }, VL = new T.Vector3();
+    function applyView() {
+      view.zoom = Math.max(0.55, Math.min(2.4, view.zoom));
+      view.x = Math.max(-9, Math.min(9, view.x)); view.z = Math.max(-10, Math.min(8, view.z));
+      VL.set(baseCam.look.x + view.x, 0, baseCam.look.z + view.z);
+      camera.position.copy(baseCam.pos).sub(baseCam.look).multiplyScalar(1 / view.zoom).add(VL);
+      camera.lookAt(VL);
+    }
+    function panBy(dx, dy) { // píxeles de pantalla → unidades del piso
+      const dist = camera.position.distanceTo(VL), k = 2 * dist * Math.tan(camera.fov * Math.PI / 360) / Math.max(1, canvas.clientHeight);
+      view.x -= dx * k; view.z -= dy * k * 1.3; applyView();
+    }
+    function zoomBy(f) { view.zoom *= f; applyView(); }
+    function resetView() { view.zoom = 1; view.x = 0; view.z = 0; applyView(); }
     window.addEventListener('resize', resize);
 
     // ---------- calidad ----------
@@ -637,6 +668,7 @@ const STAGE3D = (() => {
 
       for (const d of dolls.values()) {
         if (!d.grp.visible) continue;
+        if (d.focus.visible) d.focus.scale.setScalar(1.15 + 0.12 * Math.sin(t * 6)); // resaltado por sinergia: late
         const u = combat && d.cid >= 0 ? combat.cs.units[d.cid] : null;
         if (u) placeCombat(d, u, alpha);
         // hacia dónde mira
@@ -724,7 +756,8 @@ const STAGE3D = (() => {
 
     return {
       setPlanning, startCombat, combatEvents, setAlpha, celebrate, stopCombat, traitPulse,
-      pick, dropTarget, dragTo, dragEnd, highlight, setQuality,
+      pick, dropTarget, dragTo, dragEnd, highlight, setQuality, focusUnits, panBy, zoomBy, resetView,
+      get viewChanged() { return view.zoom !== 1 || view.x !== 0 || view.z !== 0; },
       get fps() { return lastFps; }, get quality() { return qLevel; },
       get gpu() { try { const gl = renderer.getContext(), ext = gl.getExtension('WEBGL_debug_renderer_info'); return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER); } catch (e) { return ''; } },
       // para pruebas: punto del mundo -> coordenadas de pantalla
