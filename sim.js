@@ -8,7 +8,7 @@
 const DATA = {
   // Versión de datos: si cambia la forma del estado o el plantel, se sube. Un cliente con
   // otra versión no puede entrar a una sala (tiene que recargar la página).
-  VERSION: 6,
+  VERSION: 7,
 
   CONFIG: {
     BOARD_ROWS: 4, BOARD_COLS: 7,      // mitad de tablero por jugador (en combate: 8x7)
@@ -26,6 +26,10 @@ const DATA = {
     FLACO_FIGHTS_PER_ORIGIN: 3,        // El Flaco suma un origen cada tantas peleas
     // combate
     TICK_RATE: 30, COMBAT_SECONDS: 30,
+    // Tiempo extra: a los 30 s, 15 s más con la pelea acelerada (más daño y velocidad, curas a la mitad).
+    // Gana el último en pie; empate solo si mueren a la vez. Si a los 45 s siguen los dos, muerte súbita
+    // (el daño se duplica cada segundo). Red de seguridad a los 60 s: gana el que tenga más vida (en %).
+    OVERTIME_SECONDS: 15, OVERTIME_DMG_PER_SEC: 25, OVERTIME_AS_PER_SEC: 5, OVERTIME_HEAL_CUT: 50, HARD_LIMIT_SECONDS: 60,
     MOVE_TICKS: 14,          // ticks para moverse 1 hex
     CAST_TICKS: 10,          // ticks "ocupado" al castear
     MANA_LOCK_TICKS: 30,     // ticks sin ganar maná tras castear
@@ -366,6 +370,81 @@ const DATA = {
     },
   },
 
+  // ---------- Equipo (ítems) ----------
+  // Componentes: suman sus `mods`. Dos componentes en el mismo músico se fusionan solos en un
+  // ítem completo (suma de ambos + sus propios mods/fx). La Credencial no da stats: con un
+  // componente hace un emblema (cuenta como ese origen); con otra Credencial, Sobrecupo.
+  // Stats nuevos de ítems: manaPerAttack, omnivamp, spellSlow, castHealPct, spellCrit, maxManaDelta,
+  //   critMana, reflect, critImmune, ccImmuneSec.
+  // fx nuevos: attackStackAS, nthBolt, splash, rampDmg, lowHpShield, castRefund, shieldAS,
+  //   startShieldAdj, startRowMana, startShieldPct, auraSlow, adjHeal, stackDefOnAttacked.
+  ITEMS: {
+    MAX_PER_UNIT: 3, MAX_INVENTORY: 10,
+    CREDENCIAL_CHANCE: 0.12,              // probabilidad de que un drop sea Credencial (desde la etapa 2)
+    CAROUSEL_STAGES: [2, 3, 4, 5],        // Firma de autógrafos al arrancar estas etapas
+    CAROUSEL_TURN_SECONDS: 8,             // por turno (de a pares) cuando hay timer
+    CAROUSEL_COSTS: { 2: [1, 2], 3: [2, 3], 4: [3, 4], 5: [3, 4, 5] },
+    COMPONENTS: {
+      pua:        { name: 'Púa', icon: '🎸', mods: { adPct: 15 } },
+      palillos:   { name: 'Palillos', icon: '🥢', mods: { asPct: 12 } },
+      microfono:  { name: 'Micrófono', icon: '🎤', mods: { ap: 15 } },
+      cable:      { name: 'Cable', icon: '🔌', mods: { startMana: 15 } },
+      funda:      { name: 'Funda rígida', icon: '🧳', mods: { armor: 20 } },
+      campera:    { name: 'Campera de cuero', icon: '🧥', mods: { mr: 20 } },
+      termo:      { name: 'Termo', icon: '🧉', mods: { hp: 150 } },
+      pedal:      { name: 'Pedal de distorsión', icon: '🎛️', mods: { critChance: 15 } },
+      credencial: { name: 'Credencial All Access', icon: '🎫', mods: {} },
+    },
+    COMPLETED: {
+      puadeoro:     { name: 'Púa de oro', from: ['pua', 'pua'], mods: { adPct: 20 }, desc: '+20% de daño extra.' },
+      tapping:      { name: 'Tapping', from: ['pua', 'palillos'], mods: { fx: [{ type: 'attackStackAS', pct: 4, max: 10 }] }, desc: 'Cada ataque suma +4% de velocidad de ataque (hasta 10 veces).' },
+      rocanrol:     { name: 'Rocanrol total', from: ['pua', 'microfono'], mods: { fx: [{ type: 'nthBolt', n: 4, dmg: 80, targets: 1 }] }, desc: 'Cada 4 ataques tira una nota que hace 80 de daño mágico.' },
+      riff:         { name: 'Riff que no termina', from: ['pua', 'cable'], mods: { manaPerAttack: 5 }, desc: 'Cada ataque da +5 de maná extra.' },
+      encordado:    { name: 'Encordado de acero', from: ['pua', 'funda'], mods: { fx: [{ type: 'rampDmg', pct: 2, max: 30 }] }, desc: 'Cada golpe que da o recibe suma +2% de daño (hasta +30%).' },
+      remerarota:   { name: 'Remera rota', from: ['pua', 'campera'], mods: { omnivamp: 20 }, desc: '20% de robo de vida (de todo su daño).' },
+      segundoaire:  { name: 'Segundo aire', from: ['pua', 'termo'], mods: { fx: [{ type: 'lowHpShield', at: 50, shieldPct: 25, adPct: 30 }] }, desc: 'La primera vez que baja de 50% de vida: escudo del 25% de su vida y +30% de daño.' },
+      soloinfinito: { name: 'Solo infinito', from: ['pua', 'pedal'], mods: { critDmg: 40 }, desc: '+40% de daño crítico.' },
+      doblebombo:   { name: 'Doble bombo', from: ['palillos', 'palillos'], mods: { asPct: 25 }, desc: '+25% de velocidad de ataque extra.' },
+      metronomo:    { name: 'Metrónomo', from: ['palillos', 'microfono'], mods: { castStackAS: 15 }, desc: 'Cada habilidad que lanza suma +15% de velocidad de ataque (acumulable).' },
+      baquetaelec:  { name: 'Baqueta eléctrica', from: ['palillos', 'cable'], mods: { fx: [{ type: 'nthBolt', n: 3, dmg: 70, targets: 3 }] }, desc: 'Cada 3 ataques, un rayo salta a 3 enemigos por 70 de daño mágico.' },
+      redoblante:   { name: 'Redoblante blindado', from: ['palillos', 'funda'], mods: { fx: [{ type: 'shieldAS', shield: 150, sec: 6, pct: 30 }] }, desc: 'Arranca con escudo de 150 (6 s); mientras lo tiene, +30% de velocidad de ataque.' },
+      baquetadoble: { name: 'Baqueta doble', from: ['palillos', 'campera'], mods: { fx: [{ type: 'splash', pct: 50 }] }, desc: 'Cada ataque también golpea a otro enemigo cercano por el 50%.' },
+      cardio:       { name: 'Cardio', from: ['palillos', 'termo'], mods: { regen: 1.5 }, desc: 'Regenera 1,5% de vida por segundo.' },
+      blastbeat:    { name: 'Blast beat', from: ['palillos', 'pedal'], mods: { shred: 6 }, desc: 'Cada golpe le quita 6 de armadura al objetivo.' },
+      discodeoro:   { name: 'Disco de oro', from: ['microfono', 'microfono'], mods: { ap: 30 }, desc: '+30 de poder extra.' },
+      monitor:      { name: 'Monitor de retorno', from: ['microfono', 'cable'], mods: { fx: [{ type: 'castRefund', mana: 20 }] }, desc: 'Al lanzar su habilidad, recupera 20 de maná.' },
+      piemic:       { name: 'Pie de micrófono', from: ['microfono', 'funda'], mods: { fx: [{ type: 'startShieldAdj', amount: 200, sec: 6 }] }, desc: 'Al empezar: escudo de 200 para él y los aliados de al lado (6 s).' },
+      megafono:     { name: 'Megáfono', from: ['microfono', 'campera'], mods: { spellSlow: 30 }, desc: 'Sus habilidades bajan 30% la velocidad de ataque del enemigo por 3 s.' },
+      teconmiel:    { name: 'Té con miel', from: ['microfono', 'termo'], mods: { castHealPct: 15 }, desc: 'Al lanzar su habilidad, se cura el 15% de su vida.' },
+      autotune:     { name: 'Autotune', from: ['microfono', 'pedal'], mods: { spellCrit: 1 }, desc: 'Sus habilidades pueden hacer crítico.' },
+      zapatilla:    { name: 'Zapatilla múltiple', from: ['cable', 'cable'], mods: { maxManaDelta: -15 }, desc: 'Maná máximo −15.' },
+      cajadirecta:  { name: 'Caja directa', from: ['cable', 'funda'], mods: { fx: [{ type: 'auraSlow', radius: 2, pct: 20 }] }, desc: 'Los enemigos a 2 hex o menos atacan 20% más lento.' },
+      antena:       { name: 'Antena', from: ['cable', 'campera'], mods: { fx: [{ type: 'startRowMana', mana: 20 }] }, desc: 'Al empezar, los aliados de su fila ganan 20 de maná.' },
+      bateria:      { name: 'Batería de repuesto', from: ['cable', 'termo'], mods: { manaRegen: 3 }, desc: 'Regenera 3 de maná por segundo.' },
+      pedalera:     { name: 'Pedalera', from: ['cable', 'pedal'], mods: { critMana: 8 }, desc: 'Cada crítico le da 8 de maná.' },
+      fundapuas:    { name: 'Funda con púas', from: ['funda', 'funda'], mods: { reflect: 25 }, desc: 'Le devuelve al atacante el 25% del daño de ataque que recibe.' },
+      seguridad:    { name: 'Seguridad del estadio', from: ['funda', 'campera'], mods: { fx: [{ type: 'stackDefOnAttacked', per: 6, max: 5 }] }, desc: '+6 de armadura y RM por cada enemigo que lo ataca (hasta 5).' },
+      rondamate:    { name: 'Ronda de mate', from: ['funda', 'termo'], mods: { fx: [{ type: 'adjHeal', pct: 3, every: 2 }] }, desc: 'Cada 2 s cura 3% de su vida a los aliados de al lado.' },
+      tachas:       { name: 'Tachas', from: ['funda', 'pedal'], mods: { critImmune: 1 }, desc: 'Los críticos contra él no hacen daño extra.' },
+      camperagast:  { name: 'Campera gastada', from: ['campera', 'campera'], mods: { mr: 30, regen: 1 }, desc: '+30 de RM extra y regenera 1% de vida por segundo.' },
+      poncho:       { name: 'Poncho', from: ['campera', 'termo'], mods: { fx: [{ type: 'startShieldPct', pct: 25, sec: 8 }] }, desc: 'Al empezar, escudo del 25% de su vida por 8 s.' },
+      lentes:       { name: 'Lentes de sol', from: ['campera', 'pedal'], mods: { dodge: 20 }, desc: 'Esquiva el 20% de los ataques.' },
+      termo2l:      { name: 'Termo de dos litros', from: ['termo', 'termo'], mods: { hp: 400 }, desc: '+400 de vida extra.' },
+      matecocido:   { name: 'Mate cocido', from: ['termo', 'pedal'], mods: { ccImmuneSec: 10 }, desc: 'Inmune a aturdir, silenciar, confundir y hackear los primeros 10 s.' },
+      fuzz:         { name: 'Fuzz', from: ['pedal', 'pedal'], mods: { critChance: 20, critDmg: 20 }, desc: '+20% de probabilidad de crítico extra y +20% de daño crítico.' },
+      // Credencial All Access
+      emb_fauna:       { name: 'Emblema: Fauna', from: ['credencial', 'pua'], emblem: 'fauna', desc: 'Cuenta también como Fauna.' },
+      emb_motor:       { name: 'Emblema: Motor', from: ['credencial', 'palillos'], emblem: 'motor', desc: 'Cuenta también como Motor.' },
+      emb_transmision: { name: 'Emblema: Transmisión', from: ['credencial', 'microfono'], emblem: 'transmision', desc: 'Cuenta también como Transmisión.' },
+      emb_fraselarga:  { name: 'Emblema: Frase larga', from: ['credencial', 'cable'], emblem: 'fraselarga', desc: 'Cuenta también como Frase larga.' },
+      emb_realeza:     { name: 'Emblema: Realeza', from: ['credencial', 'funda'], emblem: 'realeza', desc: 'Cuenta también como Realeza.' },
+      emb_celestial:   { name: 'Emblema: Celestial', from: ['credencial', 'campera'], emblem: 'celestial', desc: 'Cuenta también como Celestial.' },
+      emb_almacen:     { name: 'Emblema: Almacén', from: ['credencial', 'termo'], emblem: 'almacen', desc: 'Cuenta también como Almacén.' },
+      emb_combate:     { name: 'Emblema: Combate', from: ['credencial', 'pedal'], emblem: 'combate', desc: 'Cuenta también como Combate.' },
+      sobrecupo:       { name: 'Sobrecupo', from: ['credencial', 'credencial'], boardSlots: 1, desc: '+1 lugar en el escenario mientras esté equipado.' },
+    },
+  },
+
   // Enemigos de las rondas PvE de la etapa 1 (no están en el pool)
   CREEPS: {
     sonidista: { name: 'Sonidista', short: 'Sonidista', cost: 0, origins: [], classes: [], icon: '🎚️',
@@ -373,12 +452,18 @@ const DATA = {
     patovica:  { name: 'Patovica', short: 'Patovica', cost: 0, origins: [], classes: [], icon: '🕶️',
                  hp: 550, ad: 35, as: 0.55, range: 1, armor: 25, mr: 20, startMana: 0, maxMana: 0 },
   },
-  // Posiciones en coordenadas locales del "dueño" (r=0 es la fila del frente)
+  // Posiciones en coordenadas locales del "dueño" (r=0 es la fila del frente). drops: componentes que deja.
   PVE: {
-    '1-1': { name: 'Prueba de sonido', units: [{ unitId: 'sonidista', star: 1, r: 1, c: 3 }] },
-    '1-2': { name: 'Los sonidistas', units: [{ unitId: 'sonidista', star: 1, r: 1, c: 2 }, { unitId: 'sonidista', star: 1, r: 1, c: 4 }] },
-    '1-3': { name: 'Patovicas del boliche', units: [{ unitId: 'patovica', star: 1, r: 0, c: 3 },
+    '1-1': { name: 'Prueba de sonido', drops: 1, units: [{ unitId: 'sonidista', star: 1, r: 1, c: 3 }] },
+    '1-2': { name: 'Los sonidistas', drops: 1, units: [{ unitId: 'sonidista', star: 1, r: 1, c: 2 }, { unitId: 'sonidista', star: 1, r: 1, c: 4 }] },
+    '1-3': { name: 'Patovicas del boliche', drops: 1, units: [{ unitId: 'patovica', star: 1, r: 0, c: 3 },
              { unitId: 'sonidista', star: 1, r: 1, c: 2 }, { unitId: 'sonidista', star: 1, r: 1, c: 4 }] },
+    '2-6': { name: 'Patovicas del boliche', drops: 2, units: [{ unitId: 'patovica', star: 2, r: 0, c: 2 }, { unitId: 'patovica', star: 2, r: 0, c: 4 },
+             { unitId: 'sonidista', star: 2, r: 2, c: 1 }, { unitId: 'sonidista', star: 2, r: 2, c: 3 }, { unitId: 'sonidista', star: 2, r: 2, c: 5 }] },
+    '3-6': { name: 'Seguridad del estadio', drops: 2, units: [{ unitId: 'patovica', star: 2, r: 0, c: 1 }, { unitId: 'patovica', star: 3, r: 0, c: 3 }, { unitId: 'patovica', star: 2, r: 0, c: 5 },
+             { unitId: 'sonidista', star: 2, r: 2, c: 2 }, { unitId: 'sonidista', star: 2, r: 2, c: 4 }, { unitId: 'sonidista', star: 3, r: 3, c: 3 }] },
+    '4-6': { name: 'La barra', drops: 2, units: [{ unitId: 'patovica', star: 3, r: 0, c: 1 }, { unitId: 'patovica', star: 3, r: 0, c: 3 }, { unitId: 'patovica', star: 3, r: 0, c: 5 },
+             { unitId: 'sonidista', star: 3, r: 2, c: 2 }, { unitId: 'sonidista', star: 3, r: 2, c: 4 }, { unitId: 'patovica', star: 3, r: 1, c: 3 }, { unitId: 'sonidista', star: 3, r: 3, c: 3 }] },
   },
 };
 
@@ -433,6 +518,22 @@ const SIM = (() => {
     }, d.stats || {});
   }
   for (const id of Object.keys(DATA.CREEPS)) DATA.CREEPS[id].traits = [];
+
+  // ---------- Equipo: recetas y mods totales de cada ítem ----------
+  const IT = DATA.ITEMS;
+  const COMP_IDS = Object.keys(IT.COMPONENTS).filter(k => k !== 'credencial'); // los que caen normalmente
+  const pairKey = (a, b) => [a, b].sort().join('+');
+  const RECIPE = {};
+  for (const id of Object.keys(IT.COMPLETED)) RECIPE[pairKey(...IT.COMPLETED[id].from)] = id;
+  function addMods(acc, mods) {
+    for (const k of Object.keys(mods || {})) { if (k === 'fx') acc.fx = (acc.fx || []).concat(mods.fx); else acc[k] = (acc[k] || 0) + mods[k]; }
+    return acc;
+  }
+  const ITEM_MODS = {};
+  for (const id of Object.keys(IT.COMPONENTS)) ITEM_MODS[id] = addMods({}, IT.COMPONENTS[id].mods);
+  for (const id of Object.keys(IT.COMPLETED)) { const d = IT.COMPLETED[id]; ITEM_MODS[id] = addMods(addMods(addMods({}, IT.COMPONENTS[d.from[0]].mods), IT.COMPONENTS[d.from[1]].mods), d.mods); }
+  const isComponent = id => !!IT.COMPONENTS[id];
+  const itemDef = id => IT.COMPONENTS[id] || IT.COMPLETED[id];
 
   const def = id => DATA.UNITS[id] || DATA.CREEPS[id];
   const clone = o => JSON.parse(JSON.stringify(o));
@@ -504,6 +605,7 @@ const SIM = (() => {
       bench: Array(C.BENCH_SIZE).fill(null),
       board: Array(ROWS * COLS).fill(null),   // índice = r*COLS + c, r=0 fila del frente
       lastIncome: null, history: [], finalBoard: null,
+      items: [],                              // inventario de equipo
     };
   }
   const validIdx = (i, n) => Number.isInteger(i) && i >= 0 && i < n;
@@ -512,6 +614,17 @@ const SIM = (() => {
   const setAt = (p, l, u) => { (l.zone === 'bench' ? p.bench : p.board)[l.idx] = u; };
   const boardCount = p => p.board.reduce((n, u) => n + (u ? 1 : 0), 0);
   const benchFree = p => p.bench.reduce((n, u) => n + (u ? 0 : 1), 0);
+  // Lugares en el escenario: la convocatoria + 1 por cada Sobrecupo equipado.
+  const boardLimit = p => p.level + [...p.board, ...p.bench].reduce((n, u) => n + (u && u.items ? u.items.filter(i => IT.COMPLETED[i] && IT.COMPLETED[i].boardSlots).length : 0), 0);
+  // Le da un ítem a un músico: si es componente y tiene otro componente suelto, se fusionan.
+  // Si no entra (3 ítems), va al inventario.
+  function giveItem(p, u, it) {
+    u.items = u.items || [];
+    const ci = isComponent(it) ? u.items.findIndex(isComponent) : -1;
+    if (ci >= 0) u.items[ci] = RECIPE[pairKey(it, u.items[ci])];
+    else if (u.items.length < IT.MAX_PER_UNIT) u.items.push(it);
+    else p.items.push(it);
+  }
   function owned(p) { // tablero primero, después banco (orden determinista)
     const out = [];
     p.board.forEach((u, i) => u && out.push({ u, loc: { zone: 'board', idx: i } }));
@@ -566,6 +679,7 @@ const SIM = (() => {
             const best = [keep.u, a.u, b.u].sort((x, y) => y.flaco.chosen.length - x.flaco.chosen.length || y.flaco.fights - x.flaco.fights)[0];
             keep.u.flaco = clone(best.flaco);
           }
+          for (const it of [...(a.u.items || []), ...(b.u.items || [])]) giveItem(p, keep.u, it);
           setAt(p, a.loc, null); setAt(p, b.loc, null);
           keep.u.star++;
           changed = true;
@@ -621,6 +735,7 @@ const SIM = (() => {
     const p = s.players[pid];
     if (!p) return 'Jugador inexistente';
     if (!p.alive) return 'Estás eliminado';
+    if (a && a.type === 'PICK') return validatePick(s, pid, a);
     if (s.phase !== 'planning') return 'No es fase de planificación';
     if (!a || typeof a.type !== 'string') return 'Acción inválida';
     switch (a.type) {
@@ -640,8 +755,8 @@ const SIM = (() => {
         if (!validLoc(a.from) || !validLoc(a.to)) return 'Ubicación inválida';
         if (!getAt(p, a.from)) return 'No hay unidad ahí';
         if (a.from.zone === a.to.zone && a.from.idx === a.to.idx) return 'Mismo lugar';
-        if (a.from.zone === 'bench' && a.to.zone === 'board' && !getAt(p, a.to) && boardCount(p) >= p.level)
-          return `Nivel ${p.level}: máximo ${p.level} unidades en el tablero`;
+        if (a.from.zone === 'bench' && a.to.zone === 'board' && !getAt(p, a.to) && boardCount(p) >= boardLimit(p))
+          return `Escenario lleno (${boardLimit(p)}). Subí la convocatoria para sumar uno más.`;
         return null;
       }
       case 'REROLL': return p.gold >= C.REROLL_COST ? null : 'No te alcanza el oro';
@@ -657,8 +772,29 @@ const SIM = (() => {
         if (!def(u.unitId).origins.includes(a.origin) || u.flaco.chosen.includes(a.origin)) return 'Origen inválido';
         return null;
       }
+      case 'EQUIP': {
+        if (!validIdx(a.item, p.items.length)) return 'Ítem inválido';
+        if (!validLoc(a.loc)) return 'Ubicación inválida';
+        const u = getAt(p, a.loc);
+        if (!u) return 'No hay músico ahí';
+        const it = p.items[a.item], items = u.items || [];
+        const lone = isComponent(it) ? items.find(isComponent) : null;
+        if (!lone && items.length >= IT.MAX_PER_UNIT) return 'Ya tiene 3 ítems';
+        const result = lone ? RECIPE[pairKey(it, lone)] : it;
+        const em = IT.COMPLETED[result] && IT.COMPLETED[result].emblem;
+        if (em && traitsOfEntry({ unitId: u.unitId, origins: u.flaco ? u.flaco.chosen : undefined, items }).includes(em)) return `Ya es ${DATA.TRAITS[em].name}`;
+        return null;
+      }
       default: return 'Acción desconocida';
     }
+  }
+  // Firma de autógrafos: solo puede elegir el par que tiene el turno, una vez, algo que no se llevaron.
+  function validatePick(s, pid, a) {
+    const car = s.carousel;
+    if (s.phase !== 'carousel' || !car) return 'No hay firma de autógrafos';
+    if (!car.pairs[car.turn].includes(pid)) return 'Todavía no es tu turno';
+    if (!validIdx(a.idx, car.offers.length) || car.offers[a.idx].takenBy) return 'Ese ya se lo llevaron';
+    return null;
   }
   // Aplica una acción YA VALIDADA mutando `s`. Solo para uso interno.
   function applyInPlace(s, pid, a) {
@@ -680,6 +816,7 @@ const SIM = (() => {
         const u = getAt(p, a.loc);
         p.gold += sellValue(u);
         if (DATA.UNITS[u.unitId]) s.pool[u.unitId] += copiesOf(u.star);
+        if (u.items) p.items.push(...u.items); // el equipo vuelve al inventario (solo al vender)
         setAt(p, a.loc, null);
         break;
       }
@@ -692,6 +829,8 @@ const SIM = (() => {
       case 'BUY_XP': p.gold -= C.XP_COST; addXp(p, C.XP_AMOUNT); break;
       case 'LOCK': p.shopLocked = typeof a.value === 'boolean' ? a.value : !p.shopLocked; break;
       case 'FLACO': getAt(p, a.loc).flaco.chosen.push(a.origin); break;
+      case 'EQUIP': giveItem(p, getAt(p, a.loc), p.items.splice(a.item, 1)[0]); break;
+      case 'PICK': s.carousel.picks[pid] = a.idx; break;
     }
   }
   function applyAction(state, pid, a) {
@@ -706,7 +845,9 @@ const SIM = (() => {
   function traitsOfEntry(e) {
     const d = def(e.unitId);
     const origins = Array.isArray(e.origins) ? e.origins : (d.origins || []);
-    return [...origins, ...(d.classes || []), ...(d.unique ? [d.unique] : [])];
+    const list = [...origins, ...(d.classes || []), ...(d.unique ? [d.unique] : [])];
+    for (const it of e.items || []) { const em = IT.COMPLETED[it] && IT.COMPLETED[it].emblem; if (em && !list.includes(em)) list.push(em); }
+    return list;
   }
   function soloBonus(n) { return n >= 1 ? (DATA.TRAITS.solistas.solo[n - 1] || 0) : 0; }
   function computeTraits(snap) { // cuenta músicos DISTINTOS
@@ -733,6 +874,7 @@ const SIM = (() => {
       if (!u) return;
       const e = { unitId: u.unitId, star: u.star, r: Math.floor(i / COLS), c: i % COLS };
       if (u.flaco) e.origins = u.flaco.chosen.slice();
+      if (u.items && u.items.length) e.items = u.items.slice();
       out.push(e);
     });
     return out;
@@ -776,7 +918,7 @@ const SIM = (() => {
     const R = side === 0 ? ROWS + e.r : ROWS - 1 - e.r;
     const Cc = side === 0 ? e.c : COLS - 1 - e.c;
     return {
-      cid, team: side, side, unitId: e.unitId, star: e.star, traits: traitsOfEntry(e),
+      cid, team: side, side, unitId: e.unitId, star: e.star, traits: traitsOfEntry(e), items: e.items || [],
       r: R, c: Cc, fromR: R, fromC: Cc, moveStart: 0, moveEnd: 0,
       maxHp: d.hp * m, hp: 0, ad: d.ad * m, as: d.as, range: d.range, armor: d.armor, mr: d.mr,
       mana: d.startMana || 0, maxMana: d.ability ? d.maxMana : 0, ap: 0,
@@ -784,6 +926,8 @@ const SIM = (() => {
       critChance: C.CRIT_CHANCE, critMult: C.CRIT_MULT, asBuffs: [],
       dodge: 0, regen: 0, nthMult: 1, attackCount: 0, shred: 0, confuseChance: 0, slowOnHit: 0, castStackAS: 0,
       berserk: 0, startAS: 0, revive: 0, revived: false, chargePerAttack: 0, chargeTakenPct: 0, charge: 0, fx: [],
+      manaPerAttack: 0, omnivamp: 0, spellSlow: 0, castHealPct: 0, spellCrit: 0, critMana: 0, reflect: 0, critImmune: 0,
+      ccImmuneUntil: 0, dmgAmp: 0, lowHpUsed: false, attackers: [], stackAS: 0, shieldASPct: 0,
       stunUntil: 0, busyUntil: 0, manaLockUntil: 0, silencedUntil: 0, confusedUntil: 0, controlledUntil: 0,
       nextAttack: 0, target: -1, alive: true, dmgDealt: 0,
       _maxTicks: maxTicks,
@@ -802,6 +946,8 @@ const SIM = (() => {
       else if (k === 'startMana') u.mana += v;
       else if (k === 'shield') { u.shield += v; u.shieldUntil = u._maxTicks + 1; }
       else if (k === 'fx') u.fx.push(...v);
+      else if (k === 'maxManaDelta') { if (u.maxMana > 0) u.maxMana = Math.max(10, u.maxMana + v); }
+      else if (k === 'ccImmuneSec') u.ccImmuneUntil = Math.max(u.ccImmuneUntil, Math.round(v * TR));
       else u[k] += v; // armor, mr, ap, lifesteal, manaRegen, dodge, regen, shred, confuseChance, slowOnHit, ...
     }
   }
@@ -812,6 +958,7 @@ const SIM = (() => {
       cs.units.push(u);
       return u;
     });
+    const entryOf = new Map(mine.map((u, i) => [u, ordered[i]]));
     const traits = computeTraits(snap);
     for (const t of Object.keys(traits)) {
       const tr = traits[t], T = DATA.TRAITS[t];
@@ -820,20 +967,30 @@ const SIM = (() => {
       const mods = T.solo ? { hpPct: tr.bonus, adPct: tr.bonus, ap: tr.bonus } : T.levels[tr.level];
       for (const u of targets) applyMods(u, mods);
     }
+    // equipo (después de los rasgos)
+    for (const u of mine) for (const it of entryOf.get(u).items || []) applyMods(u, ITEM_MODS[it]);
     for (const u of mine) {
       u.hp = u.maxHp;
       u.mana = Math.min(u.mana, u.maxMana);
       if (u.startAS) u.asBuffs.push({ pct: u.startAS, until: Math.round(C.MOTOR_SECONDS * TR) });
       u.nextAttack = Math.round(TR / u.as / 2);
     }
+    // efectos al empezar
+    for (const u of mine) for (const f of u.fx) {
+      if (f.type === 'shieldAS') { addShield(u, f.shield, Math.round(f.sec * TR)); u.shieldASPct += f.pct; }
+      else if (f.type === 'startShieldPct') addShield(u, u.maxHp * f.pct / 100, Math.round(f.sec * TR));
+      else if (f.type === 'startShieldAdj') { for (const a of mine) if (udist(u, a) <= 1) addShield(a, f.amount, Math.round(f.sec * TR)); }
+      else if (f.type === 'startRowMana') { for (const a of mine) if (a !== u && a.r === u.r && a.maxMana > 0) a.mana = Math.min(a.maxMana, a.mana + f.mana); }
+    }
   }
   function createCombat(snapA, snapB, seed) {
-    const cs = { tick: 0, rng: seed >>> 0, hash: 2166136261, maxTicks: C.COMBAT_SECONDS * TR, units: [], events: [], done: false, winner: null };
+    // maxTicks = límite absoluto (los efectos "permanentes" duran hasta ahí); otTick = arranque del tiempo extra.
+    const cs = { tick: 0, rng: seed >>> 0, hash: 2166136261, otTick: C.COMBAT_SECONDS * TR, maxTicks: C.HARD_LIMIT_SECONDS * TR, units: [], events: [], done: false, winner: null };
     addSide(cs, snapA, 0);
     addSide(cs, snapB, 1);
     return cs;
   }
-  const attackSpeed = u => Math.max(0.2, Math.min(5, u.as * (1 + u.asBuffs.reduce((n, b) => n + b.pct, 0) / 100)));
+  const attackSpeed = u => Math.max(0.2, Math.min(5, u.as * (1 + (u.asBuffs.reduce((n, b) => n + b.pct, 0) + (u.shieldASPct && u.shield > 0 ? u.shieldASPct : 0)) / 100)));
   function gainMana(u, amt, T) {
     if (u.maxMana <= 0 || T < u.manaLockUntil) return;
     u.mana = Math.min(u.maxMana, u.mana + amt);
@@ -875,10 +1032,19 @@ const SIM = (() => {
     return null;
   }
   const alliesOf = (cs, u) => cs.units.filter(x => x.alive && x.side === u.side);
+  // Tiempo extra: segundos desde los 30 s (0 si todavía no empezó).
+  const otSec = cs => Math.max(0, (cs.tick - cs.otTick) / TR);
+  function otDamageMult(cs) {
+    const t = otSec(cs);
+    if (t <= 0) return 1;
+    const sudden = Math.max(0, t - C.OVERTIME_SECONDS);
+    return (1 + C.OVERTIME_DMG_PER_SEC / 100 * Math.min(t, C.OVERTIME_SECONDS)) * Math.pow(2, Math.floor(sudden));
+  }
+  const otHealMult = cs => (cs.tick > cs.otTick ? 1 - C.OVERTIME_HEAL_CUT / 100 : 1);
   function dealDamage(cs, src, tgt, raw, kind, T, crit) {
     if (!tgt.alive) return 0;
-    const res = Math.max(0, kind === 'phys' ? tgt.armor : tgt.mr);
-    let dmg = raw * 100 / (100 + res);
+    const res = kind === 'true' ? 0 : Math.max(0, kind === 'phys' ? tgt.armor : tgt.mr);
+    let dmg = raw * otDamageMult(cs) * 100 / (100 + res);
     const total = dmg;
     if (tgt.shield > 0) { const ab = Math.min(tgt.shield, dmg); tgt.shield -= ab; dmg -= ab; }
     tgt.hp -= dmg;
@@ -886,7 +1052,12 @@ const SIM = (() => {
     if (tgt.chargeTakenPct) tgt.charge += total * tgt.chargeTakenPct / 100;
     src.dmgDealt += total;
     cs.events.push({ t: 'dmg', s: src.cid, d: tgt.cid, a: Math.round(total), k: kind, c: crit ? 1 : 0 });
+    if (src.omnivamp > 0 && src.alive && src !== tgt) healUnit(cs, src, total * src.omnivamp / 100);
     if (tgt.hp <= 0) unitDies(cs, tgt, T);
+    else for (const f of tgt.fx) if (f.type === 'lowHpShield' && !tgt.lowHpUsed && tgt.hp < tgt.maxHp * f.at / 100) {
+      tgt.lowHpUsed = true; addShield(tgt, tgt.maxHp * f.shieldPct / 100, cs.maxTicks + 1); tgt.ad *= 1 + f.adPct / 100;
+      cs.events.push({ t: 'secondwind', d: tgt.cid });
+    }
     return total;
   }
   // Muerte: revivir una vez (Freddie) y efectos al morir (Familia, Gracias Totales).
@@ -910,6 +1081,7 @@ const SIM = (() => {
     }
   }
   function healUnit(cs, u, amt) {
+    amt *= otHealMult(cs);
     if (!u.alive || amt <= 0) return;
     const before = u.hp;
     u.hp = Math.min(u.maxHp, u.hp + amt);
@@ -917,17 +1089,17 @@ const SIM = (() => {
   }
   function addShield(u, amt, until) { u.shield += amt; u.shieldUntil = Math.max(u.shieldUntil, until); }
   function stunUnit(cs, u, sec, T) {
-    if (!u.alive) return;
+    if (!u.alive || T < u.ccImmuneUntil) return;
     u.stunUntil = Math.max(u.stunUntil, T + Math.round(sec * TR));
     cs.events.push({ t: 'stun', d: u.cid });
   }
   function silenceUnit(cs, u, sec, T) {
-    if (!u.alive) return;
+    if (!u.alive || T < u.ccImmuneUntil) return;
     u.silencedUntil = Math.max(u.silencedUntil, T + Math.round(sec * TR));
     cs.events.push({ t: 'silence', d: u.cid });
   }
   function confuseUnit(cs, u, sec, T) {
-    if (!u.alive) return;
+    if (!u.alive || T < u.ccImmuneUntil) return;
     u.confusedUntil = Math.max(u.confusedUntil, T + Math.round(sec * TR));
     u.target = -1;
     cs.events.push({ t: 'confuse', d: u.cid });
@@ -962,19 +1134,37 @@ const SIM = (() => {
   }
   function basicAttack(cs, u, tgt, T) {
     cs.events.push({ t: 'atk', s: u.cid, d: tgt.cid });
-    gainMana(u, C.MANA_PER_ATTACK, T);
+    gainMana(u, C.MANA_PER_ATTACK + u.manaPerAttack, T);
     if (u.chargePerAttack) u.charge += u.chargePerAttack;
+    for (const f of tgt.fx) { // al ser atacado
+      if (f.type === 'rampDmg') tgt.dmgAmp = Math.min(f.max, tgt.dmgAmp + f.pct);
+      else if (f.type === 'stackDefOnAttacked' && !tgt.attackers.includes(u.cid) && tgt.attackers.length < f.max) { tgt.attackers.push(u.cid); tgt.armor += f.per; tgt.mr += f.per; }
+    }
     if (tgt.dodge > 0 && rngNext(cs) < tgt.dodge / 100) { cs.events.push({ t: 'miss', d: tgt.cid }); return; }
-    let dmg = u.ad, crit = false;
+    let dmg = u.ad * (1 + u.dmgAmp / 100), crit = false;
     if (u.berserk) dmg *= 1 + u.berserk / 100 * (1 - u.hp / u.maxHp);
     u.attackCount++;
     if (u.nthMult > 1 && u.attackCount % 3 === 0) dmg *= u.nthMult;
-    if (rngNext(cs) < u.critChance) { dmg *= u.critMult; crit = true; }
+    if (rngNext(cs) < u.critChance) { crit = true; if (!tgt.critImmune) dmg *= u.critMult; if (u.critMana) gainMana(u, u.critMana, T); }
+    const raw = dmg;
     const dealt = dealDamage(cs, u, tgt, dmg, 'phys', T, crit);
     if (u.lifesteal > 0) healUnit(cs, u, dealt * u.lifesteal / 100);
+    if (tgt.reflect > 0 && tgt.alive && u.alive) dealDamage(cs, tgt, u, dealt * tgt.reflect / 100, 'true', T, false);
     if (u.shred && tgt.alive) tgt.armor = Math.max(-30, tgt.armor - u.shred);
     if (u.confuseChance && tgt.alive && rngNext(cs) < u.confuseChance / 100) confuseUnit(cs, tgt, C.CONFUSE_ON_HIT_SECONDS, T);
     if (u.slowOnHit && tgt.alive) slowUnit(cs, tgt, u.slowOnHit, C.SLOW_SECONDS, T);
+    for (const f of u.fx) { // al atacar
+      if (f.type === 'attackStackAS' && u.stackAS < f.max) { u.stackAS++; u.asBuffs.push({ pct: f.pct, until: cs.maxTicks + 1 }); }
+      else if (f.type === 'rampDmg') u.dmgAmp = Math.min(f.max, u.dmgAmp + f.pct);
+      else if (f.type === 'nthBolt' && u.attackCount % f.n === 0) {
+        const foes = cs.units.filter(e => e.alive && e.side !== u.side).sort((a, b) => udist(tgt, a) - udist(tgt, b) || a.cid - b.cid).slice(0, f.targets);
+        for (const e of foes) dealDamage(cs, u, e, f.dmg * (1 + u.ap / 100), 'magic', T, false);
+        cs.events.push({ t: 'bolt', s: u.cid });
+      } else if (f.type === 'splash') {
+        const other = cs.units.find(e => e.alive && e !== tgt && e.side !== u.side && udist(tgt, e) <= 1);
+        if (other) dealDamage(cs, u, other, raw * f.pct / 100, 'phys', T, false);
+      }
+    }
   }
   // El "más fuerte" para OK Computer: más costoso × copias, después más vida máxima.
   function strongest(list) {
@@ -991,7 +1181,10 @@ const SIM = (() => {
     const allies = alliesOf(cs, u);
     const hit = (e, extra = 0) => {
       if (!e.alive) return;
-      dealDamage(cs, u, e, dmgV * amp + extra, 'magic', T, false);
+      let raw = dmgV * amp + extra, crit = false;
+      if (u.spellCrit && rngNext(cs) < u.critChance) { crit = true; if (!e.critImmune) raw *= u.critMult; }
+      dealDamage(cs, u, e, raw, 'magic', T, crit);
+      if (u.spellSlow && e.alive) slowUnit(cs, e, u.spellSlow, 3, T);
       if (ab.stun) stunUnit(cs, e, val(ab.stun), T);
       if (ab.silence) silenceUnit(cs, e, val(ab.silence), T);
       if (ab.confuse) confuseUnit(cs, e, val(ab.confuse), T);
@@ -1003,8 +1196,8 @@ const SIM = (() => {
       case 'multi': { const pool = enemies.slice(); for (let k = 0; k < ab.count && pool.length; k++) hit(pool.splice(rngInt(cs, pool.length), 1)[0]); break; }
       case 'all': enemies.forEach(e => hit(e)); break;
       case 'push': hit(tgt); pushUnit(cs, u, tgt, ab.distance || 1, T); break;
-      case 'shield': addShield(u, amtV * amp, dur(ab.duration)); break;
-      case 'teamShield': allies.forEach(a => addShield(a, amtV * amp, dur(ab.duration))); break;
+      case 'shield': addShield(u, amtV * amp * otHealMult(cs), dur(ab.duration)); break;
+      case 'teamShield': allies.forEach(a => addShield(a, amtV * amp * otHealMult(cs), dur(ab.duration))); break;
       case 'heal': allies.slice().sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp || a.cid - b.cid)
         .slice(0, ab.count || 1).forEach(a => healUnit(cs, a, amtV * amp)); break;
       case 'healAll': allies.forEach(a => healUnit(cs, a, amtV * amp)); break;
@@ -1025,7 +1218,7 @@ const SIM = (() => {
         if (!enemies.length) break;
         const e = strongest(enemies);
         hit(e);
-        if (e.alive) {
+        if (e.alive && T >= e.ccImmuneUntil) {
           e.side = u.side; e.controlledUntil = dur(ab.duration); e.target = -1;
           cs.events.push({ t: 'control', d: e.cid });
         }
@@ -1041,6 +1234,8 @@ const SIM = (() => {
     // efectos al lanzar
     for (const f of u.fx) if (f.type === 'castShare') for (const a of alliesOf(cs, u)) if (a !== u && a.traits.includes(f.trait)) gainMana(a, f.mana, T);
     if (u.castStackAS) u.asBuffs.push({ pct: u.castStackAS, until: cs.maxTicks + 1 });
+    for (const f of u.fx) if (f.type === 'castRefund') u.mana = Math.min(u.maxMana, u.mana + f.mana);
+    if (u.castHealPct) healUnit(cs, u, u.maxHp * u.castHealPct / 100);
   }
   function stepCombat(cs) {
     if (cs.done) return cs;
@@ -1053,6 +1248,10 @@ const SIM = (() => {
       if (u.asBuffs.length) u.asBuffs = u.asBuffs.filter(b => b.until > T);
       if (u.manaRegen > 0) gainMana(u, u.manaRegen / TR, T);
       if (u.regen > 0 && u.hp < u.maxHp) u.hp = Math.min(u.maxHp, u.hp + u.maxHp * u.regen / 100 / TR);
+      for (const f of u.fx) {
+        if (f.type === 'auraSlow' && T % 15 === 0) { for (const e of cs.units) if (e.alive && e.side !== u.side && udist(u, e) <= f.radius) slowUnit(cs, e, f.pct, 0.6, T); }
+        else if (f.type === 'adjHeal' && T % Math.round(f.every * TR) === 0) { for (const a of cs.units) if (a.alive && a !== u && a.side === u.side && udist(u, a) <= 1) healUnit(cs, a, a.maxHp * f.pct / 100); }
+      }
       if (u.stunUntil > T || u.busyUntil > T) continue;
       const confused = u.confusedUntil > T;
       let tgt = u.target >= 0 ? cs.units[u.target] : null;
@@ -1068,7 +1267,7 @@ const SIM = (() => {
         if (!confused && T >= u.silencedUntil && u.maxMana > 0 && u.mana >= u.maxMana) { castAbility(cs, u, tgt, T); continue; }
         if (T >= u.nextAttack) {
           basicAttack(cs, u, tgt, T);
-          u.nextAttack = T + Math.max(1, Math.round(TR / attackSpeed(u)));
+          u.nextAttack = T + Math.max(1, Math.round(TR / (attackSpeed(u) * (1 + C.OVERTIME_AS_PER_SEC / 100 * Math.min(otSec(cs), C.OVERTIME_SECONDS)))));
         }
       } else {
         const step = nextStep(cs, u, tgt);
@@ -1079,11 +1278,12 @@ const SIM = (() => {
         }
       }
     }
+    if (T === cs.otTick) cs.events.push({ t: 'overtime' });
     if (cs.events.length) cs.hash = fnv(cs.hash, T + JSON.stringify(cs.events));
-    let a = 0, b = 0;
-    for (const u of cs.units) if (u.alive) { if (u.team === 0) a++; else b++; }
-    if (a === 0 || b === 0) { cs.done = true; cs.winner = a > 0 ? 'A' : b > 0 ? 'B' : 'draw'; }
-    else if (T >= cs.maxTicks) { cs.done = true; cs.winner = 'draw'; }
+    let a = 0, b = 0, ha = 0, hb = 0;
+    for (const u of cs.units) if (u.alive) { if (u.team === 0) { a++; ha += u.hp / u.maxHp; } else { b++; hb += u.hp / u.maxHp; } }
+    if (a === 0 || b === 0) { cs.done = true; cs.winner = a > 0 ? 'A' : b > 0 ? 'B' : 'draw'; } // empate solo si caen todos a la vez
+    else if (T >= cs.maxTicks) { cs.done = true; cs.winner = ha > hb ? 'A' : hb > ha ? 'B' : 'draw'; } // red de seguridad
     if (cs.done) cs.hash = fnv(cs.hash, cs.winner + JSON.stringify(cs.units.map(u => [u.hp, u.r, u.c, u.mana])));
     return cs;
   }
@@ -1235,13 +1435,13 @@ const SIM = (() => {
     all.sort((a, b) => b.pow - a.pow || a.u.uid - b.u.uid);
     const chosen = [], deferred = [], soloIds = {};
     for (const o of all) {
-      if (chosen.length >= pl.level) break;
+      if (chosen.length >= boardLimit(pl)) break;
       const isSolo = def(o.u.unitId).traits.includes('solistas');
       if (isSolo && !soloIds[o.u.unitId] && Object.keys(soloIds).length >= 2) { deferred.push(o); continue; }
       if (isSolo) soloIds[o.u.unitId] = 1;
       chosen.push(o);
     }
-    for (const o of deferred) if (chosen.length < pl.level) chosen.push(o);
+    for (const o of deferred) if (chosen.length < boardLimit(pl)) chosen.push(o);
     const chosenIds = new Set(chosen.map(o => o.u.uid));
     const melee = chosen.filter(o => def(o.u.unitId).range <= 1), ranged = chosen.filter(o => def(o.u.unitId).range > 1);
     const target = {}, used = new Set();
@@ -1272,7 +1472,14 @@ const SIM = (() => {
     }
     // 5) El Flaco: elegir los orígenes que tenga habilitados
     for (const o of owned(p())) while (flacoPending(o.u)) if (!act({ type: 'FLACO', loc: where(o.u.uid), origin: pickFlacoOrigin(p(), o.u) })) break;
-    // 6) no acumular: vender del banco lo que no forma pares ni encaja (deja hasta 4)
+    // 6) equipo: al músico más valioso del escenario que pueda llevarlo
+    for (let g = 0; g < 12; g++) {
+      const pl2 = p(); let done = false;
+      const tgts = pl2.board.map((u, i) => u && { u, loc: { zone: 'board', idx: i } }).filter(Boolean).sort((a, b) => POWER(b.u) - POWER(a.u) || a.u.uid - b.u.uid);
+      for (let i = 0; i < pl2.items.length && !done; i++) for (const t of tgts) if (act({ type: 'EQUIP', item: i, loc: t.loc })) { done = true; break; }
+      if (!done) break;
+    }
+    // 7) no acumular: vender del banco lo que no forma pares ni encaja (deja hasta 4)
     for (let g = 0; g < C.BENCH_SIZE && C.BENCH_SIZE - benchFree(p()) > 4; g++) if (!sellJunk(P.buyThreshold + 4)) break;
     if (benchFree(p()) === 0) sellJunk(Infinity);
     return actions;
@@ -1376,6 +1583,86 @@ const SIM = (() => {
     const pvp = !DATA.PVE[roundLabel(s.round)] && s.order.length > 1;
     s.pairings = pvp ? makePairings(s) : null;
     s.phase = 'planning';
+    if (!first && s.round.num === 1 && IT.CAROUSEL_STAGES.includes(s.round.stage)) startCarousel(s);
+  }
+  // Un componente al azar (con la semilla). Desde la etapa 2 puede salir una Credencial.
+  function rollItem(s, stage) {
+    if (stage >= 2 && rngNext(s) < IT.CREDENCIAL_CHANCE) return 'credencial';
+    return COMP_IDS[rngInt(s, COMP_IDS.length)];
+  }
+
+  // ---------- Firma de autógrafos (ronda compartida) ----------
+  // Hay (vivos + 1) músicos firmando, cada uno con un componente. Eligen de a pares, desde los que
+  // tienen menos público. Si los dos del par quieren el mismo, se lo lleva el de menos público y el
+  // otro recibe uno de los que quedan (con la semilla). El que no elige recibe uno al azar.
+  function startCarousel(s) {
+    const alive = alivePlayers(s);
+    const order = shuffle(alive, s).sort((a, b) => s.players[a].hp - s.players[b].hp); // empates: orden barajado
+    const costs = byStage(IT.CAROUSEL_COSTS, s.round.stage), offers = [];
+    for (let i = 0; i < alive.length + 1; i++) {
+      const cost = costs[rngInt(s, costs.length)];
+      let unitId = pickFromPool(s, s, cost);
+      for (let c2 = cost - 1; !unitId && c2 >= 1; c2--) unitId = pickFromPool(s, s, c2);
+      if (unitId) s.pool[unitId]--;
+      offers.push({ unitId, item: rollItem(s, s.round.stage), takenBy: null });
+    }
+    const pairs = [];
+    for (let i = 0; i < order.length; i += 2) pairs.push(order.slice(i, i + 2));
+    s.carousel = { offers, pairs, turn: 0, picks: {} };
+    s.phase = 'carousel';
+  }
+  function giveOffer(s, p, o) {
+    if (!o.unitId) { if (p.items.length < IT.MAX_INVENTORY) p.items.push(o.item); return; }
+    const u = { uid: s.nextUid++, unitId: o.unitId, star: 1, items: [o.item] };
+    if (isFlaco(o.unitId)) u.flaco = { chosen: [], fights: 0 };
+    const free = p.bench.indexOf(null);
+    if (free >= 0) { p.bench[free] = u; combineUnits(p); }
+    else { s.pool[o.unitId]++; p.gold += DATA.UNITS[o.unitId].cost; if (p.items.length < IT.MAX_INVENTORY) p.items.push(o.item); } // backstage lleno: se vende al toque
+  }
+  // Cierra el turno del par actual. El host lo llama cuando eligieron todos o se terminó el tiempo.
+  function carouselResolveTurn(state) {
+    if (state.phase !== 'carousel') return state;
+    const s = clone(state), car = s.carousel, pair = car.pairs[car.turn];
+    for (const pid of pair) { // el par viene ordenado: primero el de menos público
+      let idx = car.picks[pid];
+      if (!(idx >= 0 && car.offers[idx] && !car.offers[idx].takenBy)) {
+        const free = car.offers.map((o, i) => (o.takenBy ? -1 : i)).filter(i => i >= 0);
+        idx = free.length ? free[rngInt(s, free.length)] : -1;
+      }
+      if (idx < 0) continue;
+      car.offers[idx].takenBy = pid;
+      giveOffer(s, s.players[pid], car.offers[idx]);
+    }
+    car.turn++; car.picks = {};
+    if (car.turn >= car.pairs.length) {
+      for (const o of car.offers) if (!o.takenBy && o.unitId) s.pool[o.unitId]++;
+      s.carousel = null; s.phase = 'planning';
+    }
+    return s;
+  }
+  // Lo que elegiría un bot: copias que ya tiene, después coste.
+  function botCarouselPick(s, pid) {
+    const p = s.players[pid];
+    let best = -1, bs = -Infinity;
+    s.carousel.offers.forEach((o, i) => {
+      if (o.takenBy) return;
+      const sc = (o.unitId ? countCopies(p, o.unitId) * 6 + DATA.UNITS[o.unitId].cost : 0) + (o.item === 'credencial' ? 1 : 2);
+      if (sc > bs) { bs = sc; best = i; }
+    });
+    return best;
+  }
+  // Los bots del par actual eligen (el host lo hace al empezar cada turno).
+  function carouselBotPicks(state, all = false) {
+    if (state.phase !== 'carousel') return state;
+    const s = clone(state), car = s.carousel;
+    for (const pid of car.pairs[car.turn]) if ((all || s.players[pid].isBot) && car.picks[pid] == null) car.picks[pid] = botCarouselPick(s, pid);
+    return s;
+  }
+  // Sin UI (balance, tests): resuelve la firma completa eligiendo como bots.
+  function autoCarousel(state) {
+    let s = state;
+    while (s.phase === 'carousel') s = carouselResolveTurn(carouselBotPicks(s, true));
+    return s;
   }
   // Puestos: los que mueren en la misma ronda se ordenan por la vida que tenían ANTES de la ronda.
   function eliminate(s, hpBefore) {
@@ -1407,7 +1694,7 @@ const SIM = (() => {
     s.autoFilled = {};
     for (const id of alivePlayers(s)) {
       const p = s.players[id], moved = [];
-      for (let b = 0; b < C.BENCH_SIZE && boardCount(p) < p.level; b++) {
+      for (let b = 0; b < C.BENCH_SIZE && boardCount(p) < boardLimit(p); b++) {
         if (!p.bench[b]) continue;
         const cell = FILL_ORDER.find(i => !p.board[i]);
         if (cell == null) break;
@@ -1437,6 +1724,7 @@ const SIM = (() => {
     autoFlaco(s);
     const pve = DATA.PVE[label];
     s.combats = [];
+    s.drops = {};
     const streak = (p, won) => { p.streak = won ? (p.streak > 0 ? p.streak + 1 : 1) : (p.streak < 0 ? p.streak - 1 : -1); };
 
     if (pve || s.order.length === 1) { // creeps (etapa 1) o rival generado (modo práctica)
@@ -1449,6 +1737,11 @@ const SIM = (() => {
         if (pve) { if (won) p.gold += C.PVE_WIN_GOLD; else dmg = res.survivorsB.reduce((n, u) => n + C.UNIT_DAMAGE_BY_STAR[u.star - 1], 0); }
         else { if (!won) dmg = playerDamage(stage, res.survivorsB); streak(p, won); }
         p.hp -= dmg;
+        if (pve) { // los creeps dejan equipo (gane o pierda)
+          const got = [];
+          for (let k = 0; k < (pve.drops || 0); k++) { const it = rollItem(s, stage); if (p.items.length < IT.MAX_INVENTORY) { p.items.push(it); got.push(it); } }
+          if (got.length) s.drops[id] = got;
+        }
         addHistory(p, label, opp.name, resultOf(res.winner, 'A'), dmg);
         s.combats.push({ round: label, kind: pve ? 'pve' : 'gen', a: id, b: null, ghost: false, name: opp.name, snapA, snapB: opp.units, seed, winner: res.winner, hash: res.hash, ticks: res.ticks, dmgA: dmg, dmgB: 0 });
       }
@@ -1498,7 +1791,7 @@ const SIM = (() => {
     let s = runAllBots(createGame({ seed, slots }));
     const hashes = trackHashes ? [stateHash(s)] : null;
     for (let n = 0; s.phase !== 'ended' && n < maxRounds; n++) {
-      s = resolveRound(s);
+      s = autoCarousel(resolveRound(s));
       if (s.phase !== 'ended') s = runAllBots(s);
       if (hashes) hashes.push(stateHash(s));
     }
@@ -1580,6 +1873,9 @@ const SIM = (() => {
     computeTraits, traitsOfEntry, boardSnapshot, incomePreview, sellValue, countCopies, boardCount, benchFree,
     roundLabel, roundsInStage, xpNeeded, hexDist, def, clone, seedFrom, abilityValue,
     flacoPending, flacoSlots, pickFlacoOrigin,
+    // equipo y firma de autógrafos
+    boardLimit, itemDef, isComponent, recipeOf: (a, b) => RECIPE[pairKey(a, b)], ITEM_MODS,
+    carouselResolveTurn, carouselBotPicks, autoCarousel,
   };
 })();
 

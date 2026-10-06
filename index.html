@@ -109,6 +109,32 @@ button{font-family:inherit}
 #money{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
 #gold{font-size:46px;line-height:1;color:var(--gold)}
 #interest{font-size:13px;color:var(--muted);text-align:right}
+#items{position:absolute;left:14px;bottom:205px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;max-width:min(520px,calc(100% - 260px));z-index:3}
+#items .lbl{font-size:13px;color:var(--muted);margin-right:2px}
+.it{width:40px;height:40px;border-radius:8px;background:#24365a;border:2px solid #4b6290;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:grab;padding:0;touch-action:none}
+.it.full{border-color:var(--gold)}
+.it.sel{outline:3px solid var(--gold);outline-offset:1px}
+#recipesBtn{min-height:34px;font-size:13px;padding:0 10px}
+#carousel{position:absolute;left:50%;top:calc(140px + env(safe-area-inset-top,0px));transform:translateX(-50%);width:min(760px,calc(100% - 500px));min-width:320px;background:#16233a;border:1px solid var(--gold);border-radius:14px;padding:12px 14px;display:none;z-index:4}
+#carousel h3{margin:0 0 4px;font-family:"Permanent Marker",cursive;font-weight:400;font-size:24px;color:var(--gold)}
+#carousel .turn{font-size:15px;color:var(--muted);margin-bottom:8px}
+#carousel .turn b{color:var(--ink)}
+#offers{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+.offer{background:#f4f4f2;color:#1b2233;border:0;border-radius:10px;padding:0;overflow:hidden;text-align:left;font:inherit;cursor:pointer;display:flex;flex-direction:column}
+.offer i{display:block;height:7px}
+.offer div{padding:6px 8px}
+.offer b{font-family:"Big Shoulders Display",Impact,sans-serif;font-size:19px;display:block;line-height:1}
+.offer span{font-size:13px;color:#4b5672}
+.offer.taken{opacity:.35;cursor:default}
+.offer.mine{outline:3px solid var(--gold)}
+.offer:disabled{cursor:default}
+#pickOrder{font-size:13px;color:var(--muted);margin-top:8px}
+#pickOrder b{color:var(--gold)}
+#recipes .grid{display:grid;grid-template-columns:1fr;gap:4px;font-size:14px}
+#recipes .rc{display:flex;gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px solid #ffffff12}
+#recipes .rc .ing{min-width:58px;font-size:18px}
+#recipes .rc b{color:var(--gold)}
+#ficha .equip .eq{display:block;color:var(--ink);margin-top:2px}
 #flacoBar{position:absolute;left:50%;bottom:220px;transform:translateX(-50%);display:none;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center;padding:8px 12px;border-radius:12px;background:#1e2a1a;border:1px solid #7ad66a;font-size:15px;z-index:3;max-width:calc(100% - 24px)}
 #flacoBar button{min-height:34px;font-size:14px}
 #spyBar{position:absolute;left:50%;top:calc(92px + env(safe-area-inset-top,0px));transform:translateX(-50%);display:none;background:#3a2f12;border:1px solid var(--gold);color:var(--gold);border-radius:10px;padding:6px 12px;cursor:pointer;font-weight:600;z-index:3;white-space:nowrap}
@@ -197,6 +223,8 @@ button{font-family:inherit}
   #toast{top:calc(62px + env(safe-area-inset-top,0px));font-size:13px}
   #flacoBar{bottom:110px;font-size:13px}
   #banner{font-size:46px} #banner small{font-size:20px}
+  #items{left:8px;bottom:112px;max-width:calc(100% - 80px)} #items .lbl{display:none} .it{width:34px;height:34px;font-size:17px}
+  #carousel{width:calc(100% - 90px);left:8px;transform:none;top:calc(76px + env(safe-area-inset-top,0px))} #offers{grid-template-columns:repeat(3,1fr)} .offer b{font-size:15px}
   #spyBar{top:calc(62px + env(safe-area-inset-top,0px));font-size:13px}
 }
 @media (max-width:520px){ #ficha{right:8px;left:8px;width:auto} }
@@ -237,6 +265,8 @@ button{font-family:inherit}
   <aside id="setlist" aria-label="Sinergias activas"><h3>Setlist</h3><div id="traits"></div></aside>
   <aside id="players" aria-label="Público"></aside>
   <div id="flacoBar"></div>
+  <div id="items" aria-label="Equipo"><span class="lbl">Equipo</span><div id="inv" style="display:flex;gap:6px;flex-wrap:wrap"></div><button class="btn" id="recipesBtn">Recetas</button></div>
+  <div id="carousel" aria-label="Firma de autógrafos"><h3>Firma de autógrafos</h3><div class="turn" id="carTurn"></div><div id="offers"></div><div id="pickOrder"></div></div>
   <div id="banner"></div>
 
   <div id="bottom">
@@ -266,6 +296,12 @@ button{font-family:inherit}
   <h2 id="endTitle"></h2>
   <table id="endTable"></table>
   <div class="row"><button class="btn" id="btnEndClose">Ver escenario</button><button class="btn gold" id="btnEndNew">Nueva partida</button></div>
+</div></div>
+<div id="recipes" class="overlay"><div class="box">
+  <h2>Recetas</h2>
+  <div class="help" style="margin-top:0">Dos componentes en el mismo músico se fusionan solos. Máximo 3 ítems por músico. Al vender, el equipo vuelve al inventario.</div>
+  <div class="grid" id="recipeList"></div>
+  <div class="row"><button class="btn gold" id="recipesClose">Cerrar</button></div>
 </div></div>
 <div id="modal" class="overlay"><div class="box">
   <h2>Tácticas del Rock</h2>
@@ -314,12 +350,12 @@ button{font-family:inherit}
 </div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="sim.js?v=6"></script>
-<script src="net.js?v=6"></script>
-<script src="looks.js?v=6"></script>
-<script src="stage3d.js?v=6"></script>
-<script src="firebase-config.js?v=6"></script>
-<script src="firebase-transport.js?v=6"></script>
+<script src="sim.js?v=7"></script>
+<script src="net.js?v=7"></script>
+<script src="looks.js?v=7"></script>
+<script src="stage3d.js?v=7"></script>
+<script src="firebase-config.js?v=7"></script>
+<script src="firebase-transport.js?v=7"></script>
 <script>
 'use strict';
 /* =====================================================================
@@ -331,7 +367,7 @@ button{font-family:inherit}
  * ===================================================================== */
 (function UI() {
   const C = DATA.CONFIG, COLS = C.BOARD_COLS;
-  const LOCAL_KEY = 'tacticas_rock_local_v6', ONLINE_KEY = 'tacticas_rock_online', PREF_KEY = 'tacticas_rock_prefs';
+  const LOCAL_KEY = 'tacticas_rock_local_v7', ONLINE_KEY = 'tacticas_rock_online', PREF_KEY = 'tacticas_rock_prefs';
   const COST_COLOR = ['#7b8296', '#9aa0a8', '#3fae67', '#4a8ef0', '#b26ae6', '#f0b429'];
   const $ = s => document.querySelector(s);
   const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -342,7 +378,7 @@ button{font-family:inherit}
   let mode = 'menu';            // 'menu' | 'lobby' | 'planning' | 'combat' | 'waiting' | 'ended'
   let ficha = null;             // {uid?, owner?, unitId, star, cid?}
   let selectedUid = null;       // músico propio elegido para mover
-  let spyId = null, replay = null, drag = null, hoverUid = null;
+  let spyId = null, replay = null, drag = null, hoverUid = null, selItem = null, itemDrag = null;
   let prefs = { timer: false, speed: 1, name: 'Vos', quality: 'auto' };
   let shownCombatKey = null, beforeCombat = null, endShownFor = null, phaseStart = { key: null, at: 0 };
 
@@ -350,6 +386,10 @@ button{font-family:inherit}
   const viewed = () => state.players[spyId] || me();
   const pname = id => (state.players[id] ? state.players[id].name : id);
   const traitTag = t => `${DATA.TRAITS[t].icon} ${DATA.TRAITS[t].name}`;
+  const itemIcon = id => { const d = SIM.itemDef(id); if (d.icon) return d.icon; if (d.emblem) return DATA.TRAITS[d.emblem].icon; return d.boardSlots ? '🎟️' : SIM.itemDef(d.from[0]).icon + SIM.itemDef(d.from[1]).icon; };
+  const itemName = id => SIM.itemDef(id).name;
+  const itemDesc = id => { const d = SIM.itemDef(id); const mods = SIM.ITEM_MODS[id] || {}; const names = { adPct: '% daño', asPct: '% vel. ataque', ap: ' poder', startMana: ' maná inicial', armor: ' armadura', mr: ' RM', hp: ' vida', critChance: '% crítico' };
+    const st = Object.keys(names).filter(k => mods[k]).map(k => `+${mods[k]}${names[k]}`).join(', '); return [st, d.desc].filter(Boolean).join('. '); };
   const stars = n => '★'.repeat(n);
   const persName = p => (p.takenOver ? 'Bot (reemplazo)' : p.bot ? (DATA.BOTS.PERSONALITIES[p.bot.personality] || {}).name || p.bot.personality : 'Humano');
   const phase = () => (client && client.phase) || { name: 'lobby' };
@@ -471,6 +511,8 @@ button{font-family:inherit}
     if (ph.name === 'planning') {
       beforeCombat = state;
       if (mode !== 'combat') mode = 'planning';
+    } else if (ph.name === 'carousel') {
+      if (mode !== 'combat') mode = 'carousel';
     } else if (ph.name === 'combat' && ph.key !== shownCombatKey && !replay) {
       shownCombatKey = ph.key;
       startCombatView();
@@ -506,6 +548,31 @@ button{font-family:inherit}
     const loc = locOfUid(me(), uid);
     if (loc && act({ type: 'SELL', loc })) { if (ficha && ficha.uid === uid) closeFicha(); selectedUid = null; }
   }
+  function equipTo(uid, idx) {
+    const loc = locOfUid(me(), uid);
+    const it = me().items[idx];
+    if (loc && act({ type: 'EQUIP', item: idx, loc })) toast(`${itemIcon(it)} ${itemName(it)} → ${SIM.def(unitByUid(me(), uid) ? unitByUid(me(), uid).unitId : 'luca').short}`);
+    selItem = null; render();
+  }
+  function renderItems() {
+    const p = me(), inv = $('#inv');
+    $('#items').style.display = (p.items.length || canAct()) && !spyId ? 'flex' : 'none';
+    if (selItem != null && selItem >= p.items.length) selItem = null;
+    inv.innerHTML = p.items.map((id, i) => `<button class="it${SIM.isComponent(id) ? '' : ' full'}${selItem === i ? ' sel' : ''}" data-item="${i}" title="${esc(itemName(id) + ': ' + itemDesc(id))}">${itemIcon(id)}</button>`).join('') || '<span class="lbl">vacío</span>';
+  }
+  function renderCarousel() {
+    const box = $('#carousel'), car = state.carousel;
+    if (phase().name !== 'carousel' || !car || mode === 'combat') { box.style.display = 'none'; return; }
+    box.style.display = 'block';
+    const pair = car.pairs[car.turn] || [], myTurn = pair.includes(localPlayerId) && me().alive, picked = car.picks[localPlayerId] != null;
+    $('#carTurn').innerHTML = myTurn ? (picked ? 'Elegiste. Esperando al otro del turno…' : '<b>¡Te toca!</b> Elegí un músico (viene con su componente).') : `Turno de <b>${pair.map(id => esc(pname(id))).join(' y ')}</b>`;
+    $('#offers').innerHTML = car.offers.map((o, i) => {
+      const d = o.unitId && DATA.UNITS[o.unitId], taken = !!o.takenBy, mine = car.picks[localPlayerId] === i;
+      return `<button class="offer${taken ? ' taken' : ''}${mine ? ' mine' : ''}" data-offer="${i}" ${!myTurn || taken || picked ? 'disabled' : ''}>
+        <i style="background:${d ? COST_COLOR[d.cost] : '#555'}"></i><div><b>${d ? esc(d.short) : '—'}</b><span>${itemIcon(o.item)} ${esc(itemName(o.item))}${taken ? ' · ' + esc(pname(o.takenBy)) : ''}</span></div></button>`;
+    }).join('');
+    $('#pickOrder').innerHTML = 'Orden: ' + car.pairs.map((pr, k) => (k === car.turn ? '<b>' : '') + pr.map(id => esc(pname(id))).join(' + ') + (k === car.turn ? '</b>' : '')).join(' → ');
+  }
   function setSpy(id) {
     spyId = id && id !== localPlayerId ? id : null;
     selectedUid = null; closeFicha();
@@ -515,13 +582,13 @@ button{font-family:inherit}
   // ---------- render ----------
   function render() {
     if (!state || !me()) return;
-    renderTop(); renderSetlist(); renderPlayers(); renderBottom(); renderFlaco(); renderFicha();
+    renderTop(); renderSetlist(); renderPlayers(); renderBottom(); renderFlaco(); renderFicha(); renderItems(); renderCarousel();
     const spyBar = $('#spyBar');
     spyBar.style.display = spyId && mode !== 'combat' ? 'block' : 'none';
     if (spyId) spyBar.textContent = `👁 Viendo a ${pname(spyId)} · tocá acá para volver`;
     if (mode !== 'combat') {
       const v = viewed();
-      const list = arr => arr.map((u, idx) => u && { uid: u.uid, unitId: u.unitId, star: u.star, idx }).filter(Boolean);
+      const list = arr => arr.map((u, idx) => u && { uid: u.uid, unitId: u.unitId, star: u.star, idx, items: u.items || [] }).filter(Boolean);
       stage.setPlanning({ board: list(v.board), bench: list(v.bench), selected: spyId ? null : selectedUid, spy: !!spyId });
     }
   }
@@ -538,7 +605,7 @@ button{font-family:inherit}
     $('#round').textContent = `Ronda ${label}`;
     $('#rival').textContent = mode === 'combat' && replay ? replay.oppName : pve ? pve.name : pr ? pname(pr.opp) + (pr.ghost ? ' (fantasma)' : '') : state.order.length === 1 ? 'rival generado' : '—';
     const ph = phase().name;
-    $('#phase').textContent = mode === 'combat' ? 'Combate' : ph === 'planning' ? 'Armado' : ph === 'combat' ? 'Esperando a los demás' : ph === 'ended' ? 'Fin' : '';
+    $('#phase').textContent = mode === 'combat' ? (replay && replay.cs.tick >= replay.cs.otTick ? 'Tiempo extra' : 'Combate') : ph === 'carousel' ? 'Firma de autógrafos' : ph === 'planning' ? 'Armado' : ph === 'combat' ? 'Esperando a los demás' : ph === 'ended' ? 'Fin' : '';
     const rd = $('#ready');
     rd.style.visibility = canAct() ? 'visible' : 'hidden';
     rd.textContent = client && client.isReady() && ph === 'planning' ? '✓ Esperando…' : 'Listo';
@@ -603,7 +670,8 @@ button{font-family:inherit}
     $('#lvl').textContent = 'Convocatoria ' + p.level;
     $('#xpTxt').textContent = max ? 'Máxima' : `${p.xp}/${need}`;
     $('#xpBar').style.width = (max ? 100 : Math.min(100, p.xp / need * 100)) + '%';
-    const bc = $('#boardCount'); bc.textContent = `${n}/${p.level} en el escenario`; bc.classList.toggle('full', n >= p.level);
+    const lim = SIM.boardLimit(p);
+    const bc = $('#boardCount'); bc.textContent = `${n}/${lim} en el escenario`; bc.classList.toggle('full', n >= lim);
     $('#levelup').disabled = p.gold < C.XP_COST || max;
     $('#reroll').disabled = p.gold < C.REROLL_COST;
     $('#gold').textContent = '$' + p.gold;
@@ -681,7 +749,7 @@ button{font-family:inherit}
       </div>
       ${d.unique ? `<div class="uni"><b>${traitTag(d.unique)}</b><br>${esc(DATA.TRAITS[d.unique].desc)}</div>` : ''}
       ${d.ability ? `<div class="ab"><strong>${esc(d.ability.name)}</strong><p>${abilityText(ficha.unitId, s)}</p></div>` : ''}
-      <div class="equip">Equipo: —</div>
+      <div class="equip">Equipo: ${(ficha.items && ficha.items.length) ? ficha.items.map(i => `<span class="eq">${itemIcon(i)} <b>${esc(itemName(i))}</b> · ${esc(itemDesc(i))}</span>`).join('') : '—'}</div>
       ${mine ? `<button class="btn sell" id="fSell">Vender · $${SIM.sellValue({ unitId: ficha.unitId, star: s })}</button>` : ''}`;
     box.style.display = 'block';
     const sb = $('#fSell'); if (sb) sb.addEventListener('click', () => sellUid(ficha.uid));
@@ -690,7 +758,7 @@ button{font-family:inherit}
   // ---------- entrada sobre el escenario: tocar / arrastrar / click derecho ----------
   const cv = $('#c');
   const overPasses = (x, y) => { const r = $('#passes').getBoundingClientRect(); return x >= r.left - 8 && x <= r.right + 8 && y >= r.top - 8 && y <= r.bottom + 8; };
-  function unitInfo(uid) { const p = viewed(), u = unitByUid(p, uid); return u ? { uid, owner: p.id, unitId: u.unitId, star: u.star } : null; }
+  function unitInfo(uid) { const p = viewed(), u = unitByUid(p, uid); return u ? { uid, owner: p.id, unitId: u.unitId, star: u.star, items: u.items || [] } : null; }
   cv.addEventListener('pointerdown', e => {
     if (e.button !== 0 || !state) return;
     if (canAct()) {
@@ -728,9 +796,10 @@ button{font-family:inherit}
     if (!h) { selectedUid = null; closeFicha(); render(); return; }
     if (h.kind === 'cunit') {
       const u = replay && replay.cs.units[h.cid];
-      if (u) openFicha({ unitId: u.unitId, star: u.star, cid: h.cid });
+      if (u) openFicha({ unitId: u.unitId, star: u.star, cid: h.cid, items: u.items || [] });
       return;
     }
+    if (h.kind === 'unit' && selItem != null && canAct()) { equipTo(h.uid, selItem); return; }
     if (h.kind === 'unit') {
       if (selectedUid && selectedUid !== h.uid && canAct()) { const to = locOfUid(me(), h.uid); if (to) moveUnit(selectedUid, to); render(); return; }
       if (selectedUid === h.uid) { selectedUid = null; closeFicha(); render(); return; }
@@ -757,11 +826,41 @@ button{font-family:inherit}
   });
   $('#players').addEventListener('click', e => { const r = e.target.closest('[data-pid]'); if (r && mode !== 'combat') setSpy(spyId === r.dataset.pid ? null : r.dataset.pid); });
   $('#spyBar').addEventListener('click', () => setSpy(null));
+  $('#inv').addEventListener('pointerdown', e => {
+    const b = e.target.closest('[data-item]'); if (!b || !canAct()) return;
+    itemDrag = { idx: +b.dataset.item, sx: e.clientX, sy: e.clientY, on: false };
+    b.setPointerCapture(e.pointerId);
+  });
+  $('#inv').addEventListener('pointermove', e => {
+    if (!itemDrag) return;
+    if (!itemDrag.on && Math.hypot(e.clientX - itemDrag.sx, e.clientY - itemDrag.sy) > 8) itemDrag.on = true;
+    if (itemDrag.on) { const h = stage.pick(e.clientX, e.clientY, { unitsOnly: true }); stage.highlight(null); hoverUid = h && h.kind === 'unit' ? h.uid : null; }
+  });
+  $('#inv').addEventListener('pointerup', e => {
+    const d = itemDrag; itemDrag = null;
+    if (!d) return;
+    if (d.on) { const h = stage.pick(e.clientX, e.clientY, { unitsOnly: true }); if (h && h.kind === 'unit') equipTo(h.uid, d.idx); return; }
+    selItem = selItem === d.idx ? null : d.idx; // tocar: elegir el ítem y después tocar al músico
+    if (selItem != null) toast('Tocá al músico que lo va a llevar');
+    renderItems();
+  });
+  $('#offers').addEventListener('click', e => {
+    const b = e.target.closest('[data-offer]'); if (!b || b.disabled || !client) return;
+    const err = client.send({ type: 'PICK', idx: +b.dataset.offer });
+    if (err) toast(err); else nudge();
+  });
+  $('#recipesBtn').addEventListener('click', () => {
+    const I = DATA.ITEMS;
+    $('#recipeList').innerHTML = Object.keys(I.COMPLETED).map(id => { const d = I.COMPLETED[id]; return `<div class="rc"><span class="ing">${I.COMPONENTS[d.from[0]].icon}+${I.COMPONENTS[d.from[1]].icon}</span><span><b>${esc(d.name)}</b> · ${esc(itemDesc(id))}</span></div>`; }).join('')
+      + '<div class="help">Componentes: ' + Object.keys(I.COMPONENTS).map(c => `${I.COMPONENTS[c].icon} ${esc(I.COMPONENTS[c].name)}${c === 'credencial' ? '' : ' (' + esc(itemDesc(c)) + ')'}`).join(' · ') + '</div>';
+    $('#recipes').style.display = 'grid';
+  });
+  $('#recipesClose').addEventListener('click', () => ($('#recipes').style.display = 'none'));
   $('#fClose').addEventListener('click', () => { selectedUid = null; closeFicha(); render(); });
   document.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || document.querySelector('.overlay[style*="grid"]')) return;
     const k = e.key.toLowerCase();
-    if (k === 'escape') { selectedUid = null; closeFicha(); setSpy(null); $('#menu').classList.remove('on'); }
+    if (k === 'escape') { selectedUid = null; selItem = null; closeFicha(); setSpy(null); $('#menu').classList.remove('on'); $('#recipes').style.display = 'none'; }
     else if (k === 'd') act({ type: 'REROLL' });
     else if (k === 'f') act({ type: 'BUY_XP' });
     else if (k === 'e' && hoverUid) { sellUid(hoverUid); hoverUid = null; }
@@ -796,7 +895,10 @@ button{font-family:inherit}
     if (!rp || rp.finished) return;
     const dt = Math.min(0.1, (now - rp.last) / 1000); rp.last = now;
     rp.acc += dt * C.TICK_RATE * rp.speed;
-    while (rp.acc >= 1 && !rp.cs.done) { SIM.stepCombat(rp.cs); stage.combatEvents(rp.cs.events); rp.acc -= 1; }
+    while (rp.acc >= 1 && !rp.cs.done) {
+      SIM.stepCombat(rp.cs); stage.combatEvents(rp.cs.events); rp.acc -= 1;
+      if (rp.cs.events.some(e => e.t === 'overtime')) { toast('¡Tiempo extra! La pelea se acelera', 2500); renderTop(); }
+    }
     stage.setAlpha(rp.cs.done ? 0 : rp.acc);
     if (rp.cs.done) endCombat();
   }
@@ -825,6 +927,8 @@ button{font-family:inherit}
       replay = null;
       if (!client) return;
       client.ready(); // ya vi mi pelea
+      const drops = state.drops && state.drops[localPlayerId];
+      if (drops && drops.length) toast('Los creeps dejaron: ' + drops.map(i => itemIcon(i) + ' ' + itemName(i)).join(', '), 3500);
       const ph = phase().name;
       mode = ph === 'planning' ? 'planning' : ph === 'ended' ? 'ended' : 'waiting';
       nudge();

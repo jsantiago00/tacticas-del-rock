@@ -5,6 +5,8 @@ const { SIM, DATA } = require('./sim.js');
 let failed = 0;
 const check = (ok, msg) => { console.log((ok ? '✔ ' : '✘ ') + msg); if (!ok) failed++; };
 const copies = star => (star === 1 ? 1 : star === 2 ? 3 : 9);
+// Resolver una ronda y, si toca, la firma de autógrafos (eligiendo como bots).
+const resolveR = s => SIM.autoCarousel(SIM.resolveRound(s));
 
 // El pool + todas las copias en juego (tableros, bancos, tiendas) tiene que dar siempre el total.
 function poolOk(s) {
@@ -41,7 +43,7 @@ for (const seed of ['inv-1', 'inv-2']) {
       if (ghosts.length !== alive.length % 2) pairs = false;
       if (alive.length > 2) { pvpRounds++; for (const p of s.pairings) if (s.players[p.a].lastOpp === p.b) repeats++; }
     }
-    s = SIM.resolveRound(s);
+    s = resolveR(s);
     for (const c of s.combats) if (SIM.simulateCombat(c.snapA, c.snapB, c.seed).hash !== c.hash) replay = false;
     if (s.phase !== 'ended') s = SIM.runAllBots(s);
     pool = pool && poolOk(s);
@@ -57,7 +59,7 @@ for (const seed of ['inv-1', 'inv-2']) {
 // 4. runBotTurn: la lista de acciones, aplicada con applyAction, reproduce el turno exacto.
 {
   let s = SIM.createGame({ seed: 'bt', slots: SIM.makeSlots({ bots: 8 }) });
-  for (let r = 0; r < 12; r++) { s = SIM.runAllBots(s); s = SIM.resolveRound(s); }
+  for (let r = 0; r < 12; r++) { s = SIM.runAllBots(s); s = resolveR(s); }
   const before = JSON.stringify(s);
   const actions = SIM.runBotTurn(s, 'b3');
   check(JSON.stringify(s) === before, 'runBotTurn no muta el estado');
@@ -71,30 +73,30 @@ for (const seed of ['inv-1', 'inv-2']) {
 // 5. Fantasma y desempate de eliminación.
 {
   let s = SIM.createGame({ seed: 'gh', slots: SIM.makeSlots({ bots: 4 }) });
-  while (SIM.roundLabel(s.round) !== '2-1') s = SIM.resolveRound(SIM.runAllBots(s));
+  while (SIM.roundLabel(s.round) !== '2-1') s = resolveR(SIM.runAllBots(s));
   // matar a uno a mano -> quedan 3 vivos -> tiene que haber un fantasma
   s = SIM.clone(s); s.players.b1.hp = 1; s.players.b1.board.fill(null); s.players.b1.bench.fill(null);
-  s = SIM.resolveRound(s);
+  s = resolveR(s);
   const alive = s.order.filter(id => s.players[id].alive).length;
   check(alive !== 3 || s.pairings.filter(p => p.ghost).length === 1, `Con ${alive} vivos hay ${s.pairings ? s.pairings.filter(p => p.ghost).length : 0} fantasma(s)`);
   if (alive === 3) {
     const g = s.pairings.find(p => p.ghost);
     const hpGhostOwner = s.players[g.b].hp;
-    const after = SIM.resolveRound(s);
+    const after = resolveR(s);
     check(after.players[g.b].hp === hpGhostOwner || !after.players[g.b].alive || after.combats.some(c => !c.ghost && (c.a === g.b || c.b === g.b)),
       'Pelear contra un fantasma no le hace daño al dueño del tablero');
   }
 }
 {
   let s = SIM.createGame({ seed: 'tie', slots: SIM.makeSlots({ bots: 4 }) });
-  while (SIM.roundLabel(s.round) !== '2-1') s = SIM.resolveRound(SIM.runAllBots(s));
+  while (SIM.roundLabel(s.round) !== '2-1') s = resolveR(SIM.runAllBots(s));
   s = SIM.clone(s);
   // b1 y b2 mueren en la misma ronda: b2 tenía más vida antes -> queda mejor ubicado
   s.players.b1.hp = 1; s.players.b2.hp = 2;
   for (const id of ['b1', 'b2']) { s.players[id].board.fill(null); s.players[id].bench.fill(null); }
   for (const id of ['b3', 'b4']) s.players[id].hp = 100;
   s.pairings = [{ a: 'b1', b: 'b3', ghost: false }, { a: 'b2', b: 'b4', ghost: false }];
-  s = SIM.resolveRound(s);
+  s = resolveR(s);
   const p1 = s.players.b1, p2 = s.players.b2;
   check(!p1.alive && !p2.alive && p2.place < p1.place, `Desempate por vida previa: b2 #${p2.place}, b1 #${p1.place}`);
 }
@@ -245,10 +247,10 @@ for (const seed of ['inv-1', 'inv-2']) {
     s = SIM.applyAction(s, 'p0', { type: 'MOVE', from: loc, to: { zone: 'board', idx: 24 } });
     const tr = SIM.computeTraits(SIM.boardSnapshot(s.players.p0));
     check(!!second && tr.fauna && !tr.almacen && !tr.averiados, 'El Flaco: cuenta solo para el origen elegido y no puede sumar otro todavía');
-    for (let i = 0; i < 3; i++) s = SIM.resolveRound(s);
+    for (let i = 0; i < 3; i++) s = resolveR(s);
     const u3 = s.players.p0.board[24];
     check(u3 && u3.flaco.fights === 3 && SIM.flacoSlots(u3) === 2 && SIM.flacoPending(u3), 'El Flaco: después de 3 peleas habilita un segundo origen');
-    s = SIM.resolveRound(s); // no eligió: el host elige por él
+    s = resolveR(s); // no eligió: el host elige por él
     check(s.players.p0.board[24].flaco.chosen.length === 2, `El Flaco: si no elige a tiempo, se elige solo (${s.players.p0.board[24].flaco.chosen.join(', ')})`);
   }
   // Completar el escenario solo: los del backstage suben adelante, desde el centro
@@ -257,14 +259,93 @@ for (const seed of ['inv-1', 'inv-2']) {
     const p = s.players.p0; p.level = 4;
     p.bench[0] = { uid: 91, unitId: 'luca', star: 1 }; p.bench[2] = { uid: 92, unitId: 'fito', star: 1 }; p.bench[5] = { uid: 93, unitId: 'zeta', star: 1 };
     p.board[3] = { uid: 94, unitId: 'slash', star: 1 };
-    const n = SIM.resolveRound(s), q = n.players.p0;
+    const n = resolveR(s), q = n.players.p0;
     const where = id => q.board.findIndex(u => u && u.unitId === id);
     check(where('luca') === 2 && where('fito') === 4 && where('zeta') === 1 && q.bench.every(u => !u) && n.autoFilled.p0.join() === 'luca,fito,zeta',
       'Completar el escenario: suben solos a la fila de adelante desde el centro, y se avisa quiénes');
     let s2 = SIM.clone(SIM.createGame({ seed: 'fill2', players: [{ id: 'p0', name: 'T' }] }));
     s2.players.p0.level = 1; s2.players.p0.board[3] = { uid: 95, unitId: 'slash', star: 1 }; s2.players.p0.bench[0] = { uid: 96, unitId: 'luca', star: 1 };
-    const n2 = SIM.resolveRound(s2);
+    const n2 = resolveR(s2);
     check(n2.players.p0.bench[0] && !n2.autoFilled.p0, 'Completar el escenario: no pasa del máximo de la convocatoria');
+  }
+  // ---- Equipo ----
+  {
+    let s = SIM.clone(SIM.createGame({ seed: 'items', players: [{ id: 'p0', name: 'T' }] }));
+    const p = s.players.p0; p.level = 3;
+    p.board[3] = { uid: 101, unitId: 'slash', star: 1 }; p.bench[0] = { uid: 102, unitId: 'luca', star: 1 };
+    p.items = ['termo', 'funda', 'pua', 'pua', 'credencial', 'credencial', 'pedal'];
+    const at = { zone: 'board', idx: 3 };
+    const eq = (i, loc = at) => { s = SIM.applyAction(s, 'p0', { type: 'EQUIP', item: i, loc }); };
+    eq(0); eq(0); // termo + funda -> Ronda de mate
+    check(JSON.stringify(s.players.p0.board[3].items) === '["rondamate"]' && s.players.p0.items.length === 5, 'Equipo: dos componentes en el mismo músico se fusionan (Termo + Funda = Ronda de mate)');
+    eq(0); eq(0); eq(0); // pua+pua = Púa de oro; credencial -> 3 ítems
+    const u = s.players.p0.board[3];
+    check(u.items.join() === 'rondamate,puadeoro,credencial', `Equipo: ${u.items.join(', ')}`);
+    const before = s.players.p0.items.length;
+    eq(s.players.p0.items.indexOf('pedal')); // pedal + credencial suelta = Emblema: Combate... Slash ya es Combate -> rechazado
+    check(s.players.p0.items.length === before && SIM.validateAction(s, 'p0', { type: 'EQUIP', item: s.players.p0.items.indexOf('pedal'), loc: at }).includes('Combate'), 'Equipo: no deja dar un emblema de un origen que ya tiene');
+    // Sobrecupo en Luca (backstage): +1 lugar en el escenario
+    const lb = { zone: 'bench', idx: 0 };
+    s = SIM.clone(s); s.players.p0.items.push('credencial'); // una ya la tiene Slash
+    eq(s.players.p0.items.indexOf('credencial'), lb); eq(s.players.p0.items.indexOf('credencial'), lb);
+    check(s.players.p0.bench[0].items[0] === 'sobrecupo' && SIM.boardLimit(s.players.p0) === 4, 'Equipo: Credencial + Credencial = Sobrecupo (+1 lugar en el escenario)');
+    const nItems = s.players.p0.items.length;
+    s = SIM.applyAction(s, 'p0', { type: 'SELL', loc: at });
+    check(s.players.p0.items.length === nItems + 3 && s.players.p0.items.includes('rondamate'), 'Equipo: al vender, vuelve al inventario (las fusiones, fusionadas)');
+    // emblema cuenta para el origen
+    const tr = SIM.computeTraits([{ unitId: 'luca', star: 1, r: 0, c: 3, items: ['emb_fauna'] }, { unitId: 'bahiano', star: 1, r: 0, c: 4 }]);
+    check(tr.fauna && tr.fauna.count === 2 && tr.fauna.level === 0, 'Equipo: el emblema hace contar al músico para ese origen');
+    // combinar: el equipo de las copias pasa a la que queda
+    let s2 = SIM.clone(SIM.createGame({ seed: 'items2', players: [{ id: 'p0', name: 'T' }] }));
+    const q = s2.players.p0; q.gold = 10;
+    q.board[3] = { uid: 201, unitId: 'luca', star: 1, items: ['pua'] }; q.bench[0] = { uid: 202, unitId: 'luca', star: 1, items: ['palillos'] };
+    q.shop[0] = 'luca'; s2.pool.luca--;
+    s2 = SIM.applyAction(s2, 'p0', { type: 'BUY', slot: 0 });
+    check(s2.players.p0.board[3].star === 2 && s2.players.p0.board[3].items.join() === 'tapping', 'Equipo: al combinar 3 copias, los ítems pasan a la ★2 (y se fusionan)');
+    // en combate: Lentes de sol esquiva; Mate cocido es inmune al control
+    const cs = SIM.createCombat([E('slash', 3, 3, 3)], [E('zeta', 0, 3, 1, { items: ['lentes'] })], 21);
+    let miss = 0; run(cs, c => { miss += c.events.filter(e => e.t === 'miss').length; return false; }, 400);
+    check(miss > 0, `Equipo en combate: Lentes de sol esquiva (${miss})`);
+    const cs2 = SIM.createCombat([E('catriel', 0, 3)], [E('zeta', 0, 3, 1, { items: ['matecocido'] })], 22);
+    const ca = unit(cs2, 'catriel'); ca.mana = ca.maxMana;
+    run(cs2, c => castBy(c, ca));
+    check(unit(cs2, 'zeta', 1).stunUntil === 0, 'Equipo en combate: Mate cocido no deja que lo aturdan al principio');
+  }
+  // ---- Firma de autógrafos: de a pares, de menos a más público ----
+  {
+    let s = SIM.createGame({ seed: 'carrusel', slots: SIM.makeSlots({ bots: 5 }) });
+    while (s.phase !== 'carousel') { s = SIM.runAllBots(s); s = SIM.resolveRound(s); }
+    s = SIM.clone(s);
+    // vidas distintas para ver el orden
+    s.order.forEach((id, i) => (s.players[id].hp = 100 - i * 7));
+    const order = s.order.slice().sort((a, b) => s.players[a].hp - s.players[b].hp);
+    // rehacer la firma con estas vidas: se arma de nuevo desde la planificación anterior no es simple; verificamos con la de verdad
+    const car = s.carousel;
+    const flat = car.pairs.flat();
+    check(car.offers.length === s.order.length + 1 && car.pairs.every(p => p.length <= 2) && flat.length === s.order.length, `Firma de autógrafos: ${car.offers.length} músicos firmando, ${car.pairs.length} turnos de a pares`);
+    // dentro del par, si quieren lo mismo, se lo lleva el de menos público
+    const [x, y] = car.pairs[0];
+    s.carousel.picks[x] = 0; s.carousel.picks[y] = 0;
+    const lowHp = s.players[x].hp <= s.players[y].hp ? x : y;
+    const n = SIM.carouselResolveTurn(s);
+    check(n.carousel.offers[0].takenBy === car.pairs[0][0] && n.carousel.turn === 1, 'Firma de autógrafos: si el par quiere el mismo, se lo lleva el primero del turno (el de menos público)');
+    const done = SIM.autoCarousel(n);
+    check(done.phase === 'planning' && !done.carousel, 'Firma de autógrafos: al terminar los turnos vuelve la planificación');
+    // el orden de los pares sigue la vida al empezar la firma
+    let s3 = SIM.createGame({ seed: 'carrusel2', slots: SIM.makeSlots({ bots: 5 }) });
+    while (!(s3.round.stage === 1 && s3.round.num === 3)) { s3 = SIM.runAllBots(s3); s3 = resolveR(s3); }
+    s3 = SIM.clone(s3); s3.order.forEach((id, i) => (s3.players[id].hp = 100 - i * 7));
+    s3 = SIM.resolveRound(s3);
+    const hpOrder = s3.carousel.pairs.flat().map(id => s3.players[id].hp);
+    check(hpOrder.every((h, i) => i === 0 || hpOrder[i - 1] <= h), `Firma de autógrafos: los pares salen de menos a más público (${hpOrder.join(', ')})`);
+  }
+  // ---- Tiempo extra: a los 30 s se acelera; gana el último en pie ----
+  {
+    // dos tanques que se curan: sin tiempo extra empataban
+    const cs = SIM.createCombat([E('aznar', 0, 3, 3, { items: ['camperagast', 'termo2l', 'rondamate'] })], [E('iorio', 0, 3, 3, { items: ['camperagast', 'termo2l', 'cardio'] })], 31);
+    let ot = false;
+    run(cs, c => { if (c.events.some(e => e.t === 'overtime')) ot = true; return false; }, 2000);
+    check(ot && cs.tick > 30 * 30 && cs.winner !== 'draw', `Tiempo extra: arranca a los 30 s y define (ganó ${cs.winner} a los ${(cs.tick / 30).toFixed(1)} s)`);
   }
   // Online: la versión de datos queda guardada en el estado
   check(SIM.createGame({ seed: 'v', players: [{ id: 'p0', name: 'T' }] }).v === DATA.VERSION, `Versión de datos en el estado: ${DATA.VERSION}`);
@@ -314,6 +395,17 @@ async function playOnline({ seed, crashAt = null, idleFrom = null, dropU3 = null
       // eventos de red
       if (dropU3 && round === dropU3[0] && T[2].connected) { T[2].disconnect(); await srv.settle(); }
       if (dropU3 && round === dropU3[1] && !T[2].connected) { T[2].reconnect(); await srv.settle(); }
+      if (meta.phase.name === 'carousel' && st.carousel) { // firma de autógrafos: el humano del turno elige el primero libre
+        log.carousels = (log.carousels || 0) + 1;
+        for (let i = 0; i < 3; i++) {
+          const uid = T[i].uid;
+          if (!T[i].connected || !st.carousel.pairs[st.carousel.turn].includes(uid)) continue;
+          if (i === 0 && idleFrom != null && round >= idleFrom) continue;
+          const idx = st.carousel.offers.findIndex(o => !o.takenBy);
+          await T[i].push(`rooms/${code}/actions`, { uid, action: { type: 'PICK', idx } });
+          await srv.settle();
+        }
+      }
       if (meta.phase.name === 'planning') {
         for (let i = 0; i < 3; i++) {
           const uid = T[i].uid, p = st.players[uid];

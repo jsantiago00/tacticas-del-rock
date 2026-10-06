@@ -156,7 +156,7 @@ const NET = (() => {
       for (const k of keys) {
         const { uid, action } = room.actions[k] || {};
         // Solo se aplican en planificación; fuera de fase se descartan.
-        if (meta.phase.name === 'planning' && uid && action) s = S.applyAction(s, uid, action);
+        if ((meta.phase.name === 'planning' || meta.phase.name === 'carousel') && uid && action) s = S.applyAction(s, uid, action);
         extra['actions/' + k] = null;
         consumed.add(k);
       }
@@ -186,8 +186,16 @@ const NET = (() => {
         if (takeover && away[uid] >= CFG.TAKEOVER_AFTER_ROUNDS) s = S.setBotControl(s, uid, true);
         if (online) s = S.setBotControl(s, uid, false);
       }
-      s = S.runAllBots(s); // los bots compran al inicio de la planificación
-      await commit(s, { 'meta/phase': { name: 'planning', endsAt: planningEnd(), key: phaseKey(s, 'planning') }, 'meta/away': away });
+      await enterPlanningOrCarousel(s, { 'meta/away': away });
+    }
+    // Firma de autógrafos: un turno por par. Los bots del par eligen al toque.
+    function carouselPhase(s) {
+      const secs = (meta.settings || {}).planningSeconds > 0 ? D.ITEMS.CAROUSEL_TURN_SECONDS : 0;
+      return { name: 'carousel', endsAt: secs ? T.now() + secs * 1000 : 0, key: `${s.roundsPlayed}|carousel|${s.carousel.turn}` };
+    }
+    async function enterPlanningOrCarousel(s, extra = {}) {
+      if (s.phase === 'carousel') { s = S.carouselBotPicks(s); await commit(s, { 'meta/phase': carouselPhase(s), ...extra }); }
+      else { s = S.runAllBots(s); await commit(s, { 'meta/phase': { name: 'planning', endsAt: planningEnd(), key: phaseKey(s, 'planning') }, ...extra }); } // los bots compran al inicio de la planificación
     }
 
     // Un paso: consumir la cola y avanzar de fase si corresponde. Idempotente.
@@ -206,6 +214,14 @@ const NET = (() => {
         }
         await processQueue(room);
         if ((ph.endsAt && T.now() >= ph.endsAt) || allReady(getRoom() || room)) await endPlanning(getRoom() || room);
+      } else if (ph.name === 'carousel') {
+        await processQueue(room);
+        const car = state.carousel;
+        if (!car) { await enterPlanningOrCarousel(state); return; }
+        // esperan los humanos conectados del par; los desconectados reciben uno al azar
+        const r2 = getRoom() || room;
+        const humans = car.pairs[car.turn].filter(pid => state.players[pid] && !state.players[pid].isBot && r2.presence && r2.presence[pid] && r2.presence[pid].online);
+        if (humans.every(pid => car.picks[pid] != null) || (ph.endsAt && T.now() >= ph.endsAt)) await enterPlanningOrCarousel(S.carouselResolveTurn(state));
       } else if (ph.name === 'combat') {
         await processQueue(room); // descarta lo que llegue fuera de fase
         if (T.now() >= ph.endsAt || allReady(room)) await startPlanning(room);
@@ -279,7 +295,8 @@ const NET = (() => {
       // Devuelve un error (string) o null si la acción salió a la cola.
       send(action) {
         if (!view || !room || !room.meta) return 'Sin conexión con la sala';
-        if (room.meta.phase.name !== 'planning') return 'Esperá a la fase de planificación';
+        const phn = room.meta.phase.name;
+        if (phn === 'carousel' ? action.type !== 'PICK' : phn !== 'planning') return phn === 'carousel' ? 'Ahora es la firma de autógrafos' : 'Esperá a la fase de planificación';
         const err = S.validateAction(view, me, action);
         if (err) return err;
         if (action.type === 'REROLL' && room.actions && sortedKeys(room.actions).some(k => room.actions[k].uid === me && room.actions[k].action.type === 'REROLL'))

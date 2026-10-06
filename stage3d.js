@@ -321,11 +321,12 @@ const STAGE3D = (() => {
       const mpFg = new T.Sprite(barMat.mana); mpFg.position.set(0, 2.5, 0.001);
       const mpBg = new T.Sprite(barMat.bg); mpBg.scale.set(1.1, 0.07, 1); mpBg.position.y = 2.5;
       const icon = new T.Sprite(iconMat.stun); icon.scale.set(0.5, 0.5, 1); icon.position.y = 2.95; icon.visible = false;
+      const gear = [0, 1, 2].map(i => { const g = new T.Sprite(iconMat.stun); g.scale.set(0.34, 0.34, 1); g.position.set((i - 1) * 0.36, 2.08, 0); g.visible = false; grp.add(g); return g; });
       for (const s of [hpBg, hpFg, shFg, mpBg, mpFg]) { s.visible = false; grp.add(s); }
       grp.add(icon);
       const hit = new T.Mesh(G.hitBox, hitMat); hit.position.y = 1.05; hit.userData.key = key; grp.add(hit);
       scene.add(grp);
-      const doll = { key, unitId, star: 0, L, f, grp, base, ring, sel, stars, hpBg, hpFg, shFg, mpBg, mpFg, icon, hit,
+      const doll = { key, unitId, star: 0, L, f, grp, base, ring, sel, stars, hpBg, hpFg, shFg, mpBg, mpFg, icon, hit, gear, items: '',
         phase: (key.charCodeAt(1) * 7 + key.length * 13) % 60 / 10, atk: -1, cast: -1, hitT: 0, dead: 0, alive: true, celeb: 0,
         home: new T.Vector3(), moving: 0, lunge: 0, facing: null, cid: -1 };
       setStar(doll, star, false);
@@ -342,6 +343,23 @@ const STAGE3D = (() => {
       doll.scale = STAR_SCALE[star - 1] * (doll.inBench ? 0.85 : 1);
       doll.grp.scale.setScalar(doll.scale);
       if (up && flash) burst(doll.grp.position, star === 3 ? 0xf0b429 : 0xd8dde6, 1.8, 0.7);
+    }
+    // Íconos del equipo (texturas cacheadas por ítem).
+    const gearMat = {};
+    function gearMaterial(id) {
+      if (gearMat[id]) return gearMat[id];
+      const d = SIM.itemDef(id), ch = d.icon || (d.emblem ? DATA.TRAITS[d.emblem].icon : d.boardSlots ? '🎟️' : SIM.itemDef(d.from[0]).icon);
+      const full = !d.icon;
+      return (gearMat[id] = new T.SpriteMaterial({ depthWrite: false, map: textTex('gear' + id, (g, w, h) => {
+        g.fillStyle = full ? '#f0b429' : '#24365a'; g.beginPath(); g.arc(w / 2, h / 2, w / 2 - 2, 0, Math.PI * 2); g.fill();
+        g.font = '36px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(ch, w / 2, h / 2 + 2);
+      }, 64, 64) }));
+    }
+    function setGear(doll, items) {
+      const key = (items || []).join(',');
+      if (doll.items === key) return;
+      doll.items = key;
+      doll.gear.forEach((g, i) => { const id = items && items[i]; g.visible = !!id; if (id) g.material = gearMaterial(id); });
     }
     function removeDoll(key) {
       const d = dolls.get(key);
@@ -403,6 +421,7 @@ const STAGE3D = (() => {
         d.scale = STAR_SCALE[e.star - 1] * (inBench ? 0.85 : 1);
         d.grp.scale.setScalar(d.scale);
         d.sel.visible = selected === e.uid;
+        setGear(d, e.items);
         d.alive = true; d.dead = 0; d.grp.visible = true;
       };
       board.forEach(e => place(e, false));
@@ -424,6 +443,7 @@ const STAGE3D = (() => {
         for (const s of [d.hpBg, d.hpFg, d.mpBg]) s.visible = true;
         d.mpFg.visible = u.maxMana > 0; d.mpBg.visible = u.maxMana > 0;
         combat.keys.push(d.key);
+        setGear(d, u.items);
         placeCombat(d, u, 0);
         d.grp.rotation.y = (u.side === combat.mySide) ? Math.PI : 0;
       }
