@@ -113,6 +113,7 @@ const STAGE3D = (() => {
       box: new T.BoxGeometry(1, 1, 1), cyl: new T.CylinderGeometry(1, 1, 1, 18), cone: new T.ConeGeometry(1, 1, 8),
       torus: new T.TorusGeometry(1, 0.12, 8, 24), ringSmall: new T.TorusGeometry(0.075, 0.016, 6, 16),
       base: new T.CylinderGeometry(0.5, 0.56, 0.08, 28), starRing: new T.TorusGeometry(0.62, 0.05, 8, 40),
+      facePlate: new T.SphereGeometry(0.408, 24, 16, Math.PI * 0.5 - 1.15, 2.3, 0.32, 1.95),
       selRing: new T.TorusGeometry(0.7, 0.05, 8, 40), teamDisc: new T.RingGeometry(0.66, 0.98, 40), hitBox: new T.BoxGeometry(1.0, 2.1, 1.0),
     };
     const matCache = {};
@@ -220,6 +221,14 @@ const STAGE3D = (() => {
       }
       return null;
     }
+    let faceMode = /[?&]caras(=|&|$)/.test(location.search); // prototipo: ?caras en la URL
+    const faceMats = {};
+    function faceMat(url) {
+      if (faceMats[url]) return faceMats[url];
+      const tex = new T.TextureLoader().load(url); tex.encoding = T.sRGBEncoding;
+      tex.repeat.set(0.62, 0.62); tex.offset.set(0.19, 0.2); // los recortes vienen centrados en la cara: acercar
+      return (faceMats[url] = new T.MeshBasicMaterial({ map: tex }));
+    }
     function buildFigure(L) {
       const root = new T.Group(), body = new T.Group(); root.add(body);
       const w = L.big ? 1.14 : 1; body.scale.set(w, 1, w);
@@ -235,14 +244,16 @@ const STAGE3D = (() => {
       if (L.tunic) { const t = mesh(G.cyl, L.shirt, 0.3, 0.4, 0.3); t.position.y = -0.12; torso.add(t); }
       const head = new T.Group(); head.position.y = 0.92; torso.add(head);
       head.add(mesh(G.head, L.skin, 1, 1.04, 1));
-      if (L.glasses === 'round') {
+      if (L.face) { // cara de la foto sobre el frente de la cabeza (cabezón)
+        const fm = new T.Mesh(G.facePlate, faceMat(L.face)); fm.scale.set(1, 1.04, 1); head.add(fm);
+      } else if (L.glasses === 'round') {
         for (const sd of [-1, 1]) { const r = mesh(G.ringSmall, '#1b1b1f'); r.position.set(sd * 0.13, 0.05, 0.38); head.add(r); }
       } else if (L.glasses) {
         const gl = mesh(G.box, '#0e0f12', 0.52, 0.12, 0.06); gl.position.set(0, 0.05, 0.38); head.add(gl);
       } else {
         for (const sd of [-1, 1]) { const e = mesh(G.eye, '#151515'); e.position.set(sd * 0.13, 0.05, 0.37); head.add(e); }
       }
-      const nose = mesh(G.ball, L.skin, 0.05, 0.06, 0.05); nose.position.set(0, -0.05, 0.41); head.add(nose);
+      if (!L.face) { const nose = mesh(G.ball, L.skin, 0.05, 0.06, 0.05); nose.position.set(0, -0.05, 0.41); head.add(nose); }
       if (L.beard) { const b = mesh(G.ball, L.hairCol, 0.3, 0.2, 0.2); b.position.set(0, -0.27, 0.25); head.add(b); }
       if (L.mustache === 'bicolor') {
         const a = mesh(G.box, '#f2f2f2', 0.13, 0.05, 0.05); a.position.set(-0.07, -0.13, 0.39); head.add(a);
@@ -325,6 +336,7 @@ const STAGE3D = (() => {
     const dolls = new Map(); // clave: 'u<uid>' (planificación) o 'c<cid>' (combate)
     function makeDoll(key, unitId, star) {
       const d = SIM.def(unitId), L = LOOKS.of(unitId, d);
+      if (faceMode && window.CARAS && CARAS[unitId]) { L.face = CARAS[unitId]; L.beard = L.mustache = L.glasses = false; } // prototipo: la cara de la foto
       const f = buildFigure(L), grp = f.root;
       const base = new T.Mesh(G.base, baseMat(d.cost || 0)); base.position.y = 0.06; base.receiveShadow = true; grp.add(base);
       const ring = new T.Mesh(G.starRing, starRingMats[2]); ring.rotation.x = Math.PI / 2; ring.position.y = 0.12; grp.add(ring);

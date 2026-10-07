@@ -91,6 +91,10 @@ async function exportar(id, imgSharp) {
     retratos: creditos };
   fs.writeFileSync(path.join(OUT, 'creditos.json'), JSON.stringify(out, null, 1));
   fs.writeFileSync(path.join(OUT, 'creditos.js'), '// generado por tools/retratos/procesar.js\nwindow.RETRATOS = ' + JSON.stringify(out) + ';\n');
+  // caras de 128 px embebidas: el escenario 3D las usa como textura (?caras), también abriendo el juego como archivo
+  const caras = {};
+  for (const id of ids) { const f = path.join(OUT, id + '-128.webp'); if (fs.existsSync(f)) caras[id] = 'data:image/webp;base64,' + fs.readFileSync(f).toString('base64'); }
+  fs.writeFileSync(path.join(OUT, 'caras.js'), '// generado por tools/retratos/procesar.js\nwindow.CARAS = ' + JSON.stringify(caras) + ';\n');
   const cuenta = k => Object.values(estado).filter(s => s.startsWith(k)).length;
   console.log(`\n${cuenta('foto')} con foto · ${cuenta('plan B')} plan B · ${cuenta('PENDIENTE')} pendientes · ${cuenta('ERROR')} con error`);
 })();
