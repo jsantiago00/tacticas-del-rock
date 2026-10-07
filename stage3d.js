@@ -113,7 +113,7 @@ const STAGE3D = (() => {
       box: new T.BoxGeometry(1, 1, 1), cyl: new T.CylinderGeometry(1, 1, 1, 18), cone: new T.ConeGeometry(1, 1, 8),
       torus: new T.TorusGeometry(1, 0.12, 8, 24), ringSmall: new T.TorusGeometry(0.075, 0.016, 6, 16),
       base: new T.CylinderGeometry(0.5, 0.56, 0.08, 28), starRing: new T.TorusGeometry(0.62, 0.05, 8, 40),
-      selRing: new T.TorusGeometry(0.7, 0.05, 8, 40), hitBox: new T.BoxGeometry(1.0, 2.1, 1.0),
+      selRing: new T.TorusGeometry(0.7, 0.05, 8, 40), teamDisc: new T.RingGeometry(0.66, 0.98, 40), hitBox: new T.BoxGeometry(1.0, 2.1, 1.0),
     };
     const matCache = {};
     const M = color => matCache[color] || (matCache[color] = new T.MeshToonMaterial({ color }));
@@ -306,7 +306,8 @@ const STAGE3D = (() => {
     const iconMat = {};
     for (const [k, ch] of Object.entries({ stun: '💫', silence: '🔇', confuse: '😵', control: '💻', slow: '❄️' }))
       iconMat[k] = new T.SpriteMaterial({ depthWrite: false, map: textTex('ic' + k, (g, w, h) => { g.font = '44px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(ch, w / 2, h / 2 + 2); }, 64, 64) });
-    const barMat = { bg: new T.SpriteMaterial({ color: 0x0c1424 }), mine: new T.SpriteMaterial({ color: 0x7ee08f }), foe: new T.SpriteMaterial({ color: 0xff7a63 }),
+    const teamMat = { foe: new T.MeshBasicMaterial({ color: 0xff2a2a, transparent: true, opacity: 0.95 }), mine: new T.MeshBasicMaterial({ color: 0x3cd66b, transparent: true, opacity: 0.55 }) };
+    const barMat = { bg: new T.SpriteMaterial({ color: 0x05080f }), mine: new T.SpriteMaterial({ color: 0x4fdc6e }), foe: new T.SpriteMaterial({ color: 0xff2a2a }),
       shield: new T.SpriteMaterial({ color: 0xe8e8e8 }), mana: new T.SpriteMaterial({ color: 0x4aa3ff }) };
     // Las barras se dibujan siempre arriba de todo y en orden fijo (fondo → vida/maná → escudo): si no,
     // al ser sprites a la misma distancia el fondo oscuro a veces tapaba la vida.
@@ -330,9 +331,11 @@ const STAGE3D = (() => {
       const sel = new T.Mesh(G.selRing, selMat); sel.rotation.x = Math.PI / 2; sel.position.y = 0.14; sel.visible = false; grp.add(sel);
       const stars = new T.Sprite(starMats[0]); stars.scale.set(0.9, 0.28, 1); stars.position.y = 2.35; grp.add(stars);
       const hpBg = new T.Sprite(barMat.bg); hpBg.scale.set(1.1, 0.14, 1); hpBg.position.y = 2.62;
-      const hpFg = new T.Sprite(barMat.mine); hpFg.position.set(0, 2.62, 0.001);
-      const shFg = new T.Sprite(barMat.shield); shFg.position.set(0, 2.62, 0.002);
-      const mpFg = new T.Sprite(barMat.mana); mpFg.position.set(0, 2.5, 0.001);
+      const hpFg = new T.Sprite(barMat.mine); hpFg.position.set(0, 2.62, 0);
+      const shFg = new T.Sprite(barMat.shield); shFg.position.set(0, 2.62, 0);
+      const mpFg = new T.Sprite(barMat.mana); mpFg.position.set(0, 2.5, 0);
+      // disco de equipo en combate: rojo los rivales, verde los tuyos
+      const team = new T.Mesh(G.teamDisc, teamMat.mine); team.rotation.x = -Math.PI / 2; team.position.y = 0.11; team.visible = false; grp.add(team);
       const mpBg = new T.Sprite(barMat.bg); mpBg.scale.set(1.1, 0.07, 1); mpBg.position.y = 2.5;
       const icon = new T.Sprite(iconMat.stun); icon.scale.set(0.5, 0.5, 1); icon.position.y = 2.95; icon.visible = false;
       const gear = [0, 1, 2].map(i => { const g = new T.Sprite(iconMat.stun); g.scale.set(0.34, 0.34, 1); g.position.set((i - 1) * 0.36, 2.08, 0); g.visible = false; grp.add(g); return g; });
@@ -343,7 +346,7 @@ const STAGE3D = (() => {
       grp.add(icon);
       const hit = new T.Mesh(G.hitBox, hitMat); hit.position.y = 1.05; hit.userData.key = key; grp.add(hit);
       scene.add(grp);
-      const doll = { key, unitId, star: 0, L, f, grp, base, ring, sel, focus, glow, stars, hpBg, hpFg, shFg, mpBg, mpFg, icon, hit, gear, items: '',
+      const doll = { key, unitId, star: 0, L, f, grp, base, ring, sel, focus, glow, team, stars, hpBg, hpFg, shFg, mpBg, mpFg, icon, hit, gear, items: '',
         phase: (key.charCodeAt(1) * 7 + key.length * 13) % 60 / 10, atk: -1, cast: -1, hitT: 0, dead: 0, alive: true, celeb: 0,
         home: new T.Vector3(), moving: 0, lunge: 0, facing: null, cid: -1 };
       setStar(doll, star, false);
@@ -749,13 +752,40 @@ const STAGE3D = (() => {
       else if (narrow) { camera.fov = 52; baseCam.pos.set(0, 22, 21); baseCam.look.set(0, 0, 5.2); }
       else { camera.fov = 38; baseCam.pos.set(0, 18.5, 20.5); baseCam.look.set(0, 0, 5.4); }
       camera.updateProjectionMatrix();
+      fitBase();
       applyView();
     }
+    // Ajusta distancia y punto de mira para que el tablero entero (las 8 filas, cabezas incluidas) y el
+    // backstage entren en el hueco libre que deja el HUD (safe: márgenes en píxeles que pasa la UI).
+    let safe = null;
+    const FIT_PTS = [[-7, 0, -6.2], [7, 0, -6.2], [-7, 2.9, -5.6], [7, 2.9, -5.6], [-7.6, 0, 10.2], [7.6, 0, 10.2], [0, 2.4, 9.3]].map(p => new T.Vector3(...p));
+    function fitBase() {
+      if (!safe) return;
+      const w = canvas.clientWidth, h = canvas.clientHeight;
+      const sw = w - safe.left - safe.right, sh = h - safe.top - safe.bottom;
+      if (sw < 80 || sh < 80) return;
+      const dir = baseCam.pos.clone().sub(baseCam.look).normalize();
+      let d = baseCam.pos.distanceTo(baseCam.look), lz = baseCam.look.z, lx = 0;
+      for (let it = 0; it < 40; it++) {
+        camera.position.set(lx, 0, lz).addScaledVector(dir, d); camera.lookAt(lx, 0, lz); camera.updateMatrixWorld();
+        let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+        for (const p of FIT_PTS) { V3.copy(p).project(camera); const px = (V3.x + 1) / 2 * w, py = (1 - V3.y) / 2 * h; x0 = Math.min(x0, px); x1 = Math.max(x1, px); y0 = Math.min(y0, py); y1 = Math.max(y1, py); }
+        const sc = Math.max((x1 - x0) / sw, (y1 - y0) / sh);
+        const dy = (y0 + y1) / 2 - (safe.top + sh / 2), dx = (x0 + x1) / 2 - (safe.left + sw / 2);
+        const k = 2 * d * Math.tan(camera.fov * Math.PI / 360) / h; // unidades del piso por píxel (aprox.)
+        lz += dy * k * 1.2; lx += dx * k;
+        d *= 1 + (sc - 1) * 0.6;
+      }
+      baseCam.look.set(lx, 0, lz); baseCam.pos.set(lx, 0, lz).addScaledVector(dir, d);
+    }
+    function setSafeArea(m) { safe = m; resize(); }
     // Vista del jugador: zoom (rueda / pellizco) y paneo (arrastrar el piso) sobre el encuadre base.
     const baseCam = { pos: new T.Vector3(), look: new T.Vector3() }, view = { zoom: 1, x: 0, z: 0 }, VL = new T.Vector3();
     function applyView() {
-      view.zoom = Math.max(0.55, Math.min(2.4, view.zoom));
-      view.x = Math.max(-9, Math.min(9, view.x)); view.z = Math.max(-10, Math.min(8, view.z));
+      // zoom solo hacia adentro (el encuadre base ya muestra todo); el paneo crece con el zoom
+      view.zoom = Math.max(1, Math.min(2.6, view.zoom));
+      const room = 1 - 1 / view.zoom;
+      view.x = Math.max(-8 * room, Math.min(8 * room, view.x)); view.z = Math.max(-8 * room, Math.min(6 * room, view.z));
       VL.set(baseCam.look.x + view.x, 0, baseCam.look.z + view.z);
       camera.position.copy(baseCam.pos).sub(baseCam.look).multiplyScalar(1 / view.zoom).add(VL);
       camera.lookAt(VL);
@@ -851,9 +881,14 @@ const STAGE3D = (() => {
         if (u) {
           const hp = Math.max(0, u.hp / u.maxHp), sh = Math.min(1 - hp, u.shield / u.maxHp);
           d.hpFg.material = u.side === combat.mySide ? barMat.mine : barMat.foe;
-          d.hpFg.scale.set(1.06 * Math.max(0.0001, hp), 0.09, 1); d.hpFg.position.x = -0.53 * (1 - hp);
-          d.shFg.visible = sh > 0.005; if (d.shFg.visible) { d.shFg.scale.set(1.06 * sh, 0.09, 1); d.shFg.position.x = -0.53 + 1.06 * hp + 0.53 * sh; }
-          if (u.maxMana > 0) { const mp = u.mana / u.maxMana; d.mpFg.scale.set(1.06 * Math.max(0.0001, mp), 0.05, 1); d.mpFg.position.x = -0.53 * (1 - mp); }
+          // Todas las barras en el mismo punto; el "center" del sprite corre el ancla en pantalla para que el
+          // relleno arranque en el borde izquierdo del fondo (antes se corría en x dentro del grupo, que gira).
+          const hw = Math.max(0.0001, hp);
+          d.hpFg.scale.set(1.06 * hw, 0.09, 1); d.hpFg.center.set(0.5 / hw, 0.5);
+          d.shFg.visible = sh > 0.005; if (d.shFg.visible) { d.shFg.scale.set(1.06 * sh, 0.09, 1); d.shFg.center.set((0.53 - 1.06 * hp) / (1.06 * sh), 0.5); }
+          if (u.maxMana > 0) { const mp = Math.max(0.0001, u.mana / u.maxMana); d.mpFg.scale.set(1.06 * mp, 0.05, 1); d.mpFg.center.set(0.5 / mp, 0.5); }
+          const foe = u.side !== combat.mySide;
+          d.team.visible = u.alive; d.team.material = foe ? teamMat.foe : teamMat.mine;
           const tk = combat.cs.tick;
           const st = u.controlledUntil > tk ? 'control' : u.stunUntil > tk ? 'stun' : u.confusedUntil > tk ? 'confuse' : u.silencedUntil > tk ? 'silence' : u.asBuffs.some(b => b.slow) ? 'slow' : null;
           d.icon.visible = !!st && u.alive; if (st) d.icon.material = iconMat[st];
@@ -910,7 +945,7 @@ const STAGE3D = (() => {
     return {
       setPlanning, startCombat, combatEvents, setAlpha, celebrate, stopCombat, traitPulse,
       pick, dropTarget, dragTo, dragEnd, highlight, setQuality, focusUnits, panBy, zoomBy, resetView, portrait, hoverUnit,
-      setAvatars, avatarPos, moveAvatar, startCarousel, stopCarousel, ringPos, carouselTake, groundAt,
+      setAvatars, avatarPos, moveAvatar, startCarousel, stopCarousel, ringPos, carouselTake, groundAt, setSafeArea,
       get carouselOn() { return !!ring; },
       get viewChanged() { return view.zoom !== 1 || view.x !== 0 || view.z !== 0; },
       get fps() { return lastFps; }, get quality() { return qLevel; },

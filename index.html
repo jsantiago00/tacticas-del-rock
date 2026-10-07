@@ -508,13 +508,13 @@ button{font-family:inherit}
 </div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="sim.js?v=8.3"></script>
-<script src="net.js?v=8.3"></script>
-<script src="looks.js?v=8.3"></script>
-<script src="stage3d.js?v=8.3"></script>
-<script src="sfx.js?v=8.3"></script>
-<script src="firebase-config.js?v=8.3"></script>
-<script src="firebase-transport.js?v=8.3"></script>
+<script src="sim.js?v=8.4"></script>
+<script src="net.js?v=8.4"></script>
+<script src="looks.js?v=8.4"></script>
+<script src="stage3d.js?v=8.4"></script>
+<script src="sfx.js?v=8.4"></script>
+<script src="firebase-config.js?v=8.4"></script>
+<script src="firebase-transport.js?v=8.4"></script>
 <script src="assets/retratos/creditos.js?v=1" onerror="window.RETRATOS = null"></script>
 <script>
 'use strict';
@@ -607,6 +607,21 @@ button{font-family:inherit}
     document.body.insertAdjacentHTML('beforeend', '<div style="position:fixed;inset:0;display:grid;place-items:center;background:#0d1526;color:#e8ecf4;font:20px sans-serif;text-align:center;padding:20px;z-index:99">Este navegador no puede mostrar el escenario 3D (WebGL).<br>Probá con Chrome, Edge, Firefox o Safari actualizados.</div>');
     return;
   }
+
+  // Encuadre: el tablero entero tiene que entrar en el hueco que dejan el HUD de arriba, el de abajo y
+  // los paneles de los costados (en el celu los paneles se superponen: solo un margen chico).
+  function updateSafeArea() {
+    const wr = $('#wrap').getBoundingClientRect(), wide = wr.width > 820 && wr.height > 520;
+    const r = sel => $(sel).getBoundingClientRect();
+    stage.setSafeArea({
+      left: wide ? 240 : 6, right: wide ? 240 : 6, // los paneles miden 220 px (fijo); antes de la partida pueden estar ocultos
+      top: r('#timer').bottom - wr.top + 4,
+      bottom: wr.bottom - r('#bottom').top + 4,
+    });
+  }
+  let safeT = null;
+  window.addEventListener('resize', () => { clearTimeout(safeT); safeT = setTimeout(updateSafeArea, 120); });
+  requestAnimationFrame(updateSafeArea);
 
   // ---------- sesión ----------
   function teardown() {
