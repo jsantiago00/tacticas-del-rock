@@ -114,10 +114,28 @@ const STAGE3D = (() => {
       torus: new T.TorusGeometry(1, 0.12, 8, 24), ringSmall: new T.TorusGeometry(0.075, 0.016, 6, 16),
       base: new T.CylinderGeometry(0.5, 0.56, 0.08, 28), starRing: new T.TorusGeometry(0.62, 0.05, 8, 40),
       facePlate: new T.SphereGeometry(0.408, 24, 16, Math.PI * 0.5 - 1.15, 2.3, 0.32, 1.95),
+      smile: new T.TorusGeometry(0.055, 0.013, 6, 14, Math.PI),
       selRing: new T.TorusGeometry(0.7, 0.05, 8, 40), teamDisc: new T.RingGeometry(0.66, 0.98, 40), hitBox: new T.BoxGeometry(1.0, 2.1, 1.0),
     };
     const matCache = {};
-    const M = color => matCache[color] || (matCache[color] = new T.MeshToonMaterial({ color }));
+    const gradTex = (() => { const d = new Uint8Array([95, 95, 95, 255, 175, 175, 175, 255, 255, 255, 255, 255]); const t = new T.DataTexture(d, 3, 1, T.RGBAFormat); t.minFilter = t.magFilter = T.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true; return t; })();
+    const M = color => matCache[color] || (matCache[color] = new T.MeshToonMaterial({ color, gradientMap: gradTex }));
+    // contorno (casco invertido): una copia apenas más grande, negra y vista desde adentro
+    const outlineMat = new T.MeshBasicMaterial({ color: 0x15111c, side: T.BackSide });
+    const _sph = new T.Sphere();
+    function addOutlines(root) {
+      const list = [];
+      root.traverse(o => { if (o.isMesh && o.material && o.material.isMeshToonMaterial) list.push(o); });
+      for (const o of list) {
+        if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere();
+        const r = o.geometry.boundingSphere.radius * Math.max(o.scale.x, o.scale.y, o.scale.z);
+        if (r < 0.08) continue; // piezas chicas (ojos, nariz, botones): sin contorno
+        const ol = new T.Mesh(o.geometry, outlineMat);
+        const k = 1 + 0.035 / Math.max(0.06, r); // grosor parecido en piezas grandes y chicas
+        ol.scale.setScalar(Math.min(1.35, k));
+        o.add(ol);
+      }
+    }
     const mesh = (geo, color, sx, sy, sz) => { const m = new T.Mesh(geo, M(color)); if (sx) m.scale.set(sx, sy, sz); m.castShadow = true; return m; };
     const baseMats = {}; const baseMat = c => baseMats[c] || (baseMats[c] = new T.MeshStandardMaterial({ color: COST[c], roughness: 0.5, metalness: 0.2 }));
     const starRingMats = { 2: new T.MeshStandardMaterial({ color: 0xd8dde6, metalness: 0.8, roughness: 0.25 }), 3: new T.MeshStandardMaterial({ color: 0xf0b429, metalness: 0.8, roughness: 0.25, emissive: 0x3a2400 }) };
@@ -246,6 +264,20 @@ const STAGE3D = (() => {
       tex.repeat.set(0.62, 0.62); tex.offset.set(0.19, 0.2); // los recortes vienen centrados en la cara: acercar
       return (faceMats[url] = new T.MeshBasicMaterial({ map: tex }));
     }
+    // Cara: ojos con brillo, cejas, boca y cachetes (si tiene anteojos negros, los ojos no se ven).
+    function addFace(head, L) {
+      const shades = L.glasses === true || L.glasses === 'roundShades';
+      for (const sd of [-1, 1]) {
+        if (!shades) {
+          const w = new T.Mesh(G.ball, MB('#ffffff')); w.scale.set(0.072, 0.085, 0.03); w.position.set(sd * 0.135, 0.04, 0.375); head.add(w);
+          const p = new T.Mesh(G.ball, MB('#1b1420')); p.scale.set(0.05, 0.065, 0.03); p.position.set(sd * 0.135, 0.03, 0.392); head.add(p);
+          const h = new T.Mesh(G.ball, MB('#ffffff')); h.scale.set(0.017, 0.017, 0.01); h.position.set(sd * 0.135 + 0.018, 0.058, 0.415); head.add(h);
+        }
+        const br = new T.Mesh(G.box, MB(L.hair === 'bald' ? '#6b5a4a' : L.hairCol || '#3a2a20')); br.scale.set(0.12, 0.028, 0.03); br.position.set(sd * 0.135, 0.155, 0.37); br.rotation.z = -sd * 0.12; head.add(br);
+        const ck = new T.Mesh(G.ball, MB('#ff8a8a', 0.35)); ck.scale.set(0.06, 0.035, 0.02); ck.position.set(sd * 0.22, -0.07, 0.33); head.add(ck);
+      }
+      if (!L.beard) { const m = new T.Mesh(G.smile, MB('#5a2a2a')); m.position.set(0, -0.15, 0.385); m.rotation.z = Math.PI; head.add(m); }
+    }
     function buildFigure(L) {
       const root = new T.Group(), body = new T.Group(); root.add(body);
       const w = L.big ? 1.14 : 1; body.scale.set(w, 1, w);
@@ -259,14 +291,14 @@ const STAGE3D = (() => {
       const torso = new T.Group(); torso.position.y = 0.5; body.add(torso);
       const chest = mesh(G.torso, L.shirt); chest.position.y = 0.28; torso.add(chest);
       if (L.tunic) { const t = mesh(G.cyl, L.shirt, 0.3, 0.4, 0.3); t.position.y = -0.12; torso.add(t); }
-      const head = new T.Group(); head.position.y = 0.92; torso.add(head);
+      const head = new T.Group(); head.position.y = 0.98; head.scale.setScalar(1.16); torso.add(head); // cabezón (chibi)
       head.add(mesh(G.head, L.skin, 1, 1.04, 1));
+      if (!L.face) addFace(head, L);
       if (L.face) { // cara de la foto sobre el frente de la cabeza (cabezón)
         const fm = new T.Mesh(G.facePlate, faceMat(L.face)); fm.scale.set(1, 1.04, 1); head.add(fm);
       } else if (L.glasses === 'round' || L.glasses === 'square' || L.glasses === 'roundBig') {
         const big = L.glasses === 'roundBig', sq = L.glasses === 'square', col = big ? '#f4f4f4' : sq ? '#0e0f12' : '#1b1b1f';
         for (const sd of [-1, 1]) {
-          const e = mesh(G.eye, '#151515'); e.position.set(sd * 0.13, 0.05, 0.37); head.add(e);
           if (sq) { for (const [w, h, x, y] of [[0.2, 0.035, 0, 0.065], [0.2, 0.035, 0, -0.065], [0.035, 0.15, -0.09, 0], [0.035, 0.15, 0.09, 0]]) { const b = mesh(G.box, col, w, h, 0.03); b.position.set(sd * 0.13 + x, 0.05 + y, 0.39); head.add(b); } }
           else { const r = mesh(G.ringSmall, col); r.scale.setScalar(big ? 1.6 : 1); if (big) r.scale.z = 2.5; r.position.set(sd * (big ? 0.15 : 0.13), 0.05, 0.38); head.add(r); }
         }
@@ -276,10 +308,8 @@ const STAGE3D = (() => {
         const br = mesh(G.box, '#0b0c0f', 0.08, 0.02, 0.02); br.position.set(0, 0.06, 0.4); head.add(br);
       } else if (L.glasses) {
         const gl = mesh(G.box, '#0e0f12', 0.52, 0.12, 0.06); gl.position.set(0, 0.05, 0.38); head.add(gl);
-      } else {
-        for (const sd of [-1, 1]) { const e = mesh(G.eye, '#151515'); e.position.set(sd * 0.13, 0.05, 0.37); head.add(e); }
       }
-      if (!L.face) { const nose = mesh(G.ball, L.skin, 0.05, 0.06, 0.05); nose.position.set(0, -0.05, 0.41); head.add(nose); }
+      if (!L.face) { const nose = mesh(G.ball, L.skin, 0.035, 0.04, 0.035); nose.position.set(0, -0.05, 0.4); head.add(nose); }
       if (L.beard) { const b = mesh(G.ball, L.hairCol, 0.3, 0.2, 0.2); b.position.set(0, -0.27, 0.25); head.add(b); }
       if (L.mustache === 'bicolor') {
         const a = mesh(G.box, '#f2f2f2', 0.13, 0.05, 0.05); a.position.set(-0.07, -0.13, 0.39); head.add(a);
@@ -298,6 +328,7 @@ const STAGE3D = (() => {
       const fig = { root, body, torso, head, armR: arms[0], armL: arms[1], legs };
       if (L.theme) addTheme(fig, L);
       if (L.sig) addSig(fig, L);
+      addOutlines(root);
       return fig;
     }
     // ---------- rasgos propios de cada músico (looks.js: sig) ----------
