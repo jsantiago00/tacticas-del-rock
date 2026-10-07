@@ -11,6 +11,7 @@ p{color:#aeb8cc;margin:0 0 10px}
 h2{font-size:16px;margin:16px 0 6px;display:flex;align-items:center;gap:8px}
 h2 i{width:14px;height:14px;border-radius:3px;display:inline-block}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+body.solo .grid{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
 figure{margin:0;background:#16233a;border-radius:8px;overflow:hidden;text-align:center}
 figure img{width:100%;display:block}
 figcaption{padding:4px 6px 6px;font-size:13px}
@@ -30,16 +31,18 @@ figcaption small{display:block;color:#aeb8cc;font-size:11px}
 <script>
 'use strict';
 const stage = STAGE3D.create({ canvas: document.getElementById('c'), overlay: document.getElementById('ov') });
-const ids = Object.keys(DATA.UNITS), groups = {};
+// ?solo=id1,id2 muestra solo esos (más grandes, para revisar una tanda)
+const solo = (new URLSearchParams(location.search).get('solo') || '').split(',').filter(Boolean);
+const ids = solo.length ? solo : Object.keys(DATA.UNITS), groups = {};
 for (const id of ids) { const t = LOOKS.themeOf(SIM.def(id)) || 'otros'; (groups[t] = groups[t] || []).push(id); }
-const out = document.getElementById('out');
+const out = document.getElementById('out'); if (solo.length) document.body.classList.add('solo');
 for (const [t, list] of Object.entries(groups)) {
   const T = DATA.TRAITS[t] || { name: t, icon: '', color: '#888' };
   out.insertAdjacentHTML('beforeend', `<h2><i style="background:${(LOOKS.THEMES[t] || {}).shirt || T.color}"></i>${T.icon} ${T.name} (${list.length})</h2><div class="grid" id="g-${t}"></div>`);
   const g = document.getElementById('g-' + t);
   for (const id of list) {
     const d = DATA.UNITS[id];
-    g.insertAdjacentHTML('beforeend', `<figure><img src="${stage.portrait(id, 280, '#2c3f63', true)}" alt=""><figcaption>${d.short}<small>${d.origins.map(o => DATA.TRAITS[o].name).join(' · ')}</small></figcaption></figure>`);
+    g.insertAdjacentHTML('beforeend', `<figure><img src="${stage.portrait(id, solo.length ? 360 : 280, '#2c3f63', true)}" alt=""><figcaption>${d.short}<small>${d.origins.map(o => DATA.TRAITS[o].name).join(' · ')}</small></figcaption></figure>`);
   }
 }
 document.title = 'Galería de muñecos (lista)';

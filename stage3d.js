@@ -129,7 +129,7 @@ const STAGE3D = (() => {
       if (h === 'bald') return;
       if (h === 'baldSides') { for (const sd of [-1, 1]) { const b = mesh(G.ball, c, 0.14, 0.2, 0.26); b.position.set(sd * 0.36, 0, -0.05); head.add(b); } return; }
       const tight = h === 'buzz';
-      if (!['afro', 'afroSmall'].includes(h)) { const cap = mesh(G.cap, c); cap.position.y = 0.04; cap.rotation.x = -0.28; if (tight) cap.scale.set(0.97, 0.9, 0.97); head.add(cap); }
+      if (!['afro', 'afroSmall', 'bigCurls'].includes(h)) { const cap = mesh(G.cap, c); cap.position.y = 0.04; cap.rotation.x = -0.28; if (tight) cap.scale.set(0.97, 0.9, 0.97); head.add(cap); }
       if (h === 'medium') { const b = mesh(G.ball, c, 0.42, 0.34, 0.28); b.position.set(0, -0.08, -0.2); head.add(b); }
       if (h === 'long') {
         const b = mesh(G.box, c, 0.8, 0.8, 0.28); b.position.set(0, -0.32, -0.2); head.add(b);
@@ -156,6 +156,19 @@ const STAGE3D = (() => {
         const bang = mesh(G.box, c, 0.7, 0.14, 0.12); bang.position.set(0, 0.22, 0.32); bang.rotation.x = 0.3; head.add(bang);
         const back = mesh(G.ball, c, 0.44, h === 'mop' ? 0.3 : 0.4, 0.3); back.position.set(0, -0.06, -0.18); head.add(back);
         if (h === 'longBangs') { const b2 = mesh(G.box, c, 0.18, 0.3, 0.06); b2.position.set(0.12, 0.08, 0.38); head.add(b2); }
+      }
+      if (h === 'wavy') { // melena ondulada con volumen (Cerati)
+        [[0.3, 0.08, -0.1, 0.24], [-0.3, 0.08, -0.1, 0.24], [0.2, 0.32, -0.05, 0.22], [-0.18, 0.34, 0.02, 0.22], [0, 0.28, -0.28, 0.26], [0.3, -0.18, -0.15, 0.2], [-0.3, -0.18, -0.15, 0.2], [0, -0.12, -0.34, 0.24]]
+          .forEach(p => { const b = mesh(G.ball, c, p[3], p[3] * 0.9, p[3]); b.position.set(p[0], p[1], p[2]); head.add(b); });
+      }
+      if (h === 'bigCurls') { // rulos grandes, tapan la frente y los ojos (Spinetta)
+        for (let k = 0; k < 16; k++) { const q = k / 16 * Math.PI * 2, r = 0.42 + (k % 3) * 0.03; const b = mesh(G.ball, c, 0.17, 0.17, 0.17); b.position.set(Math.sin(q) * r, 0.12 + Math.cos(q * 2) * 0.12, Math.cos(q) * r * 0.9 - 0.05); head.add(b); }
+        for (let k = 0; k < 5; k++) { const b = mesh(G.ball, c, 0.13, 0.12, 0.1); b.position.set(-0.24 + k * 0.12, 0.14 - (k % 2) * 0.04, 0.36); head.add(b); }
+        for (const sd of [-1, 1]) { const b = mesh(G.ball, c, 0.16, 0.3, 0.16); b.position.set(sd * 0.4, -0.3, -0.05); head.add(b); }
+      }
+      if (h === 'longSide') { // largo y lacio de un lado, rapado del otro (Skrillex)
+        const s1 = mesh(G.box, c, 0.16, 0.9, 0.42); s1.position.set(-0.34, -0.2, 0.02); s1.rotation.z = 0.08; head.add(s1);
+        const fr = mesh(G.box, c, 0.36, 0.5, 0.08); fr.position.set(-0.18, 0.02, 0.36); fr.rotation.z = 0.25; head.add(fr);
       }
       if (h === 'sidecut') { const s = mesh(G.box, c, 0.2, 0.7, 0.36); s.position.set(-0.32, -0.12, 0); s.rotation.z = 0.15; head.add(s); }
     }
@@ -194,6 +207,10 @@ const STAGE3D = (() => {
         const hs = mesh(G.box, '#1b1b1f', 0.11, 0.16, 0.05); hs.position.set(0, 0.32 + len, 0.02); g.add(hs);
         if (kind !== 'acoustic') { const pick = mesh(G.box, '#111', 0.14, 0.05, 0.02); pick.position.set(0, 0.05, 0.05); g.add(pick); }
         g.position.set(-0.04, 0.2, 0.34); g.rotation.z = -1.05; torso.add(g); return g;
+      }
+      if (kind === 'halfMic') { // medio pie de micrófono
+        const st = mesh(G.cyl, '#c9ccd2', 0.02, 0.9, 0.02); st.position.set(0, -0.3, 0.12); st.rotation.x = 0.5; armR.add(st);
+        const mic = mesh(G.ball, '#2a2a2e', 0.06, 0.07, 0.06); mic.position.set(0, -0.72, 0.36); armR.add(mic);
       }
       if (kind === 'mic') {
         const g = new T.Group();
@@ -246,8 +263,17 @@ const STAGE3D = (() => {
       head.add(mesh(G.head, L.skin, 1, 1.04, 1));
       if (L.face) { // cara de la foto sobre el frente de la cabeza (cabezón)
         const fm = new T.Mesh(G.facePlate, faceMat(L.face)); fm.scale.set(1, 1.04, 1); head.add(fm);
-      } else if (L.glasses === 'round') {
-        for (const sd of [-1, 1]) { const r = mesh(G.ringSmall, '#1b1b1f'); r.position.set(sd * 0.13, 0.05, 0.38); head.add(r); }
+      } else if (L.glasses === 'round' || L.glasses === 'square' || L.glasses === 'roundBig') {
+        const big = L.glasses === 'roundBig', sq = L.glasses === 'square', col = big ? '#f4f4f4' : sq ? '#0e0f12' : '#1b1b1f';
+        for (const sd of [-1, 1]) {
+          const e = mesh(G.eye, '#151515'); e.position.set(sd * 0.13, 0.05, 0.37); head.add(e);
+          if (sq) { for (const [w, h, x, y] of [[0.2, 0.035, 0, 0.065], [0.2, 0.035, 0, -0.065], [0.035, 0.15, -0.09, 0], [0.035, 0.15, 0.09, 0]]) { const b = mesh(G.box, col, w, h, 0.03); b.position.set(sd * 0.13 + x, 0.05 + y, 0.39); head.add(b); } }
+          else { const r = mesh(G.ringSmall, col); r.scale.setScalar(big ? 1.6 : 1); if (big) r.scale.z = 2.5; r.position.set(sd * (big ? 0.15 : 0.13), 0.05, 0.38); head.add(r); }
+        }
+        const br = mesh(G.box, col, 0.08, 0.025, 0.025); br.position.set(0, 0.06, 0.4); head.add(br);
+      } else if (L.glasses === 'roundShades') { // redondos negros (Indio)
+        for (const sd of [-1, 1]) { const l = mesh(G.cyl, '#0b0c0f', 0.1, 0.03, 0.1); l.rotation.x = Math.PI / 2; l.position.set(sd * 0.13, 0.05, 0.38); head.add(l); }
+        const br = mesh(G.box, '#0b0c0f', 0.08, 0.02, 0.02); br.position.set(0, 0.06, 0.4); head.add(br);
       } else if (L.glasses) {
         const gl = mesh(G.box, '#0e0f12', 0.52, 0.12, 0.06); gl.position.set(0, 0.05, 0.38); head.add(gl);
       } else {
@@ -271,7 +297,25 @@ const STAGE3D = (() => {
       addInstrument(L, torso, arms[0], arms[1], root);
       const fig = { root, body, torso, head, armR: arms[0], armL: arms[1], legs };
       if (L.theme) addTheme(fig, L);
+      if (L.sig) addSig(fig, L);
       return fig;
+    }
+    // ---------- rasgos propios de cada músico (looks.js: sig) ----------
+    function addSig(f, L) {
+      const { head, torso, body } = f, c = L.hairCol;
+      for (const sg of L.sig) switch (sg) {
+        case 'mustacheBig': at(head, mesh(G.box, c, 0.32, 0.08, 0.07), 0, -0.13, 0.385); break;
+        case 'stubble': at(head, mesh(G.ball, '#5a4a3e', 0.33, 0.2, 0.2, 0.9), 0, -0.2, 0.2); break;
+        case 'goatee': at(head, mesh(G.ball, c, 0.1, 0.12, 0.08), 0, -0.3, 0.32); break;
+        case 'curlsOverEyes': for (let k = 0; k < 6; k++) at(head, mesh(G.ball, c, 0.12, 0.16, 0.1), -0.27 + k * 0.11, 0.08 + (k % 2) * 0.05, 0.37); break;
+        case 'jacketStraps': for (const sd of [-1, 1]) at(torso, mesh(G.box, '#f4f4f4', 0.06, 0.66, 0.03), 0, 0.28, 0.28, 0, 0, sd * 0.6); at(torso, mesh(G.box, '#f2c21b', 0.62, 0.06, 0.32), 0, 0.02, 0); break;
+        case 'blazer': for (const sd of [-1, 1]) { at(torso, mesh(G.box, '#1a1c22', 0.16, 0.58, 0.07), sd * 0.15, 0.27, 0.25); at(torso, mesh(G.box, '#2a2d36', 0.06, 0.24, 0.02), sd * 0.08, 0.44, 0.29, 0, 0, sd * 0.35); } break;
+        case 'leatherJacket': for (const sd of [-1, 1]) { at(torso, mesh(G.box, '#14100d', 0.17, 0.58, 0.08), sd * 0.15, 0.27, 0.25); at(torso, mesh(G.ball, '#c9ccd2', 0.02, 0.02, 0.02), sd * 0.08, 0.36, 0.3); } at(torso, mesh(G.box, '#14100d', 0.66, 0.12, 0.34), 0, 0.56, 0); for (const arm of [f.armR, f.armL]) at(arm, mesh(G.arm, '#14100d', 1.15, 1.02, 1.15), 0, -0.19, 0); break;
+        case 'hoodie': at(head, mesh(G.ball, L.shirt, 0.42, 0.36, 0.3), 0, -0.1, -0.24); at(torso, mesh(G.box, '#f4f4f4', 0.02, 0.18, 0.02), 0.06, 0.42, 0.28); at(torso, mesh(G.box, '#f4f4f4', 0.02, 0.18, 0.02), -0.06, 0.42, 0.28); break;
+        case 'suspenders': for (const sd of [-1, 1]) at(torso, mesh(G.box, '#3a2a1e', 0.045, 0.58, 0.31), sd * 0.13, 0.28, 0); break;
+        case 'earring': at(head, mesh(G.ringSmall, '#e8c45a'), 0.4, -0.12, 0.02, 0, Math.PI / 2); break;
+        case 'faceTattoo': for (let k = 0; k < 3; k++) at(head, mesh(G.box, '#2a2a33', 0.03, 0.03, 0.01), -0.2 + k * 0.05, 0.2 + (k % 2) * 0.03, 0.36); break;
+      }
     }
     // ---------- temática por origen (looks.js: THEMES): accesorios y efectos ----------
     const glowCache = {};
