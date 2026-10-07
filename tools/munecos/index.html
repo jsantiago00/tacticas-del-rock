@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Galería de muñecos</title>
+<style>
+body{margin:0;background:#0d1526;color:#e8ecf4;font:14px/1.4 system-ui,sans-serif;padding:14px}
+h1{font-size:20px;margin:0 0 4px}
+p{color:#aeb8cc;margin:0 0 10px}
+h2{font-size:16px;margin:16px 0 6px;display:flex;align-items:center;gap:8px}
+h2 i{width:14px;height:14px;border-radius:3px;display:inline-block}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+figure{margin:0;background:#16233a;border-radius:8px;overflow:hidden;text-align:center}
+figure img{width:100%;display:block}
+figcaption{padding:4px 6px 6px;font-size:13px}
+figcaption small{display:block;color:#aeb8cc;font-size:11px}
+#hidden{position:fixed;left:-10000px;top:0;width:64px;height:64px}
+</style>
+</head>
+<body>
+<h1>Galería de muñecos</h1>
+<p>Los 65 de cuerpo entero, agrupados por la temática de su origen principal (looks.js → THEMES). Sirve para revisar que cada uno se distinga.</p>
+<div id="out"></div>
+<div id="hidden"><canvas id="c"></canvas><div id="ov"></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="../../sim.js"></script>
+<script src="../../looks.js"></script>
+<script src="../../stage3d.js"></script>
+<script>
+'use strict';
+const stage = STAGE3D.create({ canvas: document.getElementById('c'), overlay: document.getElementById('ov') });
+const ids = Object.keys(DATA.UNITS), groups = {};
+for (const id of ids) { const t = LOOKS.themeOf(SIM.def(id)) || 'otros'; (groups[t] = groups[t] || []).push(id); }
+const out = document.getElementById('out');
+for (const [t, list] of Object.entries(groups)) {
+  const T = DATA.TRAITS[t] || { name: t, icon: '', color: '#888' };
+  out.insertAdjacentHTML('beforeend', `<h2><i style="background:${(LOOKS.THEMES[t] || {}).shirt || T.color}"></i>${T.icon} ${T.name} (${list.length})</h2><div class="grid" id="g-${t}"></div>`);
+  const g = document.getElementById('g-' + t);
+  for (const id of list) {
+    const d = DATA.UNITS[id];
+    g.insertAdjacentHTML('beforeend', `<figure><img src="${stage.portrait(id, 280, '#2c3f63', true)}" alt=""><figcaption>${d.short}<small>${d.origins.map(o => DATA.TRAITS[o].name).join(' · ')}</small></figcaption></figure>`);
+  }
+}
+document.title = 'Galería de muñecos (lista)';
+</script>
+</body>
+</html>

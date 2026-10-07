@@ -269,10 +269,58 @@ const STAGE3D = (() => {
         arms.push(sh);
       }
       addInstrument(L, torso, arms[0], arms[1], root);
-      return { root, body, torso, head, armR: arms[0], armL: arms[1], legs };
+      const fig = { root, body, torso, head, armR: arms[0], armL: arms[1], legs };
+      if (L.theme) addTheme(fig, L);
+      return fig;
+    }
+    // ---------- temática por origen (looks.js: THEMES): accesorios y efectos ----------
+    const glowCache = {};
+    const MB = (color, opacity = 1) => glowCache[color + opacity] || (glowCache[color + opacity] = new T.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1 }));
+    const bmesh = (geo, color, sx, sy, sz, op) => { const m = new T.Mesh(geo, MB(color, op)); if (sx) m.scale.set(sx, sy, sz); return m; };
+    const at = (parent, m, x, y, z, rx = 0, ry = 0, rz = 0) => { m.position.set(x, y, z); m.rotation.set(rx, ry, rz); parent.add(m); return m; };
+    function addTheme(f, L) {
+      const th = LOOKS.THEMES[L.theme]; if (!th) return;
+      const a = th.accent, { head, torso, root, body } = f;
+      for (const acc of th.acc) switch (acc) {
+        case 'bandana': at(head, mesh(G.torus, a, 0.405, 0.405, 0.5), 0, 0.14, 0, Math.PI / 2 - 0.15); at(head, mesh(G.ball, a, 0.08, 0.06, 0.06), 0, 0.1, -0.42); at(head, mesh(G.box, a, 0.05, 0.16, 0.03), 0.04, -0.02, -0.44, 0, 0, 0.3); break;
+        case 'spikes': for (const sd of [-1, 1]) { at(torso, mesh(G.ball, '#111114', 0.14, 0.09, 0.14), sd * 0.3, 0.52, 0); for (let k = -1; k <= 1; k++) at(torso, mesh(G.cone, '#d8dade', 0.035, 0.12, 0.035), sd * 0.3 + k * 0.06, 0.62, k * 0.04); } break;
+        case 'cape': at(torso, mesh(G.box, '#7a1f2a', 0.66, 0.82, 0.04), 0, 0.12, -0.3, 0.14); at(torso, mesh(G.box, a, 0.68, 0.05, 0.05), 0, 0.52, -0.29, 0.14); break;
+        case 'crown': if (!L.hat) { at(head, mesh(G.cyl, a, 0.22, 0.1, 0.22), 0, 0.42, 0); for (let k = 0; k < 5; k++) { const q = k / 5 * Math.PI * 2; at(head, mesh(G.cone, a, 0.05, 0.13, 0.05), Math.sin(q) * 0.19, 0.53, Math.cos(q) * 0.19); } } break;
+        case 'goldTrim': at(torso, mesh(G.torus, a, 0.3, 0.3, 0.4), 0, 0.03, 0, Math.PI / 2); break;
+        case 'halo': at(head, bmesh(G.torus, a, 0.28, 0.28, 0.5), 0, 0.66, 0, Math.PI / 2); break;
+        case 'frostScarf': at(torso, mesh(G.torus, a, 0.24, 0.24, 1.1), 0, 0.58, 0, Math.PI / 2); at(torso, mesh(G.box, a, 0.1, 0.32, 0.05), 0.12, 0.38, 0.27, 0.15); break;
+        case 'leatherVest': for (const sd of [-1, 1]) { at(torso, mesh(G.box, '#120c09', 0.17, 0.54, 0.07), sd * 0.14, 0.28, 0.25, 0, 0, sd * 0.05); at(torso, mesh(G.ball, a, 0.025, 0.025, 0.025), sd * 0.07, 0.4, 0.3); } at(torso, mesh(G.box, '#120c09', 0.62, 0.1, 0.3), 0, 0.55, 0); break;
+        case 'goggles': at(head, mesh(G.torus, '#2a2a2e', 0.405, 0.405, 0.35), 0, 0.2, 0, Math.PI / 2 - 0.25); for (const sd of [-1, 1]) at(head, mesh(G.cyl, '#7fb0c8', 0.09, 0.06, 0.09), sd * 0.12, 0.25, 0.36, Math.PI / 2 - 0.4); break;
+        case 'headBandage': at(head, mesh(G.torus, a, 0.41, 0.41, 0.55), 0, 0.12, 0, Math.PI / 2 + 0.25, 0, 0.3); break;
+        case 'bandaids': at(head, mesh(G.box, '#e7c49a', 0.14, 0.05, 0.02), 0.2, -0.1, 0.34, 0, 0.5, 0.5); at(head, mesh(G.box, '#e7c49a', 0.05, 0.14, 0.02), 0.2, -0.1, 0.345, 0, 0.5, 0.5); break;
+        case 'antenna': at(head, mesh(G.cyl, '#9aa0a6', 0.015, 0.36, 0.015), 0.16, 0.52, 0, 0, 0, -0.25); f.blink = at(head, bmesh(G.ball, a, 0.06, 0.06, 0.06), 0.21, 0.72, 0); break;
+        case 'ledChest': at(torso, bmesh(G.box, a, 0.34, 0.035, 0.02), 0, 0.38, 0.27); at(torso, bmesh(G.box, a, 0.28, 0.035, 0.02), 0, 0.26, 0.29); break;
+        case 'rainbowSash': ['#e53935', '#fb8c00', '#fdd835', '#43a047', '#1e88e5', '#8e24aa'].forEach((c, k) => at(torso, mesh(G.box, c, 0.66, 0.035, 0.05), 0, 0.2 + k * 0.035, 0.27 + (k % 2) * 0.002, 0, 0, 0.75)); break;
+        case 'cardigan': for (let k = 0; k < 3; k++) at(torso, mesh(G.ball, a, 0.028, 0.028, 0.02), 0, 0.14 + k * 0.13, 0.285); for (const sd of [-1, 1]) at(torso, mesh(G.box, '#7a4ab0', 0.04, 0.54, 0.03), sd * 0.06, 0.28, 0.275); break;
+        case 'animalEars': for (const sd of [-1, 1]) { at(head, mesh(G.cone, a, 0.11, 0.2, 0.06), sd * 0.24, 0.42, 0, 0, 0, -sd * 0.35); at(head, mesh(G.cone, '#f0a8b8', 0.06, 0.12, 0.03), sd * 0.24, 0.41, 0.035, 0, 0, -sd * 0.35); } break;
+        case 'tail': at(body, mesh(G.cyl, '#8a5a2b', 0.05, 0.42, 0.05), 0, 0.5, -0.3, 0.9); at(body, mesh(G.ball, a, 0.08, 0.08, 0.08), 0, 0.66, -0.47); break;
+        case 'mouseEars': for (const sd of [-1, 1]) { at(head, mesh(G.ball, a, 0.17, 0.17, 0.04), sd * 0.3, 0.36, -0.02, 0, 0, sd * 0.2); at(head, mesh(G.ball, '#f2a0b4', 0.1, 0.1, 0.03), sd * 0.3, 0.36, 0.005, 0, 0, sd * 0.2); } break;
+        case 'geoPrint': [[-0.1, 0.36], [0.1, 0.24], [-0.06, 0.12], [0.12, 0.44]].forEach(([x, y]) => at(torso, mesh(G.box, a, 0.07, 0.07, 0.02), x, y, 0.275, 0, 0, Math.PI / 4)); break;
+        case 'pencil': at(head, mesh(G.cyl, '#f2c230', 0.018, 0.34, 0.018), 0.36, 0.05, -0.04, 0, 0, 1.25); at(head, mesh(G.cone, '#e8b98a', 0.018, 0.05, 0.018), 0.52, 0.11, -0.04, 0, 0, -1.9); break;
+        case 'tongue': at(head, mesh(G.ball, a, 0.065, 0.03, 0.07), 0, -0.2, 0.36, 0.5); break;
+        case 'backCap': if (!L.hat) { const top = mesh(G.cap, a); top.scale.set(1.06, 0.8, 1.06); at(head, top, 0, 0.1, 0); at(head, mesh(G.box, a, 0.4, 0.04, 0.3), 0, 0.12, -0.42); } break;
+        case 'chain': at(torso, mesh(G.torus, a, 0.2, 0.24, 0.5), 0, 0.42, 0.18, 1.25); at(torso, mesh(G.ball, a, 0.05, 0.05, 0.03), 0, 0.2, 0.29); break;
+        case 'apron': at(torso, mesh(G.box, a, 0.42, 0.5, 0.03), 0, 0.16, 0.285); at(torso, mesh(G.box, '#8a6a3a', 0.4, 0.03, 0.04), 0, 0.36, 0.3); break;
+        case 'longScarf': at(torso, mesh(G.torus, a, 0.24, 0.24, 1.1), 0, 0.58, 0, Math.PI / 2); for (let k = 0; k < 4; k++) at(torso, mesh(G.box, k % 2 ? a : '#3a3f4a', 0.11, 0.12, 0.05), -0.13, 0.42 - k * 0.12, 0.28); break;
+        case 'heartBadge': for (const sd of [-1, 1]) at(torso, mesh(G.ball, a, 0.045, 0.045, 0.02), -0.12 + sd * 0.03, 0.42, 0.28); at(torso, mesh(G.cone, a, 0.06, 0.07, 0.02), -0.12, 0.38, 0.28, 0, 0, Math.PI); break;
+        case 'bracelet': at(f.armR, mesh(G.torus, a, 0.085, 0.085, 0.4), 0, -0.34, 0, Math.PI / 2); break;
+      }
+      if (th.fx === 'snow') { const g = new T.Group(); for (let k = 0; k < 5; k++) { const q = k / 5 * Math.PI * 2; at(g, bmesh(G.ball, '#ffffff', 0.035, 0.035, 0.035), Math.sin(q) * 0.55, 0.2 + (k % 2) * 0.25, Math.cos(q) * 0.55); } head.add(g); f.snow = g; }
+      if (th.fx === 'spotlight' || L.solo) { // Solistas: borde blanco a los pies; los solistas puros, además, su cañón de luz
+        at(root, bmesh(G.torus, '#ffffff', 0.5, 0.5, 0.25), 0, 0.12, 0, Math.PI / 2);
+        if (th.fx === 'spotlight') at(root, bmesh(G.cone, '#fff6d8', 0.75, 3.2, 0.75, 0.09), 0, 1.6, 0);
+      }
+      f.fx = th.fx;
     }
     // Pose por instrumento. a = avance del ataque (0..1 o -1), c = avance de la habilidad (0..1 o -1).
     function pose(f, L, t, a, c) {
+      if (f.snow) f.snow.rotation.y = t * 0.9;
+      if (f.blink) f.blink.scale.setScalar(0.05 + 0.025 * (Math.sin(t * 6) > 0 ? 1 : 0));
       const beat = Math.sin(t * 2.6), k = a >= 0 ? Math.sin(a * Math.PI) : 0, q = c >= 0 ? Math.sin(c * Math.PI) : 0;
       f.head.rotation.x = beat * 0.07 + (L.inst === 'mic' ? -k * 0.25 : k * 0.15) - q * 0.35;
       f.torso.rotation.x = 0; f.torso.scale.y = 1 + beat * 0.015;
@@ -731,7 +779,8 @@ const STAGE3D = (() => {
 
     // ---------- retrato del muñeco (plan B de tools/retratos: músicos sin foto libre) ----------
     let pr = null;
-    function portrait(unitId, size = 512, bg = '#5a6070') {
+    // full: cuerpo entero (galería de muñecos); si no, la cabeza (retratos plan B / personaje)
+    function portrait(unitId, size = 512, bg = '#5a6070', full = false) {
       if (!pr) {
         const cv = document.createElement('canvas');
         const r = new T.WebGLRenderer({ canvas: cv, antialias: true, preserveDrawingBuffer: true });
@@ -746,7 +795,8 @@ const STAGE3D = (() => {
       pr.sc.add(f.root); f.root.updateMatrixWorld(true);
       const h = f.head.getWorldPosition(new T.Vector3());
       const far = typeof unitId === "object" ? 3.6 : 2.9; // el personajito: un poco más lejos (sombreros altos)
-      pr.cam.position.set(h.x + 0.35, h.y + 0.25, h.z + far); pr.cam.lookAt(h.x, h.y + (typeof unitId === "object" ? 0.1 : -0.02), h.z);
+      if (full) { pose(f, f.root.userData.L || LOOKS.of(unitId, SIM.def(unitId)), 0.4, -1, -1); pr.cam.position.set(1.3, 1.9, 4.6); pr.cam.lookAt(0, 1.0, 0); }
+      else { pr.cam.position.set(h.x + 0.35, h.y + 0.25, h.z + far); pr.cam.lookAt(h.x, h.y + (typeof unitId === "object" ? 0.1 : -0.02), h.z); }
       pr.r.render(pr.sc, pr.cam);
       const url = pr.cv.toDataURL('image/png');
       pr.sc.remove(f.root);
@@ -886,7 +936,7 @@ const STAGE3D = (() => {
         if (d.lunge > 0) { d.lunge = Math.max(0, d.lunge - dt * 4); d.f.body.position.z = Math.sin(d.lunge * Math.PI) * 0.35; } else d.f.body.position.z = 0;
         if (dragKey !== d.key && !(d.moving && !u)) d.grp.position.y = 0;
         if (!u && d.key === selKey && dragKey !== d.key) y += 0.55 + Math.sin(t * 3) * 0.07; // elegido: levantado, flotando
-        d.f.body.position.y = y;
+        d.f.body.position.y = y + (d.f.fx === 'float' ? 0.14 + Math.sin(t * 2 + d.phase) * 0.05 : 0); // celestiales: flotan
         if (d.hitT > 0) { d.hitT -= dt; d.f.body.scale.y = 1 - 0.12 * Math.max(0, d.hitT / 0.15); d.f.body.rotation.x = -0.15 * Math.max(0, d.hitT / 0.15); } else { d.f.body.scale.y = 1; if (d.alive) d.f.body.rotation.x = 0; }
         if (!d.alive && d.dead > 0) { d.dead = Math.min(1, d.dead + dt * 2.5); d.f.body.rotation.x = -Math.PI / 2 * d.dead; d.f.body.position.y = -0.2 * d.dead; if (d.dead >= 1) d.grp.visible = false; }
         // barras y estados (solo combate)

@@ -84,12 +84,44 @@ const LOOKS = (() => {
     sonidista:     { inst: 'dj', hair: 'short', hairCol: H.castaño, skin: S.medio, shirt: '#3a3a44', pants: '#2d2d2d', hat: 'headphones', hatCol: '#151515' },
     patovica:      { inst: 'none', hair: 'bald', skin: S.medio, shirt: '#0e0e10', pants: '#0e0e10', glasses: true, big: true },
   };
-  // Look completo de una unidad (con el instrumento de su clase si no tiene uno propio).
+  // Temática por origen (como las sinergias de TFT: todos los de un origen comparten paleta, accesorio y
+  // efecto). shirt/pants pisan la ropa propia; acc: accesorios; fx: efecto animado.
+  const THEMES = {
+    combate:      { shirt: '#1a1a1e', pants: '#2a0e10', accent: '#e02a2a', acc: ['bandana', 'spikes'] },
+    realeza:      { shirt: '#5a2a86', pants: '#2a1640', accent: '#f5c542', acc: ['cape', 'crown', 'goldTrim'] },
+    celestial:    { shirt: '#eaf6ff', pants: '#a8d8ff', accent: '#7fd0ff', acc: ['halo'], fx: 'float' },
+    frio:         { shirt: '#bfefff', pants: '#3a6f9a', accent: '#e8fbff', acc: ['frostScarf'], fx: 'snow' },
+    motor:        { shirt: '#2a1d16', pants: '#1b1b20', accent: '#c9ccd2', acc: ['leatherVest', 'goggles'] },
+    averiados:    { shirt: '#ff8a3c', pants: '#4a3a30', accent: '#f4f1ea', acc: ['headBandage', 'bandaids'] },
+    transmision:  { shirt: '#14323a', pants: '#0e1a22', accent: '#3cf0f0', acc: ['antenna', 'ledChest'], fx: 'blink' },
+    arcoiris:     { shirt: '#f4f4f4', pants: '#2d3a55', accent: '#e04fa0', acc: ['rainbowSash'], fx: 'sparkle' },
+    familia:      { shirt: '#9b6ad6', pants: '#3b2a55', accent: '#f0d9ff', acc: ['cardigan'] },
+    fauna:        { shirt: '#8a5a2b', pants: '#4a3420', accent: '#c98b3a', acc: ['animalEars', 'tail'] },
+    chiquitos:    { shirt: '#4fbf5a', pants: '#2f5a33', accent: '#d8d8dc', acc: ['mouseEars'] },
+    matematica:   { shirt: '#2a5bd8', pants: '#1b2a55', accent: '#ffffff', acc: ['geoPrint', 'pencil'] },
+    trabalenguas: { shirt: '#ff6fa8', pants: '#5a2a44', accent: '#ff3a6a', acc: ['tongue'] },
+    freestyle:    { shirt: '#ffd23c', pants: '#1b1b20', accent: '#f0c040', acc: ['backCap', 'chain'] },
+    almacen:      { shirt: '#c98a3a', pants: '#3a2f22', accent: '#f4ead2', acc: ['apron'] },
+    fraselarga:   { shirt: '#8a8f99', pants: '#2b2f38', accent: '#e8e8e8', acc: ['longScarf'] },
+    bff:          { shirt: '#ff9ad5', pants: '#3a2a44', accent: '#ff4fa0', acc: ['heartBadge', 'bracelet'] },
+    solistas:     { accent: '#ffffff', acc: [], fx: 'spotlight' }, // los solistas puros: su propio cañón de luz
+  };
+  // Origen principal: el primero que no sea Solistas (los que solo son Solistas usan el de Solistas).
+  const themeOf = def => (def && def.origins ? def.origins.find(o => o !== 'solistas') || (def.origins.includes('solistas') ? 'solistas' : null) : null);
+  // Look completo de una unidad (con el instrumento de su clase si no tiene uno propio) + su temática.
   function of(unitId, def) {
     const l = L[unitId] || { hair: 'short', hairCol: H.castaño, skin: S.medio, shirt: '#444', pants: '#222' };
     const cls = def && def.classes && def.classes[0];
-    return { instCol: '#2b2b30', hairCol: H.castaño, ...l, inst: l.inst || CLASS_INST[cls] || 'mic' };
+    const out = { instCol: '#2b2b30', hairCol: H.castaño, ...l, inst: l.inst || CLASS_INST[cls] || 'mic' };
+    const tk = themeOf(def), th = tk && THEMES[tk];
+    if (th) {
+      out.theme = tk; out.ownShirt = out.shirt;
+      if (th.shirt && !l.keepShirt) out.shirt = th.shirt;
+      if (th.pants && !l.keepPants) out.pants = th.pants;
+      if (def.origins.includes('solistas')) out.solo = true; // borde blanco / luz propia
+    }
+    return out;
   }
-  return { of, CLASS_INST, ALL: L };
+  return { of, CLASS_INST, ALL: L, THEMES, themeOf };
 })();
 if (typeof module !== 'undefined') module.exports = { LOOKS };
